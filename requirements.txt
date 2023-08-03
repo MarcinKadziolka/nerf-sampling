@@ -1,11 +1,7 @@
-# General packages
--r sphere_nerf_mod/nerf_pytorch/requirements.txt
-
-
 click==8.1.3
 
-# NeRF
-# git+https://github.com/yenchenlin/nerf-pytorch.git@63a5a630c9abd62b0f21c08703d0ac2ea7d4b9dd
+# NeRF, reference to fork
+git+https://github.com/waczjoan/nerf_pytorch.git
 
 # Current repository code
 --editable .
@@ -14,6 +10,7 @@ click==8.1.3
 --find-links https://download.pytorch.org/whl/torch_stable.html
 --find-links https://data.pyg.org/whl/torch-1.12.1+cu116.html
 torch==1.12.1+cu116
-torchvision>=0.9.1
+
+
 
 
