@@ -2,7 +2,7 @@
 import click
 import torch
 
-from sphere_nerf_mod.nerf_pytorch.run_nerf import train
+from nerf_pytorch.run_nerf import train
 
 
 @click.command()
