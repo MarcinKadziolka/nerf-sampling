@@ -15,6 +15,7 @@ from nerf_pytorch.run_nerf import train
 def main(
     model: str,
 ):
+    """Main."""
     if model == "nerf":
         torch.set_default_tensor_type('torch.cuda.FloatTensor')
         train()
