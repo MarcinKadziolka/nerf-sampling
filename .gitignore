@@ -131,4 +131,5 @@ dmypy.json
 # PyCharm
 .idea/
 
-sphere_nerf_mod/nerf_pytorch/
+data
+logs
