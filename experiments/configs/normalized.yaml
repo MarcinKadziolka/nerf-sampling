@@ -1,0 +1,20 @@
+default_setup_params: &default_setup_params
+    half_res: true
+    no_batching: true
+    N_samples: 64
+    N_importance: 64
+    use_viewdirs: true
+    white_bkgd: true
+    N_rand: 1024
+    device: 'cuda'
+
+dataset_airplane_setup: &dataset_airplane_setup
+    expname: "normalized"
+    basedir: "logs"
+    datadir: "data/normalized"
+    dataset_type: "blender"
+
+airplane:
+  <<: *default_setup_params
+  data:
+    <<: *dataset_airplane_setup
