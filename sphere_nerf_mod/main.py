@@ -5,14 +5,14 @@ Contains high-level functions, which implement SphereNeRF's behavior.
 
 import torch
 
-from sphere_nerf_mod.line import Line
-from sphere_nerf_mod.sphere import Sphere
+from sphere_nerf_mod.lines import Lines
+from sphere_nerf_mod.spheres import Spheres
 
 
 # returns absolute point coordinates, it's possible that we need
 # to return the distance to the ray's origin point
 def get_points_on_ray_for_all_spheres(
-        ray: Line, spheres: list[Sphere]) -> list[torch.Tensor(1, 3)]:
+        ray: Lines, spheres: list[Spheres]) -> list[torch.Tensor(1, 3)]:
     """Finds intersection points of the ray with all spheres."""
     points = []
     for sphere in spheres:

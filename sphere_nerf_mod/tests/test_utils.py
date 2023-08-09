@@ -8,3 +8,7 @@ def test_solve_quadratic_equation():
     assert solve_quadratic_equation(1, 2, 1) == [-1]
     assert solve_quadratic_equation(1, 1, 1) == []
     assert solve_quadratic_equation(1, 7, 6) == [-6, -1]
+
+
+if __name__ == "__main__":
+    test_solve_quadratic_equation()
