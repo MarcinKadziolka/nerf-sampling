@@ -4,7 +4,7 @@ import torch
 from torch.nn.functional import normalize
 
 from sphere_nerf_mod.sphere import Sphere
-from utils import solve_quadratic_equation
+from sphere_nerf_mod.utils import solve_quadratic_equation
 
 
 class Line:
