@@ -86,14 +86,14 @@ class Lines:
         m_points = points.shape[0]
         _ones = torch.ones(m_points, n_lines)
 
-        line_indxs = (
+        line_indexes = (
             torch.arange(0, self.origin.shape[0]) * _ones
         ).long()
-        points_indxs = (
+        points_indexes = (
             torch.arange(0, m_points) * _ones.T
         ).T.long()
 
-        indxs = torch.min(distances_to_origin, dim=2).indices
-        selected_points = points[points_indxs, line_indxs, indxs]
+        indexes = torch.min(distances_to_origin, dim=2).indices
+        selected_points = points[points_indexes, line_indexes, indexes]
 
         return selected_points
