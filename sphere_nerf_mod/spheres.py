@@ -25,3 +25,13 @@ class Spheres:
         """
         self.center = center
         self.radius = radius
+
+        if center.shape[1] != 3:
+            raise f"Center has to be 3D point. Find {center.shape[1]} dim."
+
+        if radius.shape != torch.Size([center.shape[0], 1]):
+            raise ValueError(
+                f"""Please check radius dimensions.
+                Find {radius.shape} but it should be
+                {torch.Size([center.shape[0], 1])}."""
+            )

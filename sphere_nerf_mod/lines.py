@@ -35,24 +35,62 @@ class Lines:
         Solves the quadratic equation d^2 + bd + c = 0
         where solutions d are the distances from the line origin
         to the intersection points. Then find intersection_points.
+        Since we consider quadratic equation there is always two
+        points (hence 2 points dim in return). It could be nan point.
+        Args:
+            sphere: Spheres objs. represented m_spheres.
+        Return:
+            Torch Tensor represented 3D points with dimension:
+            [m_spheres, n_lines, 2 points, 3D]
         """
-        origin_to_sphere_center_vector = self.origin - sphere.center
-        b = 2 * (self.direction * origin_to_sphere_center_vector).sum(dim=1)
-        c = torch.norm(origin_to_sphere_center_vector, dim=1) ** 2 - sphere.radius ** 2
+        # [n_lines, m_spheres, 3D]
+        origin_to_sphere_center_vector = torch.unsqueeze(self.origin, 1) - sphere.center
+
+        # [n_lines, m_spheres]
+        b = 2 * (torch.unsqueeze(
+            self.direction, 1
+        ) * origin_to_sphere_center_vector).sum(dim=2)
+
+        # [n_lines, m_spheres]
+        c = torch.norm(
+            origin_to_sphere_center_vector, dim=2
+        ) ** 2 - sphere.radius.T ** 2
+
         equation_solutions = solve_quadratic_equation(
-            torch.ones_like(b), b, torch.squeeze(c)
-        )
-        intersection_points = torch.unsqueeze(
-            self.origin, 1
+            torch.ones_like(b), b, c
+        )  # [2_points, n_lines, m_spheres]
+
+        intersection_points = (torch.unsqueeze(
+            self.origin, 2
         ) + torch.unsqueeze(
             equation_solutions.T, 2
         ) * torch.unsqueeze(
-            self.direction, 1
-        )
-        return intersection_points  # [n_lines, 2 points, 3D]
+            self.direction, 2
+        )).transpose(3, 2)
+
+        return intersection_points  # [m_spheres, n_lines, 2 points, 3D]
 
     def select_closest_point_to_origin(
-            self, points: list[torch.Tensor(1, 3)]) -> torch.Tensor(1, 3):
+            self, points: torch.Tensor
+    ) -> torch.Tensor:
         """Select the point closest to the line origin."""
-        distances_to_origin = [torch.norm(p - self.origin) for p in points]
-        return points[distances_to_origin.index(min(distances_to_origin))]
+        distances_to_origin = torch.norm(
+            points - torch.unsqueeze(self.origin, 1),
+            dim=3
+        )
+
+        n_lines = self.origin.shape[0]
+        m_points = points.shape[0]
+        _ones = torch.ones(m_points, n_lines)
+
+        line_indxs = (
+            torch.arange(0, self.origin.shape[0]) * _ones
+        ).long()
+        points_indxs = (
+            torch.arange(0, m_points) * _ones.T
+        ).T.long()
+
+        indxs = torch.min(distances_to_origin, dim=2).indices
+        selected_points = points[points_indxs, line_indxs, indxs]
+
+        return selected_points

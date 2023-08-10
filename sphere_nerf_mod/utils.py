@@ -10,25 +10,22 @@ def solve_quadratic_equation(
         b: torch.Tensor,
         c: torch.Tensor
 ):
-    """Solve quadratic equation ax^2 + bx + c = 0."""
+    """Solve quadratic equation ax^2 + bx + c = 0.
 
-    solutions = torch.ones(2, *b.shape)  # prepare solution result [2, n]
+    Return nan if solution does not exist.
+    """
+    delta = b ** 2 - 4 * a * c  # [n_lines, m_sphere]
 
-    delta = b ** 2 - 4 * a * c
-    pm = torch.Tensor([1, -1]).repeat(delta.shape[0], 1)  # To compute minus/plus [n, 2]
+    # To compute minus/plus [2 solutions, n_lines, m_sphere]
+    pm = torch.stack([torch.ones_like(delta), -torch.ones_like(delta)])
 
-    idxs = torch.where(delta < 0)[0]
-    if len(idxs) != 0:
-        solutions[:, idxs] = torch.ones_like(solutions[:, idxs]) * torch.nan
+    _ones = torch.ones_like(delta)
 
-    idxs = torch.where(delta == 0)[0]
-    if len(idxs) != 0:
-        solutions[1, idxs] = torch.ones_like(solutions[1, idxs]) * torch.nan
-        solutions[0, idxs] = -b[idxs] / (2 * a[idxs])
+    sqrt_delta = torch.sqrt(delta)
+    solutions = (-b - (pm * sqrt_delta)) / (2 * a)
 
-    idxs = torch.where(delta > 0)[0]
-    sqrt_delta = torch.sqrt(delta[idxs])
-    solutions_delta_positive = (-b[idxs] - (pm[idxs].T * sqrt_delta)) / (2 * a[idxs])
-    solutions[:, idxs] = solutions_delta_positive
+    only_one_solution = torch.where(delta == 0, _ones * torch.nan, _ones)
+    only_one_solution = only_one_solution
+    solutions[1] = only_one_solution * solutions[1]
 
     return solutions
