@@ -1,7 +1,4 @@
 """Utils module - contains useful low-level utility functions."""
-
-import math
-
 import torch
 
 

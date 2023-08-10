@@ -17,7 +17,7 @@ class Lines:
     ):
         """Initialize a lines with an origin point and a direction vector.
 
-        Args:
+        :arg:
             origin - torch.Tensor comprising of a shape [N, 3],
             where N represents the count of lines, and 3 corresponds to
             a set of three coordinates defining a point in 3D space.
@@ -42,9 +42,12 @@ class Lines:
         Return:
             Torch Tensor represented 3D points with dimension:
             [m_spheres, n_lines, 2 points, 3D]
+
         """
         # [n_lines, m_spheres, 3D]
-        origin_to_sphere_center_vector = torch.unsqueeze(self.origin, 1) - sphere.center
+        origin_to_sphere_center_vector = torch.unsqueeze(
+            self.origin, 1
+        ) - sphere.center
 
         # [n_lines, m_spheres]
         b = 2 * (torch.unsqueeze(

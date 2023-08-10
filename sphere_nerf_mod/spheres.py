@@ -16,7 +16,7 @@ class Spheres:
     ):
         """Initialize a spheres with a center points and radius.
 
-        Args:
+        :arg:
             center - torch.Tensor comprising of a shape [N, 3],
             where N represents the count of spheres, and 3 corresponds to
             a set of three coordinates defining a point in 3D space.
