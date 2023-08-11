@@ -7,7 +7,7 @@ import torch
 
 
 class Spheres:
-    """A sphere in 3D space, has a center point and radius."""
+    """Spheres in 3D space, each have a center point and radius."""
 
     def __init__(
             self,
