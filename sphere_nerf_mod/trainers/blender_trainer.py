@@ -37,8 +37,8 @@ class BlenderTrainer(nerf_pytorch.trainers.Blender.BlenderTrainer):
             rays: camera rays represented as Lines class object
         Return:
             Tensor with dimensions [spheres, rays, 3].
-        """
 
+        """
         intersection_points = rays.find_intersection_points_with_sphere(
             self.spheres
         )

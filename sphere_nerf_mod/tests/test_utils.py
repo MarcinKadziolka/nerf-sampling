@@ -22,7 +22,7 @@ def test_solve_quadratic_equation():
         ),
         torch.Tensor(
             [[torch.nan, -0.5, -1],
-            [torch.nan, torch.nan, -0.2]]
+             [torch.nan, torch.nan, -0.2]]
         )
     )
 

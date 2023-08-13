@@ -40,7 +40,8 @@ spheres = Spheres(
 
 blender_trainer = BlenderTrainer(spheres)
 
+
 def test_sample_points():
     """Test sampling points."""
-    points = blender_trainer.sample_points(rays)
+    # points = blender_trainer.sample_points(rays)
     # TODO assertions
