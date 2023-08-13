@@ -96,4 +96,4 @@ class Lines:
         indexes = torch.min(distances_to_origin, dim=2).indices
         selected_points = points[points_indexes, line_indexes, indexes]
 
-        return selected_points
+        return selected_points  # [m_spheres, n_lines, 3D]

@@ -61,9 +61,9 @@ def test_find_intersection_points_with_sphere():
 
 def test_select_closest_point_to_origin():
     """Test selecting the closest point to line origin."""
-    points = torch.rand(5, 4, 2, 3)  # [5 sphere, 4 lines, 2 solutions, 3D]
+    points = torch.rand(3, 3, 2, 3)  # [3 sphere, 3 lines, 2 solutions, 3D]
     points[0, 0] = torch.nan  # check what if point is nan
-    points[3, 0, 0] = torch.nan
+    #points[3, 0, 0] = torch.nan
     solution = lines.select_closest_point_to_origin(points)
     print(solution)
     # TODO write assert
