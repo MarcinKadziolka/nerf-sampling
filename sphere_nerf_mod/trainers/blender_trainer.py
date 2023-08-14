@@ -1,6 +1,6 @@
 """Blender trainer module - trainer for blender data."""
 
-import nerf_pytorch
+from nerf_pytorch.trainers import Blender
 import torch
 
 from sphere_nerf_mod.lines import Lines
@@ -10,7 +10,7 @@ from sphere_nerf_mod.spheres import Spheres
 POINT_COORDINATE_IF_NAN = 100
 
 
-class BlenderTrainer(nerf_pytorch.trainers.Blender.BlenderTrainer):
+class BlenderTrainer(Blender.BlenderTrainer):
     """Trainer for blender data."""
 
     def __init__(self, spheres: Spheres):
@@ -48,7 +48,7 @@ class BlenderTrainer(nerf_pytorch.trainers.Blender.BlenderTrainer):
         # replacing the nan points with replacement value by coordinates,
         # I don't know how to do where on the points, not individual values.
         return torch.where(
-            selected_points != torch.nan,
+            ~torch.isnan(selected_points),
             selected_points,
             POINT_COORDINATE_IF_NAN
         )
