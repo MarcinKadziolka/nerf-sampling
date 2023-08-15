@@ -7,13 +7,12 @@ from sphere_nerf_mod.lines import Lines
 from sphere_nerf_mod.spheres import Spheres
 
 
-POINT_COORDINATE_IF_NAN = 100
-
-
 class BlenderTrainer(Blender.BlenderTrainer):
     """Trainer for blender data."""
 
-    def __init__(self, spheres: Spheres):
+    def __init__(
+            self, spheres: Spheres
+    ):
         """Initialize the blender trainer.
 
         In addition to original nerf_pytorch BlenderTrainer,
@@ -23,7 +22,11 @@ class BlenderTrainer(Blender.BlenderTrainer):
         # super().__init__()
         self.spheres = spheres
 
-    def sample_points(self, rays: Lines) -> torch.Tensor:
+    def sample_points(
+            self,
+            rays: Lines,
+            point_coordinate_if_nan: float = 100
+    ) -> torch.Tensor:
         """Sample ray points.
 
         Samples points on rays - one point per sphere.
@@ -35,6 +38,8 @@ class BlenderTrainer(Blender.BlenderTrainer):
         a point (100, 100, 100) is sampled.
         Args:
             rays: camera rays represented as Lines class object
+            point_coordinate_if_nan: replacing the nan points with
+             replacement value by coordinates.
         Return:
             Tensor with dimensions [spheres, rays, 3].
 
@@ -45,10 +50,7 @@ class BlenderTrainer(Blender.BlenderTrainer):
         selected_points = rays.select_closest_point_to_origin(
             intersection_points
         )
-        # replacing the nan points with replacement value by coordinates,
-        # I don't know how to do where on the points, not individual values.
-        return torch.where(
-            ~torch.isnan(selected_points),
-            selected_points,
-            POINT_COORDINATE_IF_NAN
+
+        return torch.nan_to_num(
+            selected_points, nan=point_coordinate_if_nan
         )

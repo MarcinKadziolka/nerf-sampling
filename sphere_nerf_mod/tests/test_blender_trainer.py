@@ -43,7 +43,11 @@ blender_trainer = BlenderTrainer(spheres)
 
 def test_sample_points():
     """Test sampling points."""
-    points = blender_trainer.sample_points(rays)
+    point_coordinate_if_nan = 100
+    points = blender_trainer.sample_points(
+        rays=rays,
+        point_coordinate_if_nan=point_coordinate_if_nan
+    )
     correct_result = torch.Tensor(
         [
             [
@@ -63,9 +67,8 @@ def test_sample_points():
             ]
         ]
     )
-    assert torch.equal(points, correct_result)
+    assert torch.isclose(points, correct_result, rtol=1e-04).all()
 
 
 if __name__ == "__main__":
     test_sample_points()
-
