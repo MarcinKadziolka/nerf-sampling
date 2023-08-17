@@ -8,13 +8,25 @@ default_setup_params: &default_setup_params
     N_rand: 1024
     device: 'cuda'
 
-dataset_airplane_setup: &dataset_airplane_setup
+default_dataset_airplane_setup: &default_dataset_airplane_setup
     expname: "normalized"
     basedir: "logs"
     datadir: "data/normalized"
     dataset_type: "blender"
 
+spheres_dataset_airplane_setup: &spheres_dataset_airplane_setup
+    expname: "spheres_normalized"
+    basedir: "logs"
+    datadir: "data/normalized"
+    dataset_type: "sphere_blender"
+
 airplane:
-  <<: *default_setup_params
-  data:
-    <<: *dataset_airplane_setup
+  kwargs:
+    <<: *default_setup_params
+    <<: *default_dataset_airplane_setup
+
+airplane_sphere_module:
+  module: "sphere_nerf_mod.trainers.SphereBlenderTrainer"
+  kwargs:
+    <<: *default_setup_params
+    <<: *spheres_dataset_airplane_setup

@@ -2,9 +2,9 @@
 import click
 import torch
 import yaml
+from nerf_pytorch.utils import load_obj_from_config
 
-from nerf_pytorch.run_nerf import train
-
+from sphere_nerf_mod.spheres import Spheres
 torch.set_default_tensor_type('torch.cuda.FloatTensor')
 
 
@@ -19,7 +19,7 @@ torch.set_default_tensor_type('torch.cuda.FloatTensor')
     "--model",
     help="Selected model",
     type=str,
-    default="airplane"
+    default="airplane_sphere_module"
 )
 def main(
     hparams_path: str,
@@ -29,21 +29,25 @@ def main(
     with open(hparams_path, "r") as fin:
         hparams = yaml.safe_load(fin)[model]
 
-    train(
-        half_res=hparams["white_bkgd"],
-        no_batching=hparams["no_batching"],
-        N_samples=hparams["N_samples"],
-        N_importance=hparams["N_importance"],
-        use_viewdirs=hparams["use_viewdirs"],
-        white_bkgd=hparams["white_bkgd"],
-        device=hparams["device"],
-        N_rand=hparams["N_rand"],
-        expname=hparams["data"]["expname"],
-        basedir=hparams["data"]["basedir"],
-        datadir=hparams["data"]["datadir"],
-        dataset_type=hparams["data"]["dataset_type"],
-        config_path=hparams_path
+    spheres = Spheres(
+        center=torch.Tensor(
+            [
+                [2, 0, 0],
+                [0, 2, 0],
+                [0, 2, 0],
+            ]
+        ),
+        radius=torch.Tensor(
+            [
+                [1], [2], [1]
+            ]
+        )
     )
+
+    hparams["kwargs"]["spheres"] = spheres
+
+    trainer = load_obj_from_config(cfg=hparams)
+    trainer.train()
 
 
 if __name__ == "__main__":
