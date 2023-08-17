@@ -27,6 +27,7 @@ class BlenderTrainer(Blender.BlenderTrainer):
             self,
             **kwargs
     ) -> torch.Tensor:
+        """Create rays as Lines object and sample points."""
         rays_origins = kwargs["rays_o"]
         rays_directions = kwargs["rays_d"]
         rays = Lines(rays_origins, rays_directions)
@@ -44,14 +45,14 @@ class BlenderTrainer(Blender.BlenderTrainer):
         )
 
         sphere_nerf_points = self.sample_points_on_spheres(rays)
-        return torch.cat(original_nerf_points, sphere_nerf_points)
+        return torch.cat((original_nerf_points, sphere_nerf_points))
 
     def sample_points_on_spheres(
             self,
             rays: Lines,
             point_coordinate_if_nan: float = 100
     ) -> torch.Tensor:
-        """Sample ray points.
+        """Sample points on given rays.
 
         Samples points on rays - one point per sphere.
         The points are sampled by first searching for intersection

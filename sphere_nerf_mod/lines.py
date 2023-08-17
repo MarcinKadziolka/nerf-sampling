@@ -99,4 +99,5 @@ class Lines:
         return selected_points  # [m_spheres, n_lines, 3D]
 
     def get_number(self):
+        """Return the number of lines."""
         return self.origin.shape[0]
