@@ -7,19 +7,22 @@ from sphere_nerf_mod.lines import Lines
 from sphere_nerf_mod.spheres import Spheres
 
 
-class BlenderTrainer(Blender.BlenderTrainer):
+class SphereBlenderTrainer(Blender.BlenderTrainer):
     """Trainer for blender data."""
 
     def __init__(
-            self, spheres: Spheres
+            self,
+            spheres: Spheres = None,
+            **kwargs
     ):
         """Initialize the blender trainer.
 
         In addition to original nerf_pytorch BlenderTrainer,
         the trainer contains the spheres used in the training process.
         """
-        # parameters are missing
-        # super().__init__()
+        super().__init__(
+            **kwargs
+        )
         self.spheres = spheres
 
     def sample_points(
