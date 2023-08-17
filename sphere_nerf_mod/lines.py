@@ -97,3 +97,6 @@ class Lines:
         selected_points = points[points_indexes, line_indexes, indexes]
 
         return selected_points  # [m_spheres, n_lines, 3D]
+
+    def get_number(self):
+        return self.origin.shape[0]

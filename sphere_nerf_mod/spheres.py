@@ -35,3 +35,6 @@ class Spheres:
                 Find {radius.shape} but it should be
                 {torch.Size([center.shape[0], 1])}."""
             )
+
+    def get_number(self):
+        return self.center.shape[0]
