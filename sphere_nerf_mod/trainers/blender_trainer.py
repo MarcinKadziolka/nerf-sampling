@@ -1,7 +1,7 @@
 """Blender trainer module - trainer for blender data."""
 
 from nerf_pytorch.trainers import Blender
-from nerf_pytorch.utils import sample_pdf
+from nerf_pytorch.nerf_utils import sample_pdf
 import torch
 
 from sphere_nerf_mod.lines import Lines
