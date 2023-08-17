@@ -2,11 +2,9 @@
 import click
 import torch
 import yaml
-
-from nerf_pytorch.run_nerf import train
+from nerf_pytorch.utils import load_obj_from_config
 
 from sphere_nerf_mod.spheres import Spheres
-
 torch.set_default_tensor_type('torch.cuda.FloatTensor')
 
 
@@ -48,9 +46,8 @@ def main(
 
     hparams["kwargs"]["spheres"] = spheres
 
-    train(
-        hparams,
-    )
+    trainer = load_obj_from_config(cfg=hparams)
+    trainer.train()
 
 
 if __name__ == "__main__":
