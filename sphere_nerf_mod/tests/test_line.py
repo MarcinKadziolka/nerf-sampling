@@ -53,10 +53,21 @@ def test_find_intersection_points_with_sphere():
                 list(lines.origin[line_index]),
                 list(lines.direction[line_index])
             )
-            true_intersection_points = torch.Tensor(
-                single_sphere.intersect_line(single_line))
-            assert solutions[sphere_index][line_index].equal(
-                true_intersection_points)
+            try:
+                true_intersection_points = torch.Tensor(
+                    single_sphere.intersect_line(single_line))
+            except ValueError:
+                true_intersection_points = torch.Tensor(
+                    [
+                        [torch.nan, torch.nan, torch.nan],
+                        [torch.nan, torch.nan, torch.nan]
+                    ]
+                )
+            assert torch.isclose(
+                true_intersection_points,
+                solutions[sphere_index][line_index],
+                equal_nan=True
+            ).all()
 
 
 def test_select_closest_point_to_origin():
@@ -67,7 +78,7 @@ def test_select_closest_point_to_origin():
             [
                 [
                     [1, 1, 1],
-                    [torch.nan, torch.nan, torch.nan]
+                    [1, 1, 1]
                 ],
                 [
                     [1, 2, 2],
@@ -109,7 +120,7 @@ def test_select_closest_point_to_origin():
             ]
         ]
     )
-    assert torch.equal(solution, correct_result)
+    assert torch.isclose(solution, correct_result, equal_nan=True).all()
 
 
 if __name__ == "__main__":

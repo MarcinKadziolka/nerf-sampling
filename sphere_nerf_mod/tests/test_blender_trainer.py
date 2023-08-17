@@ -41,10 +41,10 @@ spheres = Spheres(
 blender_trainer = BlenderTrainer(spheres)
 
 
-def test_sample_points():
+def test_sample_points_on_spheres():
     """Test sampling points."""
     point_coordinate_if_nan = 100
-    points = blender_trainer.sample_points(
+    points = blender_trainer.sample_points_on_spheres(
         rays=rays,
         point_coordinate_if_nan=point_coordinate_if_nan
     )
@@ -71,4 +71,4 @@ def test_sample_points():
 
 
 if __name__ == "__main__":
-    test_sample_points()
+    test_sample_points_on_spheres()
