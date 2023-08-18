@@ -27,28 +27,37 @@ class SphereBlenderTrainer(Blender.BlenderTrainer):
         self.spheres = spheres
 
     def sample_points(
-            self,
-            **kwargs
-    ) -> torch.Tensor:
+        self,
+        z_vals_mid,
+        weights,
+        perturb,
+        pytest,
+        rays_d,
+        rays_o
+    ) -> (torch.Tensor, torch.Tensor):
         """Create rays as Lines object and sample points."""
-        rays_origins = kwargs["rays_o"]
-        rays_directions = kwargs["rays_d"]
-        rays = Lines(rays_origins, rays_directions)
-
-        z_vals_mid = kwargs["z_vals_mid"]
-        weights = kwargs["weights"]
-        perturb = kwargs["perturb"]
-        pytest = kwargs["pytest"]
-        original_nerf_points = sample_pdf(
-            z_vals_mid,
-            weights[..., 1:-1],
-            self.N_importance - self.spheres.get_number(),
-            det=(perturb == 0.),
-            pytest=pytest
+        z_samples, original_nerf_points = self._sample_points(
+            z_vals_mid=z_vals_mid,
+            weights=weights,
+            perturb=perturb,
+            pytest=pytest,
+            rays_o=rays_o,
+            rays_d=rays_d,
+            n_importance=self.N_importance - self.spheres.get_number()
         )
 
-        sphere_nerf_points = self.sample_points_on_spheres(rays)
-        return torch.cat((original_nerf_points, sphere_nerf_points))
+        rays_origins = rays_o
+        rays_directions = rays_d
+        rays = Lines(rays_origins, rays_directions)
+        sphere_nerf_points = self.sample_points_on_spheres(
+            rays
+        ).swapaxes(0, 1)
+
+        z_sphere = None #TODO
+
+        return torch.hstack(z_samples, z_sphere), torch.hstack(
+            (original_nerf_points, sphere_nerf_points)
+        )
 
     def sample_points_on_spheres(
             self,
