@@ -124,6 +124,7 @@ def test_select_closest_point_to_origin():
 
 
 def test_transform_points_to_single_number_representation():
+    """Test transforming points to a single number representation."""
     points = torch.Tensor(
         [
             [
