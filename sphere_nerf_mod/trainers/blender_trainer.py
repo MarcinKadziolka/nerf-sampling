@@ -53,9 +53,11 @@ class SphereBlenderTrainer(Blender.BlenderTrainer):
             rays
         ).swapaxes(0, 1)
 
-        z_sphere = None #TODO
+        z_sphere = rays.transform_points_to_single_number_representation(
+            sphere_nerf_points
+        )
 
-        return torch.hstack(z_samples, z_sphere), torch.hstack(
+        return torch.hstack((z_samples, z_sphere)), torch.hstack(
             (original_nerf_points, sphere_nerf_points)
         )
 
