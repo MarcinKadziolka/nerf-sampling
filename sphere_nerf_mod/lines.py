@@ -114,11 +114,9 @@ class Lines:
         of the point is the number r, such that:
         p = l.origin + r * l.direction
         Args:
-            points: 3D points to be transformed.
-            Points' shape should be (rays, points, 3).
+            points: 3D points to transform. shape should be (rays, points, 3).
         Return:
-            Torch tensor - a transformed representation with shape:
-            (rays, points)
+            Torch tensor with transformed points, shape - (rays, points).
 
         """
         result = (points - torch.unsqueeze(self.origin, 1)) \
