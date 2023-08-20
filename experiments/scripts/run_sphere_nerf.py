@@ -30,19 +30,8 @@ def main(
         hparams = yaml.safe_load(fin)[model]
 
     spheres = Spheres(
-        center=torch.Tensor(
-            [
-                [2, 0, 0],
-                [0, 2, 0],
-                [0, 2, 0],
-                [0, 2, 0],
-            ]
-        ),
-        radius=torch.Tensor(
-            [
-                [1], [2], [1], [1]
-            ]
-        )
+        center=torch.zeros((64, 3)),
+        radius=(torch.range(1, 64) / 100).reshape(-1, 1) + 2.2
     )
 
     hparams["kwargs"]["spheres"] = spheres
