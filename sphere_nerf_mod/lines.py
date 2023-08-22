@@ -121,4 +121,4 @@ class Lines:
         """
         result = (points - torch.unsqueeze(self.origin, 1)) \
             / torch.unsqueeze(self.direction, 1)
-        return result[:, :, 0]
+        return torch.nanmean(result, dim=2)
