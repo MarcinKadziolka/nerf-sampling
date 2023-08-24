@@ -99,4 +99,26 @@ class Lines:
         return selected_points  # [m_spheres, n_lines, 3D]
 
     def get_number(self):
+        """Return the number of lines."""
         return self.origin.shape[0]
+
+    def transform_points_to_single_number_representation(
+            self,
+            points
+    ) -> torch.Tensor:
+        """Transform points to a representation based on the line parameters.
+
+        Transforms points on lines, represented by
+        absolute coordinates in 3D space to a single number form.
+        For a 3D point p on a line l the returned representation
+        of the point is the number r, such that:
+        p = l.origin + r * l.direction
+        Args:
+            points: 3D points to transform. shape should be (rays, points, 3).
+        Return:
+            Torch tensor with transformed points, shape - (rays, points).
+
+        """
+        result = (points - torch.unsqueeze(self.origin, 1)) \
+            / torch.unsqueeze(self.direction, 1)
+        return torch.nanmean(result, dim=2)

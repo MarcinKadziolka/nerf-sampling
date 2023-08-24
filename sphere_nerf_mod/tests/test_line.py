@@ -123,6 +123,35 @@ def test_select_closest_point_to_origin():
     assert torch.isclose(solution, correct_result, equal_nan=True).all()
 
 
+def test_transform_points_to_single_number_representation():
+    """Test transforming points to a single number representation."""
+    points = torch.Tensor(
+        [
+            [
+                [1.5, 0, 0],
+                [0, 0, 0],
+            ],
+            [
+                [1, 1, 0],
+                [-1, 1, 0]
+            ],
+            [
+                [12, 32, 0],
+                [0, 32, 0]
+            ]
+        ]
+    )
+    solution = lines.transform_points_to_single_number_representation(points)
+    correct_result = torch.Tensor(
+        [
+            [1.5, 0],
+            [1, -1],
+            [10, -2]
+        ]
+    )
+    assert torch.isclose(solution, correct_result).all()
+
+
 if __name__ == "__main__":
     test_find_intersection_points_with_sphere()
     test_select_closest_point_to_origin()
