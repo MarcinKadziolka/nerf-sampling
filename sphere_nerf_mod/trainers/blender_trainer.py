@@ -1,6 +1,7 @@
 """Blender trainer module - trainer for blender data."""
 
 from nerf_pytorch.trainers import Blender
+from nerf_pytorch.utils import sample_pdf
 import torch
 
 from sphere_nerf_mod.lines import Lines
@@ -59,6 +60,29 @@ class SphereBlenderTrainer(Blender.BlenderTrainer):
         return torch.hstack((z_samples, z_sphere)), torch.hstack(
             (original_nerf_points, sphere_nerf_points)
         )
+
+    def sample_points_on_spheres(
+            self,
+            **kwargs
+    ) -> torch.Tensor:
+        rays_origins = kwargs["rays_o"]
+        rays_directions = kwargs["rays_d"]
+        rays = Lines(rays_origins, rays_directions)
+
+        z_vals_mid = kwargs["z_vals_mid"]
+        weights = kwargs["weights"]
+        perturb = kwargs["perturb"]
+        pytest = kwargs["pytest"]
+        original_nerf_points = sample_pdf(
+            z_vals_mid,
+            weights[..., 1:-1],
+            self.N_importance - self.spheres.get_number(),
+            det=(perturb == 0.),
+            pytest=pytest
+        )
+
+        sphere_nerf_points = self.sample_points_on_spheres(rays)
+        return torch.cat(original_nerf_points, sphere_nerf_points)
 
     def sample_points_on_spheres(
             self,

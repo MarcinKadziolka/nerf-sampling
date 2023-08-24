@@ -17,13 +17,42 @@ def test_solve_quadratic_equation():
     ).all()
     assert torch.isclose(
         solve_quadratic_equation(
-            torch.Tensor([1, 4, 5]),
-            torch.Tensor([1, 4, 6]),
-            torch.Tensor([1, 1, 1])
+            torch.Tensor([[1, 4, 5],
+                          [1, 4, 5]]),
+            torch.Tensor([[1, 4, 6],
+                          [1, 4, 6]]),
+            torch.Tensor([[1, 1, 1],
+                          [1, 1, 1]])
         ),
         torch.Tensor(
-            [[torch.nan, -0.5, -1],
-             [torch.nan, -0.5, -0.2]]
+            [
+                [
+                    [torch.nan, -0.5, -1],
+                    [torch.nan, -0.5, -0.2]
+                ],
+                [
+                    [torch.nan, -0.5, -1],
+                    [torch.nan, -0.5, -1]
+                ],
+                [
+                    [torch.nan, -0.5, -0.2],
+                    [torch.nan, -0.5, -0.2]
+                ]
+            ]
+        ),
+        equal_nan=True
+    ).all()
+    assert torch.isclose(
+        solve_quadratic_equation(
+            torch.Tensor([1, 4, 5, 1, 4, 5]),
+            torch.Tensor([1, 4, 6, 1, 4, 6]),
+            torch.Tensor([1, 1, 1, 1, 1, 1])
+        ),
+        torch.Tensor(
+            [
+                    [torch.nan, -0.5, -1, torch.nan, -0.5, -1],
+                    [torch.nan, -0.5, -0.2, torch.nan, -0.5, -0.2]
+            ]
         ),
         equal_nan=True
     ).all()
