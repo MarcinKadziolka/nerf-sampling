@@ -3,7 +3,7 @@ import torch
 
 from sphere_nerf_mod.lines import Lines
 from sphere_nerf_mod.spheres import Spheres
-from sphere_nerf_mod.trainers.blender_trainer import BlenderTrainer
+from sphere_nerf_mod.trainers.blender_trainer import SphereBlenderTrainer
 
 
 rays = Lines(
@@ -38,7 +38,7 @@ spheres = Spheres(
     )
 )
 
-blender_trainer = BlenderTrainer(spheres)
+blender_trainer = SphereBlenderTrainer(spheres)
 
 
 def test_sample_points_on_spheres():

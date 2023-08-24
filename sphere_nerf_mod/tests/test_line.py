@@ -155,3 +155,4 @@ def test_transform_points_to_single_number_representation():
 if __name__ == "__main__":
     test_find_intersection_points_with_sphere()
     test_select_closest_point_to_origin()
+    test_transform_points_to_single_number_representation()
