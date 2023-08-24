@@ -70,16 +70,18 @@ class SphereBlenderTrainer(Blender.BlenderTrainer):
         Samples points on rays - one point per sphere.
         The points are sampled by first searching for intersection
         points between the rays and spheres.
+
         Then, in case when a ray and a sphere intersect at two points,
         the point that is closer to the ray's origin is sampled.
-        In case, when a ray and a sphere do not intersect,
-        a point (100, 100, 100) is sampled.
+
+        In case, when a ray and a sphere do not intersect, a point, which
+        all three coordinates are ``point_coordinate_if_nan`` is sampled.
         Args:
-            rays: camera rays represented as Lines class object
-            point_coordinate_if_nan: replacing the nan points with
-             replacement value by coordinates.
+            rays: Lines - the camera rays.
+            point_coordinate_if_nan: float - point coordinate value used to
+             create points in place of nan points.
         Return:
-            Tensor with dimensions [spheres, rays, 3].
+            Tensor containing sampled points with shape (spheres, rays, 3).
 
         """
         intersection_points = rays.find_intersection_points_with_sphere(

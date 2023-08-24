@@ -1,4 +1,4 @@
-"""Line module - contains a Line class, representing a line in 3D space."""
+"""Lines module - contains a Lines class, representing lines in 3D space."""
 
 import torch
 from torch.nn.functional import normalize
@@ -8,21 +8,23 @@ from sphere_nerf_mod.utils import solve_quadratic_equation
 
 
 class Lines:
-    """A line in 3D space, has an origin point and a direction vector."""
+    """Lines in 3D space, each has an origin point and a direction vector."""
 
     def __init__(
             self,
             origin: torch.Tensor,
             direction: torch.Tensor
     ):
-        """Initialize a lines with an origin point and a direction vector.
+        """Initialize lines with origin points and direction vectors.
 
-        :arg:
-            origin - torch.Tensor comprising of a shape [N, 3],
-            where N represents the count of lines, and 3 corresponds to
-            a set of three coordinates defining a point in 3D space.
-            direction - torch.Tensor comprising a shape [N, 3] it is
-            direction vectors. Direction vectors is always normalized.
+        Each line has a corresponding origin point and a direction vector,
+        which is normalized.
+        Args:
+            origin: torch.Tensor with shape (N, 3),
+             where N is the number of lines, and 3 corresponds to
+             a set of three coordinates defining a point in 3D space.
+            direction: torch.Tensor with shape (N, 3).
+
         """
         self.origin = origin
         self.direction = normalize(direction)
@@ -30,18 +32,15 @@ class Lines:
     def find_intersection_points_with_sphere(
             self, sphere: Spheres
     ) -> torch.Tensor:
-        """Find common points with a sphere.
+        """Find intersection points with spheres.
 
-        Solves the quadratic equation d^2 + bd + c = 0
-        where solutions d are the distances from the line origin
-        to the intersection points. Then find intersection_points.
-        Since we consider quadratic equation there is always two
-        points (hence 2 points dim in return). It could be nan point.
+        Finds intersection points of the lines with the given spheres.
+        Returns nan values if a given line and sphere do not intersect.
         Args:
-            sphere: Spheres objs. represented m_spheres.
+            sphere: Spheres - the spheres checked for intersection points.
         Return:
-            Torch Tensor represented 3D points with dimension:
-            [m_spheres, n_lines, 2 points, 3D]
+            torch.Tensor containing the intersection points and with shape
+            [m_spheres, n_lines, 2 points, 3D].
 
         """
         # [n_lines, m_spheres, 3D]
@@ -76,7 +75,22 @@ class Lines:
     def select_closest_point_to_origin(
             self, points: torch.Tensor
     ) -> torch.Tensor:
-        """Select the point closest to the line origin."""
+        """Select the point closest to the line origin.
+
+        For each set of points chooses the closest point to the origin
+        of the corresponding line.
+        Args:
+            points: torch.Tensor of points to select from.
+             The tensor has the shape (n_sets, n_lines, n_points, 3), where
+             n_sets - the number of sets of points, for each of which the
+             operation is performed.
+             n_lines - the number of lines.
+             n_points - the number of points for each line, out of which only
+             the closest is returned.
+        Return:
+            Tensor with shape (n_sets, n_lines, 3).
+
+        """
         distances_to_origin = torch.norm(
             points - torch.unsqueeze(self.origin, 1),
             dim=3
@@ -110,13 +124,13 @@ class Lines:
 
         Transforms points on lines, represented by
         absolute coordinates in 3D space to a single number form.
-        For a 3D point p on a line l the returned representation
-        of the point is the number r, such that:
-        p = l.origin + r * l.direction
+        For a 3D point `p` on a line `l` the returned representation
+        of the point is the number `r`, such that:
+        `p = l.origin + r * l.direction`.
         Args:
             points: 3D points to transform. shape should be (rays, points, 3).
         Return:
-            Torch tensor with transformed points, shape - (rays, points).
+            Tensor with transformed points, with shape (rays, points).
 
         """
         result = (points - torch.unsqueeze(self.origin, 1)) \

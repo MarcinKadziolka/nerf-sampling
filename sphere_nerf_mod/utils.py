@@ -9,7 +9,14 @@ def solve_quadratic_equation(
 ):
     """Solve quadratic equation ax^2 + bx + c = 0.
 
-    Return nan if solution does not exist.
+    Solves the quadratic equation with tensor coefficients.
+    Returns nan if solution does not exist.
+    The arguments can be of any shape, as long as their shapes are the same.
+
+    For the argument shape `(x1, ..., xn)` the returned tensor
+    has the shape (2, x1, ..., xn).
+    For the equation specified by arguments' value at [x1, ..., xn],
+    its' solutions are at returned tensor's [0, x1, ..., xn], [1, x1, ..., xn].
     """
     delta = b ** 2 - 4 * a * c  # [n_lines, m_sphere]
 
