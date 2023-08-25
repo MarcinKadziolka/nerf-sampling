@@ -56,9 +56,57 @@ class SphereBlenderTrainer(Blender.BlenderTrainer):
             sphere_nerf_points
         )
 
-        return torch.hstack((z_samples, z_sphere)), torch.hstack(
+        return (z_samples, torch.hstack((z_samples, z_sphere))), torch.hstack(
             (original_nerf_points, sphere_nerf_points)
         )
+
+    def sample_additional_points(
+        self,
+        z_vals,
+        weights,
+        perturb,
+        pytest,
+        rays_d,
+        rays_o,
+        rgb_map,
+        disp_map,
+        acc_map,
+        network_fn,
+        network_fine,
+        network_query_fn,
+        viewdirs,
+        raw2outputs,
+        raw_noise_std,
+        white_bkgd
+    ):
+
+        rays_origins = rays_o
+        rays_directions = rays_d
+        rays = Lines(rays_origins, rays_directions)
+        sphere_nerf_points = self.sample_points_on_spheres(
+            rays
+        ).swapaxes(0, 1)
+
+        z_sphere = rays.transform_points_to_single_number_representation(
+            sphere_nerf_points
+        )
+
+        z_vals, _ = torch.sort(torch.cat([z_vals, z_sphere], -1), -1)
+        #pts = rays_o[..., None, :] + rays_d[..., None, :] * z_vals[..., :, None]
+
+        rays_idx = torch.tensor(
+            range(sphere_nerf_points.shape[0])
+        ).reshape(-1, 1)
+        points_idx = sphere_nerf_points[:, :, 0].sort(1, descending=True).indices
+        pts = sphere_nerf_points[rays_idx, points_idx]
+
+        run_fn = network_fn if network_fine is None else network_fine
+        raw = network_query_fn(pts, viewdirs, run_fn)
+
+        rgb_map, disp_map, acc_map, _, _ = raw2outputs(raw, z_vals, rays_d, raw_noise_std, white_bkgd,
+                                                                     pytest=pytest)
+
+        return None, None, None, rgb_map, disp_map, acc_map, raw
 
     def sample_points_on_spheres(
             self,
