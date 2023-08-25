@@ -31,8 +31,8 @@ def main(
         hparams = yaml.safe_load(fin)[model]
 
     spheres = Spheres(
-        center=torch.zeros((32, 3)),
-        radius=torch.vstack((((torch.range(1, 31) / 100).reshape(-1, 1) + 2.2),
+        center=torch.zeros((64, 3)),
+        radius=torch.vstack((((torch.range(1, 63) / 100).reshape(-1, 1) + 2.2),
                             torch.Tensor([[10]])))
     )
 
@@ -44,7 +44,7 @@ def main(
     hparams["kwargs"]["spheres"] = spheres
 
     trainer = load_obj_from_config(cfg=hparams)
-    trainer.train()
+    trainer.train(N_iters=1000000)
 
 
 if __name__ == "__main__":
