@@ -46,8 +46,8 @@ def test_solve_quadratic_equation():
         ),
         torch.Tensor(
             [
-                    [torch.nan, -0.5, -1, torch.nan, -0.5, -1],
-                    [torch.nan, -0.5, -0.2, torch.nan, -0.5, -0.2]
+                [torch.nan, -0.5, -1, torch.nan, -0.5, -1],
+                [torch.nan, -0.5, -0.2, torch.nan, -0.5, -0.2]
             ]
         ),
         equal_nan=True
