@@ -92,13 +92,7 @@ class SphereBlenderTrainer(Blender.BlenderTrainer):
         )
 
         z_vals, _ = torch.sort(torch.cat([z_vals, z_sphere], -1), -1)
-        #pts = rays_o[..., None, :] + rays_d[..., None, :] * z_vals[..., :, None]
-
-        rays_idx = torch.tensor(
-            range(sphere_nerf_points.shape[0])
-        ).reshape(-1, 1)
-        points_idx = sphere_nerf_points[:, :, 0].sort(1, descending=True).indices
-        pts = sphere_nerf_points[rays_idx, points_idx]
+        pts = rays_o[..., None, :] + rays_d[..., None, :] * z_vals[..., :, None]
 
         run_fn = network_fn if network_fine is None else network_fine
         raw = network_query_fn(pts, viewdirs, run_fn)

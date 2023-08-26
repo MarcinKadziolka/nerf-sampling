@@ -17,8 +17,7 @@ class Lines:
     ):
         """Initialize lines with origin points and direction vectors.
 
-        Each line has a corresponding origin point and a direction vector,
-        which is normalized.
+        Each line has a corresponding origin point and a direction vector.
         Args:
             origin: torch.Tensor with shape (N, 3),
              where N is the number of lines, and 3 corresponds to
@@ -27,7 +26,7 @@ class Lines:
 
         """
         self.origin = origin
-        self.direction = normalize(direction)
+        self.direction = direction
 
     def find_intersection_points_with_sphere(
             self, sphere: Spheres
