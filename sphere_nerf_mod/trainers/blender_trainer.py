@@ -1,6 +1,7 @@
 """Blender trainer module - trainer for blender data."""
 
 from nerf_pytorch.trainers import Blender
+from nerf_pytorch.nerf_utils import raw2outputs
 import torch
 
 from sphere_nerf_mod.lines import Lines
@@ -27,57 +28,16 @@ class SphereBlenderTrainer(Blender.BlenderTrainer):
 
     def sample_points(
         self,
-        z_vals_mid,
-        weights,
-        perturb,
-        pytest,
-        rays_d,
-        rays_o
-    ) -> (torch.Tensor, torch.Tensor):
-        """Create rays as Lines object and sample points."""
-        z_samples, original_nerf_points = self._sample_points(
-            z_vals_mid=z_vals_mid,
-            weights=weights,
-            perturb=perturb,
-            pytest=pytest,
-            rays_o=rays_o,
-            rays_d=rays_d,
-            n_importance=self.N_importance - self.spheres.get_number()
-        )
-
-        rays_origins = rays_o
-        rays_directions = rays_d
-        rays = Lines(rays_origins, rays_directions)
-        sphere_nerf_points = self.sample_points_on_spheres(
-            rays
-        ).swapaxes(0, 1)
-
-        z_sphere = rays.transform_points_to_single_number_representation(
-            sphere_nerf_points
-        )
-
-        return (z_samples, torch.hstack((z_samples, z_sphere))), torch.hstack(
-            (original_nerf_points, sphere_nerf_points)
-        )
-
-    def sample_additional_points(
-        self,
         z_vals,
-        weights,
-        perturb,
         pytest,
         rays_d,
         rays_o,
-        rgb_map,
-        disp_map,
-        acc_map,
         network_fn,
         network_fine,
         network_query_fn,
         viewdirs,
-        raw2outputs,
         raw_noise_std,
-        white_bkgd
+        white_bkgd, **kwargs
     ):
 
         rays_origins = rays_o

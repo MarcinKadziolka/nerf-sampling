@@ -31,9 +31,8 @@ def main(
         hparams = yaml.safe_load(fin)[model]
 
     spheres = Spheres(
-        center=torch.zeros((64, 3)),
-        radius=torch.vstack((((torch.range(1, 63) / 100).reshape(-1, 1) + 2.2),
-                            torch.Tensor([[10]])))
+        center=torch.zeros((300, 3)),
+        radius=(torch.range(1, 300) / 100).reshape(-1, 1)
     )
 
     '''spheres = Spheres(

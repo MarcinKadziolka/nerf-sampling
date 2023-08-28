@@ -8,10 +8,9 @@ default_setup_params: &default_setup_params
     N_rand: 1024
     device: 'cuda'
     i_weights: 10000
-    i_testset: 9999
+    i_testset: 10000
     i_video: 50000
     i_print: 50000
-    lrate: 0.0001
 
 default_dataset_airplane_setup: &default_dataset_airplane_setup
     expname: "normalized"
@@ -20,7 +19,7 @@ default_dataset_airplane_setup: &default_dataset_airplane_setup
     dataset_type: "blender"
 
 spheres_dataset_airplane_setup: &spheres_dataset_airplane_setup
-    expname: "spheres_normalized_testowanie_lr_0_0001_sphere_pts_sorted"
+    expname: "spheres_prawie_jak_nerf_300_sfer_0_01"
     basedir: "logs"
     datadir: "data/normalized"
     dataset_type: "sphere_blender"
