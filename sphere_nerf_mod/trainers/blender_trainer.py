@@ -37,9 +37,17 @@ class SphereBlenderTrainer(Blender.BlenderTrainer):
         network_query_fn,
         viewdirs,
         raw_noise_std,
-        white_bkgd, **kwargs
+        white_bkgd,
+        **kwargs
     ):
+        """Sample points on given rays.
 
+        Define method how to sample points on given rays.
+        Main idea behind SphereNerf is sampling points on spheres.
+        The points are sampled by choosing the nearest point from the
+        intersection points between the rays and surrounding the
+        generated object spheres.
+        """
         rays_origins = rays_o
         rays_directions = rays_d
         rays = Lines(rays_origins, rays_directions)
@@ -52,13 +60,14 @@ class SphereBlenderTrainer(Blender.BlenderTrainer):
         )
 
         z_vals, _ = torch.sort(torch.cat([z_vals, z_sphere], -1), -1)
-        pts = rays_o[..., None, :] + rays_d[..., None, :] * z_vals[..., :, None]
+        _rays_d = rays_d[..., None, :]
+        pts = rays_o[..., None, :] + _rays_d * z_vals[..., :, None]
 
         run_fn = network_fn if network_fine is None else network_fine
         raw = network_query_fn(pts, viewdirs, run_fn)
 
-        rgb_map, disp_map, acc_map, _, _ = raw2outputs(raw, z_vals, rays_d, raw_noise_std, white_bkgd,
-                                                                     pytest=pytest)
+        rgb_map, disp_map, acc_map, _, _ = raw2outputs(
+            raw, z_vals, rays_d, raw_noise_std, white_bkgd, pytest=pytest)
 
         return None, None, None, rgb_map, disp_map, acc_map, raw
 

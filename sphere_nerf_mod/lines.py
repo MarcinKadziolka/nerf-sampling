@@ -1,7 +1,6 @@
 """Lines module - contains a Lines class, representing lines in 3D space."""
 
 import torch
-from torch.nn.functional import normalize
 
 from sphere_nerf_mod.spheres import Spheres
 from sphere_nerf_mod.utils import solve_quadratic_equation

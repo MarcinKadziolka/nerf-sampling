@@ -1,0 +1,28 @@
+{
+    "metrics": [
+        {
+            "step": 9.0,
+            "test/loss": 0.09869935363531113,
+            "test/mse": 0.09869935363531113
+        }
+    ],
+    "hparams": {
+        "model_name": "Baseline_nan_0_sum_1000_lr_01_64_spheres",
+        "best_model_path": "output/logs/repro\\Baseline_nan_0_sum_1000_lr_01_64_spheres\\checkpoints\\epoch=9-step=9.ckpt",
+        "model_params": {
+            "model_name": "Baseline_nan_0_sum_1000_lr_01_64_spheres",
+            "experiment_name": "repro",
+            "hidden_dim": 128,
+            "text_size": 768,
+            "learning_rate": 0.01,
+            "weight_decay": 0.0005,
+            "device": "cuda",
+            "output_dim": 5,
+            "input_ch": 3,
+            "input_ch_views": 3,
+            "D": 8,
+            "W": 256,
+            "output_ch": 4
+        }
+    }
+}

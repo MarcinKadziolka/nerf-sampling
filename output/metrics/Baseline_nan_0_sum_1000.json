@@ -1,0 +1,28 @@
+{
+    "metrics": [
+        {
+            "step": 44.0,
+            "test/loss": 0.09645482897758484,
+            "test/mse": 0.09645482897758484
+        }
+    ],
+    "hparams": {
+        "model_name": "Baseline_nan_0_sum_1000",
+        "best_model_path": "output/logs/repro\\Baseline_nan_0_sum_1000\\checkpoints\\epoch=44-step=44.ckpt",
+        "model_params": {
+            "model_name": "Baseline_nan_0_sum_1000",
+            "experiment_name": "repro",
+            "hidden_dim": 128,
+            "text_size": 768,
+            "learning_rate": 0.0005,
+            "weight_decay": 0.0005,
+            "device": "cuda",
+            "output_dim": 5,
+            "input_ch": 3,
+            "input_ch_views": 3,
+            "D": 8,
+            "W": 256,
+            "output_ch": 4
+        }
+    }
+}
