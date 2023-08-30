@@ -31,15 +31,9 @@ def main(
         hparams = yaml.safe_load(fin)[model]
 
     spheres = Spheres(
-        center=torch.zeros((300, 3)),
-        radius=(torch.range(1, 300) / 100).reshape(-1, 1)
+        center=torch.zeros((400, 3)),
+        radius=(torch.range(1, 400) / 40).reshape(-1, 1) + 2.2
     )
-
-    '''spheres = Spheres(
-        center=torch.zeros((64, 3)),
-        radius=torch.Tensor((torch.range(1, 64) / 100).reshape(-1, 1)) + 2.2
-    )'''
-
     hparams["kwargs"]["spheres"] = spheres
 
     trainer = load_obj_from_config(cfg=hparams)

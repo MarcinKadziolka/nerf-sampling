@@ -1,4 +1,4 @@
-default_setup_params: &default_setup_params
+spheres_setup_params: &spheres_setup_params
     half_res: true
     no_batching: true
     N_samples: 0
@@ -12,25 +12,40 @@ default_setup_params: &default_setup_params
     i_video: 50000
     i_print: 50000
 
+default_setup_params: &default_setup_params
+    half_res: true
+    no_batching: true
+    N_samples: 300
+    N_importance: 0
+    use_viewdirs: true
+    white_bkgd: true
+    N_rand: 1024
+    device: 'cuda'
+    i_weights: 10000
+    i_testset: 10000
+    i_video: 50000
+    i_print: 50000
+
 default_dataset_airplane_setup: &default_dataset_airplane_setup
-    expname: "normalized"
+    expname: "normalized_n_samples_300_n_importance_0"
     basedir: "logs"
     datadir: "data/normalized"
     dataset_type: "blender"
 
 spheres_dataset_airplane_setup: &spheres_dataset_airplane_setup
-    expname: "spheres_prawie_jak_nerf_300_sfer_0_01"
+    expname: "spheres_400_sfer_plus_2_2___radius_0_001_center_rand"
     basedir: "logs"
     datadir: "data/normalized"
     dataset_type: "sphere_blender"
 
-airplane:
-  kwargs:
-    <<: *default_setup_params
-    <<: *default_dataset_airplane_setup
-
 airplane_sphere_module:
   module: "sphere_nerf_mod.trainers.SphereBlenderTrainer"
   kwargs:
-    <<: *default_setup_params
+    <<: *spheres_setup_params
     <<: *spheres_dataset_airplane_setup
+
+airplane_default_module:
+  module: "nerf_pytorch.trainers.BlenderTrainer"
+  kwargs:
+    <<: *default_setup_params
+    <<: *default_dataset_airplane_setup
