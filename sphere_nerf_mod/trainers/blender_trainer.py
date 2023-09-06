@@ -1,7 +1,6 @@
 """Blender trainer module - trainer for blender data."""
 
 from nerf_pytorch.trainers import Blender
-from nerf_pytorch.nerf_utils import raw2outputs
 import torch
 
 from sphere_nerf_mod.lines import Lines
@@ -66,7 +65,7 @@ class SphereBlenderTrainer(Blender.BlenderTrainer):
         run_fn = network_fn if network_fine is None else network_fine
         raw = network_query_fn(pts, viewdirs, run_fn)
 
-        rgb_map, disp_map, acc_map, _, _ = raw2outputs(
+        rgb_map, disp_map, acc_map, _, _ = self.raw2outputs(
             raw, z_vals, rays_d, raw_noise_std, white_bkgd, pytest=pytest)
 
         return None, None, None, rgb_map, disp_map, acc_map, raw
