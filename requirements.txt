@@ -9,8 +9,8 @@ git+https://github.com/waczjoan/nerf_pytorch@change_train_function_into_object
 
 # PyTorch
 --find-links https://download.pytorch.org/whl/torch_stable.html
---find-links https://data.pyg.org/whl/torch-1.12.1+cu116.html
-torch==1.12.1+cu116
+--find-links https://data.pyg.org/whl/torch-2.0.0+cu117.html
+torch==2.0.0+cu117
 
 
 
