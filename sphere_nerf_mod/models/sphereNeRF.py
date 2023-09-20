@@ -12,17 +12,62 @@ class SphereNeRF(nn.Module):
         """
         #TODO add docstring
         """
-
         super(SphereNeRF, self).__init__()
+        self.D = D
+        self.W = W
+        self.input_ch = input_ch
+        self.input_ch_views = input_ch_views
+        self.skips = skips
+        self.use_viewdirs = use_viewdirs
+        input_dim = input_ch + input_ch_views
+
+        self.pts_linears = nn.ModuleList(
+            [nn.Linear(input_dim, W)] + [nn.Linear(W, W)
+                                         if i not in self.skips
+                                         else nn.Linear(W + input_dim, W)
+                                         for i in range(D - 1)])
+
+        self.views_linears = nn.ModuleList([nn.Linear(W, W // 2)])
+
+        if use_viewdirs:
+            self.feature_linear = nn.Linear(W, W)
+            self.alpha_linear = nn.Linear(W, 1)
+            self.rgb_linear = nn.Linear(W // 2, 3)
+        else:
+            self.output_linear = nn.Linear(W, output_ch)
 
     def forward(self, x):
-        """#TODO add docstring"""
-        outputs = None
-        # TODO
+        """
+        #TODO add docstring
+        """
+        input_pts, input_views = torch.split(x, [self.input_ch, self.input_ch_views], dim=-1)
+        h = torch.cat([input_pts, input_views], -1)
+        for i, l in enumerate(self.pts_linears):
+            h = self.pts_linears[i](h)
+            h = F.relu(h)
+            if i in self.skips:
+                h = torch.cat([input_pts, input_views, h], -1)
+
+        if self.use_viewdirs:
+            alpha = self.alpha_linear(h)
+            feature = self.feature_linear(h)
+            h = feature
+
+            for i, l in enumerate(self.views_linears):
+                h = self.views_linears[i](h)
+                h = F.relu(h)
+
+            rgb = self.rgb_linear(h)
+            outputs = torch.cat([rgb, alpha], -1)
+        else:
+            outputs = self.output_linear(h)
+
         return outputs
 
     def load_weights_from_keras(self, weights):
-        """#TODO add docstring"""
+        """
+        #TODO add docstring
+        """
         assert self.use_viewdirs, "Not implemented if use_viewdirs=False"
 
         # Load pts_linears
