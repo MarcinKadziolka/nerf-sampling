@@ -31,13 +31,13 @@ def main(
         hparams = yaml.safe_load(fin)[model]
 
     spheres = Spheres(
-        center=torch.zeros((128, 3)),
-        radius=(torch.range(1, 128) / 100).reshape(-1, 1) + 2.2
+        center=torch.zeros((3, 3)),
+        radius=(torch.range(1, 3)).reshape(-1, 1) + 1
     )
     hparams["kwargs"]["spheres"] = spheres
 
     trainer = load_obj_from_config(cfg=hparams)
-    trainer.train(N_iters=1000000)
+    trainer.train(N_iters=20001)
 
 
 if __name__ == "__main__":
