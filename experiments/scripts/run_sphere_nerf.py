@@ -32,7 +32,7 @@ def main(
 
     spheres = Spheres(
         center=torch.zeros((3, 3)),
-        radius=(torch.range(1, 3)).reshape(-1, 1) + 1
+        radius=(torch.range(1, 3)/40).reshape(-1, 1) + 1
     )
     hparams["kwargs"]["spheres"] = spheres
 

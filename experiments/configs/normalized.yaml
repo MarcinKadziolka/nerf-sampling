@@ -7,8 +7,8 @@ spheres_setup_params: &spheres_setup_params
     white_bkgd: true
     N_rand: 1024
     device: 'cuda'
-    i_weights: 10000
-    i_testset: 10000
+    i_weights: 2500
+    i_testset: 2500
     i_video: 50000
     i_print: 50000
 
@@ -21,8 +21,8 @@ default_setup_params: &default_setup_params
     white_bkgd: true
     N_rand: 1024
     device: 'cuda'
-    i_weights: 10000
-    i_testset: 10000
+    i_weights: 2500
+    i_testset: 2500
     i_video: 50000
     i_print: 50000
 
@@ -33,7 +33,7 @@ default_dataset_airplane_setup: &default_dataset_airplane_setup
     dataset_type: "blender"
 
 spheres_dataset_airplane_setup: &spheres_dataset_airplane_setup
-    expname: "spheres_400_sfer_plus_2_2___radius_0_001_center_rand"
+    expname: "SphereMoreViewsNeRF_all_data_relu_input_ch_views_s_40_plus_2_3_spheres_W_64_D_6"
     basedir: "logs"
     datadir: "data/normalized"
     dataset_type: "sphere_blender"
