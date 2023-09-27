@@ -33,7 +33,7 @@ default_dataset_airplane_setup: &default_dataset_airplane_setup
     dataset_type: "blender"
 
 spheres_dataset_airplane_setup: &spheres_dataset_airplane_setup
-    expname: "SphereMoreViewsNeRF_all_data_relu_input_ch_views_s_40_plus_2_3_spheres_W_64_D_6"
+    expname: "SphereWithoutViewsNeRF_use_viewdirs_False"
     basedir: "logs"
     datadir: "data/normalized"
     dataset_type: "sphere_blender"
