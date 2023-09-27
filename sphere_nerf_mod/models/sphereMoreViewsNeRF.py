@@ -6,8 +6,9 @@ import numpy as np
 
 class SphereMoreViewsNeRF(nn.Module):
     def __init__(
-        self, D=8, W=64, input_ch=3, skips=None,
-        input_ch_views=3, output_ch=4, use_viewdirs=True
+        self, input_ch=3,
+        input_ch_views=3, output_ch=4, use_viewdirs=True,
+        **kwargs
     ):
         """
         #TODO add docstring
@@ -21,17 +22,17 @@ class SphereMoreViewsNeRF(nn.Module):
         input_dim = input_ch + input_ch_views
 
         self.pts_linears = nn.ModuleList(
-            [nn.Linear(input_dim, W)] + [nn.Linear(W + input_ch_views, W)
-                                         for i in range(D - 1)])
+            [nn.Linear(input_dim, self.W)] + [nn.Linear(self.W + input_ch_views, self.W)
+                                         for i in range(self.D - 1)])
 
-        self.views_linears = nn.ModuleList([nn.Linear(W, W // 2)])
+        self.views_linears = nn.ModuleList([nn.Linear(self.W, self.W // 2)])
 
-        if use_viewdirs:
-            self.feature_linear = nn.Linear(W + input_ch_views, W)
-            self.alpha_linear = nn.Linear(W + input_ch_views, 1)
-            self.rgb_linear = nn.Linear(W // 2, 3)
+        if self.use_viewdirs:
+            self.feature_linear = nn.Linear(self.W + input_ch_views, self.W)
+            self.alpha_linear = nn.Linear(self.W + input_ch_views, 1)
+            self.rgb_linear = nn.Linear(self.W // 2, 3)
         else:
-            self.output_linear = nn.Linear(W, output_ch)
+            self.output_linear = nn.Linear(self.W + input_ch_views, output_ch)
 
     def forward(self, x):
         """
