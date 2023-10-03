@@ -5,9 +5,10 @@ import torch
 
 from sphere_nerf_mod.lines import Lines
 from sphere_nerf_mod.spheres import Spheres
+
 from sphere_nerf_mod.models import (
     SphereNeRF, MoreDirectionVectorInfo, SphereMoreViewsNeRF,
-    SphereWithoutViewsNeRF)
+    SphereWithoutViewsNeRF, SphereTwoRGB)
 
 
 class SphereBlenderTrainer(Blender.BlenderTrainer):
@@ -109,4 +110,4 @@ class SphereBlenderTrainer(Blender.BlenderTrainer):
         )
 
     def create_nerf_model(self):
-        return self._create_nerf_model(model=SphereWithoutViewsNeRF)
+        return self._create_nerf_model(model=SphereMoreViewsNeRF)

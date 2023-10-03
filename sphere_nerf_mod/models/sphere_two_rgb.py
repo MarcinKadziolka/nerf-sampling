@@ -4,46 +4,38 @@ import torch.nn.functional as F
 import numpy as np
 
 
-class SphereMoreViewsNeRF(nn.Module):
+class SphereTwoRGB(nn.Module):
     def __init__(
-        self, W=64, input_ch=3,
-        input_ch_views=3, output_ch=4, use_viewdirs=True, **kwargs
+        self, D=8, W=256, input_ch=3, input_ch_views=3,
+            output_ch=4, skips=[4], first_rgb_output_layer=4, use_viewdirs=False
     ):
         """
         #TODO add docstring
         """
-        super(SphereMoreViewsNeRF, self).__init__()
-        self.D = 2
-        self.W = 256
+        super(SphereTwoRGB, self).__init__()
+        self.D = D
+        self.W = W
         self.input_ch = input_ch
         self.input_ch_views = input_ch_views
+        self.skips = skips
+        self.first_rgb_output_layer = first_rgb_output_layer
         self.use_viewdirs = use_viewdirs
-        input_dim = input_ch + input_ch_views
 
         self.pts_linears = nn.ModuleList(
-            [nn.Linear(input_ch, W),
-             nn.Linear(W, W),
-             nn.Linear(W, W)
-             ])
-        self.pts_linears1 = nn.ModuleList([nn.Linear(W + input_ch_views, W),
-             nn.Linear(W, W)])
+            [nn.Linear(input_ch, W)]
+            + [nn.Linear(W, W) for _ in range(first_rgb_output_layer)]
+        )
 
-        self.pts_linears2 = nn.ModuleList(
-            [nn.Linear(input_ch, W),
-             nn.Linear(W, W),
-             nn.Linear(W, W)
-             ])
-        self.pts_linears3 = nn.ModuleList([nn.Linear(W + input_ch, W),
-                  nn.Linear(W, W)])
-
-        self.views_linears = nn.ModuleList([nn.Linear(W, W // 2)])
-
-        self.lin = nn.Linear(W, W)
+        self.views_linears = nn.ModuleList(
+            [nn.Linear(W, W)]
+            + [nn.Linear(W + input_ch_views, W) for _ in range(D - first_rgb_output_layer - 1)]
+            + [nn.Linear(W + input_ch_views, W // 2)]
+        )
 
         if use_viewdirs:
-            self.feature_linear = nn.Linear(W, W)
-            self.alpha_linear = nn.Linear(W, 1)
-            self.rgb_linear = nn.Linear(W // 2, 3)
+            self.sigma_linear = nn.Linear(W // 2, 1)
+            self.first_rgb_linear = nn.Linear(W, 3)
+            self.second_rgb_linear = nn.Linear(W // 2, 3)
         else:
             self.output_linear = nn.Linear(W, output_ch)
 
@@ -52,40 +44,25 @@ class SphereMoreViewsNeRF(nn.Module):
         #TODO add docstring
         """
         input_pts, input_views = torch.split(x, [self.input_ch, self.input_ch_views], dim=-1)
-        h1 = torch.cat([input_pts, input_views], -1)
         h = input_pts
         for i, l in enumerate(self.pts_linears):
             h = self.pts_linears[i](h)
             h = F.relu(h)
 
-        h = torch.cat([input_views, h], -1)
-        for i, l in enumerate(self.pts_linears1):
-            h = self.pts_linears1[i](h)
-            h = F.relu(h)
-
-        h2 = input_pts
-        for i, l in enumerate(self.pts_linears2):
-            h2 = self.pts_linears2[i](h2)
-            h2 = F.relu(h2)
-
-        h2 = torch.cat([input_pts, h2], -1)
-        for i, l in enumerate(self.pts_linears3):
-            h2 = self.pts_linears3[i](h2)
-            h2 = F.relu(h2)
-
-        h = self.lin(h2 * h)
-
         if self.use_viewdirs:
-            alpha = self.alpha_linear(h)
-            feature = self.feature_linear(h)
-            h = feature
+            first_rgb = self.first_rgb_linear(h)
 
             for i, l in enumerate(self.views_linears):
+                if i > 0:
+                    h = torch.cat([h, input_views], -1)
                 h = self.views_linears[i](h)
                 h = F.relu(h)
 
-            rgb = self.rgb_linear(h)
-            outputs = torch.cat([rgb, alpha], -1)
+            second_rgb = self.second_rgb_linear(h)
+            sigma = self.sigma_linear(h)
+
+            final_rgb = first_rgb * second_rgb
+            outputs = torch.cat([final_rgb, sigma], -1)
         else:
             outputs = self.output_linear(h)
 
