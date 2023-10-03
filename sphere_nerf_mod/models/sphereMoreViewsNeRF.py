@@ -6,8 +6,8 @@ import numpy as np
 
 class SphereMoreViewsNeRF(nn.Module):
     def __init__(
-        self, D=8, W=64, input_ch=3, skips=None,
-        input_ch_views=3, output_ch=4, use_viewdirs=True
+        self, W=64, input_ch=3,
+        input_ch_views=3, output_ch=4, use_viewdirs=True, **kwargs
     ):
         """
         #TODO add docstring
