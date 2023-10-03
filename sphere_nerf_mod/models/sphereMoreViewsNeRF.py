@@ -13,7 +13,7 @@ class SphereMoreViewsNeRF(nn.Module):
         #TODO add docstring
         """
         super(SphereMoreViewsNeRF, self).__init__()
-        self.D = 2
+        self.D = 8
         self.W = 256
         self.input_ch = input_ch
         self.input_ch_views = input_ch_views

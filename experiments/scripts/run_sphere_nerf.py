@@ -37,7 +37,7 @@ def main(
     hparams["kwargs"]["spheres"] = spheres
 
     trainer = load_obj_from_config(cfg=hparams)
-    trainer.train(N_iters=10001)
+    trainer.train(N_iters=100001)
 
 
 if __name__ == "__main__":

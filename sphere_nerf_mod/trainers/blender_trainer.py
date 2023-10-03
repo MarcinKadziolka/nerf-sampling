@@ -10,7 +10,7 @@ from sphere_nerf_mod.models import (
     SphereNeRF, MoreDirectionVectorInfo, SphereMoreViewsNeRF,
     SphereWithoutViewsNeRF, SphereTwoRGB)
 
-
+from sphere_nerf_mod.utils import change_cartesian_to_spherical
 class SphereBlenderTrainer(Blender.BlenderTrainer):
     """Trainer for blender data."""
 
@@ -50,6 +50,8 @@ class SphereBlenderTrainer(Blender.BlenderTrainer):
         The points are sampled by choosing the nearest point from the
         intersection points between the rays and surrounding the
         generated object spheres.
+        pts: [N_rand, n_spheres, 3D] -> [1024, 5, 3]
+        -> [N_rand, n_spheres, 3D] + inf o kanale
         """
         rays_origins = rays_o
         rays_directions = rays_d
@@ -65,6 +67,11 @@ class SphereBlenderTrainer(Blender.BlenderTrainer):
         z_vals, _ = torch.sort(torch.cat([z_vals, z_sphere], -1), -1)
         _rays_d = rays_d[..., None, :]
         pts = rays_o[..., None, :] + _rays_d * z_vals[..., :, None]
+        pts = change_cartesian_to_spherical(
+            x=pts[:, :, 0],
+            y=pts[:, :, 1],
+            z=pts[:, :, 2]
+        )
 
         run_fn = network_fn if network_fine is None else network_fine
         raw = network_query_fn(pts, viewdirs, run_fn)
