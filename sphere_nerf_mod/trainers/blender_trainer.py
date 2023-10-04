@@ -72,10 +72,29 @@ class SphereBlenderTrainer(Blender.BlenderTrainer):
             y=pts[:, :, 1],
             z=pts[:, :, 2]
         )
+        n_copies = 10
+        n_copies_tensor = pts.unsqueeze(-1).repeat(1, 1, 1, n_copies)
+        ind = torch.arange(n_copies).view(1, 1, 1, n_copies)
+        _pts_shape = pts.shape
+        fourth_dim = ind.expand(
+            _pts_shape[0], _pts_shape[1], 1, n_copies
+        )
+        final_pts = torch.cat([n_copies_tensor, fourth_dim/n_copies], dim=2)
+        final_pts = final_pts.swapaxes(2, 3)
+
+        n_copies_tensor = viewdirs.unsqueeze(-1).repeat(1, 1, n_copies)
+        ind = torch.arange(n_copies).view(1, 1, n_copies)
+        _viewdirs_shape = viewdirs.shape
+        fourth_dim = ind.expand(
+            _viewdirs_shape[0], 1, n_copies
+        )
+        final_viewdirs = torch.cat([n_copies_tensor, fourth_dim / n_copies], dim=1)
+        final_viewdirs = final_viewdirs.swapaxes(1, 2)
 
         run_fn = network_fn if network_fine is None else network_fine
-        raw = network_query_fn(pts, viewdirs, run_fn)
+        raw = network_query_fn(final_pts, final_viewdirs, run_fn)
 
+        raw = torch.sum(raw, -2)
         rgb_map, disp_map, acc_map, _, _ = self.raw2outputs(
             raw, z_vals, rays_d, raw_noise_std, white_bkgd, pytest=pytest)
 

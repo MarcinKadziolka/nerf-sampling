@@ -33,7 +33,7 @@ default_dataset_airplane_setup: &default_dataset_airplane_setup
     dataset_type: "blender"
 
 spheres_dataset_airplane_setup: &spheres_dataset_airplane_setup
-    expname: "test_3_spheres"
+    expname: "test3_sum_3_sp"
     basedir: "logs"
     datadir: "data/normalized"
     dataset_type: "sphere_blender"
