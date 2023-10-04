@@ -27,6 +27,8 @@ def main(
         model: str,
 ):
     """Main."""
+    torch.manual_seed(42) #0
+
     with open(hparams_path, "r") as fin:
         hparams = yaml.safe_load(fin)[model]
 

@@ -65,14 +65,16 @@ class SphereBlenderTrainer(Blender.BlenderTrainer):
         )
 
         z_vals, _ = torch.sort(torch.cat([z_vals, z_sphere], -1), -1)
-        _rays_d = rays_d[..., None, :]
-        pts = rays_o[..., None, :] + _rays_d * z_vals[..., :, None]
+        # _rays_d = rays_d[..., None, :]
+        # pts = rays_o[..., None, :] + _rays_d * z_vals[..., :, None]
+        pts = sphere_nerf_points
+
         pts = change_cartesian_to_spherical(
             x=pts[:, :, 0],
             y=pts[:, :, 1],
             z=pts[:, :, 2]
         )
-        n_copies = 10
+        n_copies = 5
         n_copies_tensor = pts.unsqueeze(-1).repeat(1, 1, 1, n_copies)
         ind = torch.arange(n_copies).view(1, 1, 1, n_copies)
         _pts_shape = pts.shape
@@ -84,11 +86,12 @@ class SphereBlenderTrainer(Blender.BlenderTrainer):
 
         n_copies_tensor = viewdirs.unsqueeze(-1).repeat(1, 1, n_copies)
         ind = torch.arange(n_copies).view(1, 1, n_copies)
+        ind = torch.ones(1, 1, n_copies)
         _viewdirs_shape = viewdirs.shape
         fourth_dim = ind.expand(
             _viewdirs_shape[0], 1, n_copies
         )
-        final_viewdirs = torch.cat([n_copies_tensor, fourth_dim / n_copies], dim=1)
+        final_viewdirs = torch.cat([n_copies_tensor, fourth_dim], dim=1)
         final_viewdirs = final_viewdirs.swapaxes(1, 2)
 
         run_fn = network_fn if network_fine is None else network_fine
