@@ -1,12 +1,12 @@
-from .sphereNeRF import SphereNeRF
-from .sphereMoreViewsNeRF import SphereMoreViewsNeRF
-from .sphereWithoutViews import SphereWithoutViewsNeRF
-from .with_more_direction_vector_info import MoreDirectionVectorInfo
-from .sphere_two_rgb import SphereTwoRGB
+from .concat import SphereConcatNeRF
+from .more_views import SphereMoreViewsNeRF
+from .without_views import SphereWithoutViewsNeRF
+from .more_viewdirs import SphereMoreViewdirsNeRF
+from .two_rgb import SphereTwoRGBNeRF
 __all__ = [
-    "SphereNeRF",
+    "SphereConcatNeRF",
     "SphereMoreViewsNeRF",
     "SphereWithoutViewsNeRF",
-    "MoreDirectionVectorInfo",
-    "SphereTwoRGB"
+    "SphereMoreViewdirsNeRF",
+    "SphereTwoRGBNeRF"
 ]
