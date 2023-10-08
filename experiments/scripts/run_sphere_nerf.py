@@ -39,13 +39,13 @@ def main(
         radius=(
             (torch.range(1, number_of_spheres) * distance_between_spheres)
             .reshape(-1, 1)
-            + (smallest_sphere_radius - 1)
+            + (smallest_sphere_radius - distance_between_spheres)
         )
     )
     hparams["kwargs"]["spheres"] = spheres
 
     trainer = load_obj_from_config(cfg=hparams)
-    trainer.train(N_iters=10001)
+    trainer.train(N_iters=50001)
 
 
 if __name__ == "__main__":
