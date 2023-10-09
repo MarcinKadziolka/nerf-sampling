@@ -8,7 +8,7 @@ spheres_setup_params: &spheres_setup_params
     N_rand: 1024
     device: 'cuda'
     i_weights: 2500
-    i_testset: 2500
+    i_testset: 5000
     i_video: 50000
     i_print: 50000
 
@@ -22,20 +22,20 @@ default_setup_params: &default_setup_params
     N_rand: 1024
     device: 'cuda'
     i_weights: 2500
-    i_testset: 2500
+    i_testset: 5000
     i_video: 50000
     i_print: 50000
 
 default_dataset_airplane_setup: &default_dataset_airplane_setup
     expname: "normalized_n_samples_300_n_importance_0"
     basedir: "logs"
-    datadir: "data/normalized"
+    datadir: "data/normalized_test_train"
     dataset_type: "blender"
 
 spheres_dataset_airplane_setup: &spheres_dataset_airplane_setup
-    expname: "sphere_nerf_points_plus_1_viewdir_1"
+    expname: "SphereMoreViewsNeRFV2__W_256__D_None__cartesian___n_copies_1___spheres_3__plus_1__div_40_train"
     basedir: "logs"
-    datadir: "data/normalized"
+    datadir: "data/normalized_test_train"
     dataset_type: "sphere_blender"
 
 airplane_sphere_module:

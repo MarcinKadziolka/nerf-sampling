@@ -8,9 +8,11 @@ from sphere_nerf_mod.spheres import Spheres
 
 from sphere_nerf_mod.models import (
     SphereNeRF, MoreDirectionVectorInfo, SphereMoreViewsNeRF,
-    SphereWithoutViewsNeRF, SphereTwoRGB)
+    SphereWithoutViewsNeRF, SphereTwoRGB, SphereMoreViewsNeRFV2)
 
 from sphere_nerf_mod.utils import change_cartesian_to_spherical
+
+
 class SphereBlenderTrainer(Blender.BlenderTrainer):
     """Trainer for blender data."""
 
@@ -69,12 +71,12 @@ class SphereBlenderTrainer(Blender.BlenderTrainer):
         # pts = rays_o[..., None, :] + _rays_d * z_vals[..., :, None]
         pts = sphere_nerf_points
 
-        pts = change_cartesian_to_spherical(
-            x=pts[:, :, 0],
-            y=pts[:, :, 1],
-            z=pts[:, :, 2]
-        )
-        n_copies = 5
+        # pts = change_cartesian_to_spherical(
+        #   x=pts[:, :, 0],
+        #    y=pts[:, :, 1],
+        #    z=pts[:, :, 2]
+        #)
+        n_copies = 1
         n_copies_tensor = pts.unsqueeze(-1).repeat(1, 1, 1, n_copies)
         ind = torch.arange(n_copies).view(1, 1, 1, n_copies)
         _pts_shape = pts.shape
@@ -139,4 +141,4 @@ class SphereBlenderTrainer(Blender.BlenderTrainer):
         )
 
     def create_nerf_model(self):
-        return self._create_nerf_model(model=SphereMoreViewsNeRF)
+        return self._create_nerf_model(model=SphereMoreViewsNeRFV2)
