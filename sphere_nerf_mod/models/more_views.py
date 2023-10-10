@@ -5,15 +5,17 @@ import torch.nn.functional as F
 
 class SphereMoreViewsNeRF(nn.Module):
     def __init__(
-        self, W=64, input_ch=3,
+        self, D=8, W=256, input_ch=3,
         input_ch_views=3, output_ch=4, use_viewdirs=True, **kwargs
     ):
         """
         #TODO add docstring
         """
         super(SphereMoreViewsNeRF, self).__init__()
-        self.D = 6
-        self.W = 64
+        D = 8
+        W = 256
+        self.D = D
+        self.W = W
         self.input_ch = input_ch
         self.input_ch_views = input_ch_views
         self.use_viewdirs = use_viewdirs
