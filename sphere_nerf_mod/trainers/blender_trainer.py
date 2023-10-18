@@ -11,7 +11,7 @@ from sphere_nerf_mod.spheres import Spheres
 
 from sphere_nerf_mod.models import (
     SphereNeRF, MoreDirectionVectorInfo, SphereMoreViewsNeRF,
-    SphereWithoutViewsNeRF, SphereTwoRGB, SphereMoreViewsNeRFV2,
+    sphereWithoutViews, SphereTwoRGB, SphereMoreViewsNeRFV2,
     SphereMoreViewsNeRFV6
 )
 
@@ -98,7 +98,7 @@ class SphereBlenderTrainer(Blender.BlenderTrainer):
         # single number representation
         sphere_nerf_points = self.sample_points_on_spheres(
             rays
-        ).swapaxes(0, 1)
+        ).swapaxes(0, 1)  # [n_rays, m_spheres/n_points, 3]
 
         z_sphere = rays.transform_points_to_single_number_representation(
             sphere_nerf_points
@@ -146,9 +146,9 @@ class SphereBlenderTrainer(Blender.BlenderTrainer):
         return None, None, None, rgb_map, disp_map, acc_map, raw
 
     def sample_points_on_spheres(
-            self,
-            rays: Lines,
-            point_coordinate_if_nan: float = 100
+        self,
+        rays: Lines,
+        point_coordinate_if_nan: float = 100
     ) -> torch.Tensor:
         """Sample points on given rays.
 
@@ -181,7 +181,7 @@ class SphereBlenderTrainer(Blender.BlenderTrainer):
         )
 
     def create_nerf_model(self):
-        return self._create_nerf_model(model=SphereMoreViewsNeRF)
+        return self._create_nerf_model(model=SphereMoreViewsNeRFV2)
 
     def raw2outputs(
         self,
