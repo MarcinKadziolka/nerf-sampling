@@ -4,7 +4,7 @@ import torch.nn.functional as F
 import numpy as np
 
 
-class SphereMoreViewsNeRFV3(nn.Module):
+class SphereMoreViewsNeRFV5(nn.Module):
     def __init__(
         self, input_ch=3,
         input_ch_views=3, output_ch=4, use_viewdirs=True, **kwargs
@@ -12,7 +12,7 @@ class SphereMoreViewsNeRFV3(nn.Module):
         """
         #TODO add docstring
         """
-        super(SphereMoreViewsNeRFV3, self).__init__()
+        super(SphereMoreViewsNeRFV5, self).__init__()
         self.W = 256
         self.input_ch = input_ch
         self.input_ch_views = input_ch_views
@@ -24,7 +24,7 @@ class SphereMoreViewsNeRFV3(nn.Module):
              nn.Linear(self.W, self.W),
              nn.Linear(self.W, self.W)
              ])
-        self.pts_linears1 = nn.ModuleList([nn.Linear(self.W + input_ch, self.W),
+        self.pts_linears1 = nn.ModuleList([nn.Linear(self.W + input_ch_views, self.W),
              nn.Linear(self.W, self.W)])
 
         self.pts_linears2 = nn.ModuleList(
@@ -46,6 +46,8 @@ class SphereMoreViewsNeRFV3(nn.Module):
         else:
             self.output_linear = nn.Linear(self.W, output_ch)
 
+        self.dr = nn.Dropout(0.8)
+
     def forward(self, x):
         """
         #TODO add docstring
@@ -57,7 +59,7 @@ class SphereMoreViewsNeRFV3(nn.Module):
             h = self.pts_linears[i](h)
             h = F.relu(h)
 
-        h = torch.cat([input_pts, h], -1)
+        h = torch.cat([input_views, h], -1)
         for i, l in enumerate(self.pts_linears1):
             h = self.pts_linears1[i](h)
             h = F.relu(h)
@@ -72,7 +74,7 @@ class SphereMoreViewsNeRFV3(nn.Module):
             h2 = self.pts_linears3[i](h2)
             h2 = F.relu(h2)
 
-        h = self.lin(h2 * h)
+        h = self.lin(self.dr(h2 * h))
 
         if self.use_viewdirs:
             alpha = self.alpha_linear(h)

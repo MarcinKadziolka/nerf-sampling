@@ -8,7 +8,9 @@ from sphere_nerf_mod.spheres import Spheres
 
 from sphere_nerf_mod.models import (
     SphereNeRF, MoreDirectionVectorInfo, SphereMoreViewsNeRF,
-    SphereWithoutViewsNeRF, SphereTwoRGB, SphereMoreViewsNeRFV2)
+    SphereWithoutViewsNeRF, SphereTwoRGB, SphereMoreViewsNeRFV2,
+    SphereMoreViewsNeRFV6
+)
 
 from sphere_nerf_mod.utils import change_cartesian_to_spherical
 
@@ -56,6 +58,8 @@ class SphereBlenderTrainer(Blender.BlenderTrainer):
         -> [N_rand, n_spheres, 3D] + inf o kanale
         """
         rays_origins = rays_o
+        m = min(rays_origins)
+        mm = min(rays_d)
         rays_directions = rays_d
         rays = Lines(rays_origins, rays_directions)
         sphere_nerf_points = self.sample_points_on_spheres(
@@ -71,8 +75,8 @@ class SphereBlenderTrainer(Blender.BlenderTrainer):
         # pts = rays_o[..., None, :] + _rays_d * z_vals[..., :, None]
         pts = sphere_nerf_points
 
-        # pts = change_cartesian_to_spherical(
-        #   x=pts[:, :, 0],
+        #pts = change_cartesian_to_spherical(
+        #    x=pts[:, :, 0],
         #    y=pts[:, :, 1],
         #    z=pts[:, :, 2]
         #)
@@ -141,4 +145,4 @@ class SphereBlenderTrainer(Blender.BlenderTrainer):
         )
 
     def create_nerf_model(self):
-        return self._create_nerf_model(model=SphereMoreViewsNeRFV2)
+        return self._create_nerf_model(model=SphereMoreViewsNeRFV6)

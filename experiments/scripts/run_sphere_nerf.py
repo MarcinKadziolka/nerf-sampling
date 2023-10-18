@@ -33,8 +33,8 @@ def main(
         hparams = yaml.safe_load(fin)[model]
 
     spheres = Spheres(
-        center=torch.zeros((3, 3)),
-        radius=(torch.range(1, 3)/40).reshape(-1, 1) + 1
+        center=torch.zeros((100, 3)),
+        radius=(torch.range(1, 100)/40).reshape(-1, 1) + 1
     )
     hparams["kwargs"]["spheres"] = spheres
 

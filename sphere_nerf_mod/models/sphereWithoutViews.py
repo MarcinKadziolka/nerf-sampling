@@ -21,17 +21,17 @@ class SphereWithoutViewsNeRF(nn.Module):
         input_dim = input_ch + input_ch_views
 
         self.pts_linears = nn.ModuleList(
-            [nn.Linear(input_ch, W),
-             nn.Linear(W, W),
-             nn.Linear(W, W)
+            [nn.Linear(input_ch, self.W),
+             nn.Linear(self.W, self.W),
+             nn.Linear(self.W, self.W)
              ])
-        self.pts_linears1 = nn.ModuleList([nn.Linear(W + input_ch_views, W),
-             nn.Linear(W, W)])
+        self.pts_linears1 = nn.ModuleList([nn.Linear(self.W + input_ch_views, self.W),
+             nn.Linear(self.W, self.W)])
 
         self.pts_linears2 = nn.ModuleList(
-            [nn.Linear(input_ch, W),
-             nn.Linear(W, W),
-             nn.Linear(W, W)
+            [nn.Linear(input_ch, self.W),
+             nn.Linear(self.W, self.W),
+             nn.Linear(self.W, self.W)
              ])
         self.pts_linears3 = nn.ModuleList([nn.Linear(W + input_ch, W),
                   nn.Linear(W, W)])
