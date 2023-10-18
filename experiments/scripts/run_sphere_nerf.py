@@ -1,4 +1,4 @@
-"""Script for run sphere nerf."""
+"""Script for running SphereNeRF."""
 import click
 import torch
 import yaml
@@ -27,19 +27,27 @@ def main(
         model: str,
 ):
     """Main."""
-    torch.manual_seed(42) #0
-
     with open(hparams_path, "r") as fin:
         hparams = yaml.safe_load(fin)[model]
 
+    torch.manual_seed(42)  # 0
+
+    number_of_spheres = 3
+    smallest_sphere_radius = 2
+    distance_between_spheres = 1 / 40
+
     spheres = Spheres(
-        center=torch.zeros((100, 3)),
-        radius=(torch.range(1, 100)/40).reshape(-1, 1) + 1
+        center=torch.zeros((number_of_spheres, 3)),
+        radius=(
+            (torch.range(1, number_of_spheres) * distance_between_spheres)
+            .reshape(-1, 1)
+            + (smallest_sphere_radius - distance_between_spheres)
+        )
     )
     hparams["kwargs"]["spheres"] = spheres
 
     trainer = load_obj_from_config(cfg=hparams)
-    trainer.train(N_iters=500001)
+    trainer.train(N_iters=50001)
 
 
 if __name__ == "__main__":
