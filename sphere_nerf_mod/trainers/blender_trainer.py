@@ -150,8 +150,11 @@ class SphereBlenderTrainer(Blender.BlenderTrainer):
         weights = alpha * torch.cumprod(torch.cat(
             [torch.ones((alpha.shape[0], 1)), 1. - alpha + 1e-10], -1), -1)[:,:-1]
 
+        n_spheres = raw.shape[1]
         rgb_map = torch.sum(weights[..., None] * rgb, -2)  # [N_rays, 3]
-        # rgb_map = torch.sum(raw[..., 3, None] * rgb, -1)
+        # rgb_map = torch.sum(raw[..., 3, None] * rgb, -1) / n_spheres
+        # rgb_map = torch.sum(rgb, -1) / n_spheres
+        # rgb_map = torch.where(rgb_map < 0, 0, rgb_map)
 
         depth_map = torch.sum(weights * z_vals, -1)
         disp_map = 1. / torch.max(1e-10 * torch.ones_like(depth_map), depth_map / torch.sum(weights, -1))
