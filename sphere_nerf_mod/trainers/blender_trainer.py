@@ -16,6 +16,7 @@ from sphere_nerf_mod.models import (
 )
 
 from sphere_nerf_mod.utils import change_cartesian_to_spherical
+from sphere_nerf_mod.utils import reflected
 
 
 class SphereBlenderTrainer(Blender.BlenderTrainer):
@@ -94,13 +95,25 @@ class SphereBlenderTrainer(Blender.BlenderTrainer):
         rays_directions = rays_d
         rays = Lines(rays_origins, rays_directions)
 
+        #rays_o_reflected, rays_d_reflected = reflected(
+        #    spheres=self.spheres,
+        #    img_height=self.H,
+        #    img_width=self.W,
+        #    base_camera=self.c2w
+        #)
+
+        reflected_rays = Lines(
+            torch.zeros_like(rays_origins),
+            -rays_directions
+        )
+
         # Sample points on spheres and transform them into a
         # single number representation
         sphere_nerf_points = self.sample_points_on_spheres(
-            rays
+            reflected_rays
         ).swapaxes(0, 1)  # [n_rays, m_spheres/n_points, 3]
 
-        z_sphere = rays.transform_points_to_single_number_representation(
+        z_sphere = reflected_rays.transform_points_to_single_number_representation(
             sphere_nerf_points
         )
 
@@ -256,6 +269,11 @@ class SphereBlenderTrainer(Blender.BlenderTrainer):
 
         # Compute the final RGB map
         rgb_map = torch.sum(weights[..., None] * rgb, -2)  # [num_rays, 3]
+        #n_spheres = raw.shape[1]
+        #rgb_map = torch.sum(raw[..., 3, None] * rgb, -1) / n_spheres
+        #aa = rgb_map.max()
+        #bb
+        #rgb_map = torch.where(rgb_map < 0, 0, rgb_map)
 
         # Compute the depth map and disparity map
         depth_map = torch.sum(weights * z_vals, -1)
