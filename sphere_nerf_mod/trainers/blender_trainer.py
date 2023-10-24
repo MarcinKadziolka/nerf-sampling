@@ -185,9 +185,10 @@ class SphereBlenderTrainer(Blender.BlenderTrainer):
         intersection_points = rays.find_intersection_points_with_sphere(
             self.spheres
         )
-        selected_points = rays.select_closest_point_to_origin(
-            intersection_points
-        )
+        #selected_points = rays.select_closest_point_to_origin(
+        #    intersection_points
+        #)
+        selected_points = intersection_points[:, :, 1, :]
 
         return torch.nan_to_num(
             selected_points, nan=point_coordinate_if_nan
