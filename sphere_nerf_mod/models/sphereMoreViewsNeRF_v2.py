@@ -1,3 +1,4 @@
+"""Implementation of model that used viewdirs."""
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -5,35 +6,43 @@ import numpy as np
 
 
 class SphereMoreViewsNeRFV2(nn.Module):
+    """NeRF-based model."""
+
     def __init__(
         self, input_ch=3,
         input_ch_views=3, output_ch=4, use_viewdirs=True, **kwargs
     ):
-        """
-        #TODO add docstring
+        """Model based on Nerf,viewdirs are more important.
+
+        Parameters based on NeRF model.
         """
         super(SphereMoreViewsNeRFV2, self).__init__()
         self.W = 256
         self.input_ch = input_ch
         self.input_ch_views = input_ch_views
         self.use_viewdirs = use_viewdirs
-        input_dim = input_ch + input_ch_views
 
         self.pts_linears = nn.ModuleList(
             [nn.Linear(input_ch, self.W),
              nn.Linear(self.W, self.W),
              nn.Linear(self.W, self.W)
              ])
-        self.pts_linears1 = nn.ModuleList([nn.Linear(self.W + input_ch_views, self.W),
-             nn.Linear(self.W, self.W)])
+        self.pts_linears1 = nn.ModuleList(
+            [nn.Linear(self.W + input_ch_views, self.W),
+             nn.Linear(self.W, self.W)]
+        )
 
         self.pts_linears2 = nn.ModuleList(
             [nn.Linear(input_ch, self.W),
              nn.Linear(self.W, self.W),
              nn.Linear(self.W, self.W)
              ])
-        self.pts_linears3 = nn.ModuleList([nn.Linear(self.W + input_ch, self.W),
-                  nn.Linear(self.W, self.W)])
+        self.pts_linears3 = nn.ModuleList(
+            [
+                nn.Linear(self.W + input_ch, self.W),
+                nn.Linear(self.W, self.W)
+            ]
+        )
 
         self.views_linears = nn.ModuleList([nn.Linear(self.W, self.W // 2)])
 
@@ -47,11 +56,14 @@ class SphereMoreViewsNeRFV2(nn.Module):
             self.output_linear = nn.Linear(self.W, output_ch)
 
     def forward(self, x):
+        """Forward model.
+
+        Mix viewdirs and pts.
         """
-        #TODO add docstring
-        """
-        input_pts, input_views = torch.split(x, [self.input_ch, self.input_ch_views], dim=-1)
-        h1 = torch.cat([input_pts, input_views], -1)
+        input_pts, input_views = torch.split(
+            x, [self.input_ch, self.input_ch_views], dim=-1
+        )
+
         h = input_pts
         for i, l in enumerate(self.pts_linears):
             h = self.pts_linears[i](h)
@@ -91,8 +103,9 @@ class SphereMoreViewsNeRFV2(nn.Module):
         return outputs
 
     def load_weights_from_keras(self, weights):
-        """
-        #TODO add docstring
+        """Load weights from keras.
+
+        Def based on original implementation of NeRF.
         """
         assert self.use_viewdirs, "Not implemented if use_viewdirs=False"
 
@@ -128,6 +141,8 @@ class SphereMoreViewsNeRFV2(nn.Module):
         # Load alpha_linear
         idx_alpha_linear = 2 * self.D + 6
         self.alpha_linear.weight.data = torch.from_numpy(
-            np.transpose(weights[idx_alpha_linear]))
+            np.transpose(weights[idx_alpha_linear])
+        )
         self.alpha_linear.bias.data = torch.from_numpy(
-            np.transpose(weights[idx_alpha_linear + 1]))
+            np.transpose(weights[idx_alpha_linear + 1])
+        )

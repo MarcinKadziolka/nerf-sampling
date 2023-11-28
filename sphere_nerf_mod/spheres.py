@@ -40,5 +40,3 @@ class Spheres:
     def get_number(self):
         """Return the number of spheres."""
         return self.center.shape[0]
-
-

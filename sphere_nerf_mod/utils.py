@@ -1,6 +1,5 @@
 """Utils module - contains useful low-level utility functions."""
 import torch
-import numpy as np
 
 
 def solve_quadratic_equation(
@@ -32,6 +31,7 @@ def solve_quadratic_equation(
 
 def change_cartesian_to_spherical(x, y, z, r=None):
     """Cartesian coordinates to spherical polar coordinates.
+
     Cartesian -> spherical
     (x,y,z) -> (phi, theta, r)
     r = sqrt(x**2, y**2, z**2)
@@ -40,6 +40,6 @@ def change_cartesian_to_spherical(x, y, z, r=None):
     """
     if r is None:
         r = torch.sqrt(x**2 + y**2 + z**2)
-    phi = torch.arctan(z/x)
-    theta = torch.arcsin(y/r)
+    phi = torch.arctan(z / x)
+    theta = torch.arcsin(y / r)
     return torch.stack((phi.T, theta.T, r.T)).swapaxes(0, 2)
