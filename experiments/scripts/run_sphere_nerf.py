@@ -20,7 +20,7 @@ torch.set_default_tensor_type('torch.cuda.FloatTensor')
     "--model",
     help="Selected model",
     type=str,
-    default="airplane_sphere_module"
+    default="airplane_more_train_sphere_module"
 )
 def main(
         hparams_path: str,
@@ -30,8 +30,10 @@ def main(
     with open(hparams_path, "r") as fin:
         hparams = yaml.safe_load(fin)[model]
 
-    number_of_spheres = 3
-    smallest_sphere_radius = 2
+    torch.manual_seed(42)  # 0
+
+    number_of_spheres = 1
+    smallest_sphere_radius = 1
     distance_between_spheres = 1 / 40
 
     spheres = Spheres(

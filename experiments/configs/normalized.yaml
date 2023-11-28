@@ -1,5 +1,6 @@
 spheres_setup_params: &spheres_setup_params
     half_res: true
+    testskip: 1
     no_batching: true
     N_samples: 0
     N_importance: 0
@@ -7,10 +8,11 @@ spheres_setup_params: &spheres_setup_params
     white_bkgd: true
     N_rand: 1024
     device: 'cuda'
-    i_weights: 2500
-    i_testset: 2500
+    i_weights: 100000
+    i_testset: 2000
     i_video: 50000
     i_print: 50000
+    input_dims_embed: 4
 
 default_setup_params: &default_setup_params
     half_res: true
@@ -22,21 +24,36 @@ default_setup_params: &default_setup_params
     N_rand: 1024
     device: 'cuda'
     i_weights: 2500
-    i_testset: 2500
+    i_testset: 5000
     i_video: 50000
     i_print: 50000
+    input_dims_embed: 3
 
 default_dataset_airplane_setup: &default_dataset_airplane_setup
     expname: "normalized_n_samples_300_n_importance_0"
     basedir: "logs"
-    datadir: "data/normalized"
+    datadir: "data/normalized_test_train"
     dataset_type: "blender"
 
 spheres_dataset_airplane_setup: &spheres_dataset_airplane_setup
-    expname: "two_rgb_all_images_3_spheres_slash_40_plus_1"
+    expname: "test"
     basedir: "logs"
     datadir: "data/normalized"
     dataset_type: "sphere_blender"
+
+spheres_dataset_airplane_more_train_setup: &spheres_dataset_airplane_more_train_setup
+    expname: "test_more_views_normalized_268_in_train_1_spheres_not_reflected_rays_v_2"
+    basedir: "logs"
+    datadir: "data/normalized_268_in_train"
+    dataset_type: "sphere_blender"
+
+
+airplane_more_train_sphere_module:
+  module: "sphere_nerf_mod.trainers.SphereBlenderTrainer"
+  kwargs:
+    <<: *spheres_setup_params
+    <<: *spheres_dataset_airplane_more_train_setup
+
 
 airplane_sphere_module:
   module: "sphere_nerf_mod.trainers.SphereBlenderTrainer"

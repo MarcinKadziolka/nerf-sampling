@@ -1,4 +1,5 @@
 # SphereNeRF
+Nerf
 
 ### Setup env
 Create env using venv:
