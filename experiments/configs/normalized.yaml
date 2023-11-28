@@ -1,6 +1,6 @@
 spheres_setup_params: &spheres_setup_params
     half_res: true
-    testskip: 8
+    testskip: 1
     no_batching: true
     N_samples: 0
     N_importance: 0
@@ -36,10 +36,24 @@ default_dataset_airplane_setup: &default_dataset_airplane_setup
     dataset_type: "blender"
 
 spheres_dataset_airplane_setup: &spheres_dataset_airplane_setup
-    expname: "test123"
+    expname: "test"
     basedir: "logs"
     datadir: "data/normalized"
     dataset_type: "sphere_blender"
+
+spheres_dataset_airplane_more_train_setup: &spheres_dataset_airplane_more_train_setup
+    expname: "test_more_views_normalized_268_in_train_1_spheres_not_reflected_rays_v_2"
+    basedir: "logs"
+    datadir: "data/normalized_268_in_train"
+    dataset_type: "sphere_blender"
+
+
+airplane_more_train_sphere_module:
+  module: "sphere_nerf_mod.trainers.SphereBlenderTrainer"
+  kwargs:
+    <<: *spheres_setup_params
+    <<: *spheres_dataset_airplane_more_train_setup
+
 
 airplane_sphere_module:
   module: "sphere_nerf_mod.trainers.SphereBlenderTrainer"

@@ -20,7 +20,7 @@ torch.set_default_tensor_type('torch.cuda.FloatTensor')
     "--model",
     help="Selected model",
     type=str,
-    default="airplane_sphere_module"
+    default="airplane_more_train_sphere_module"
 )
 def main(
         hparams_path: str,

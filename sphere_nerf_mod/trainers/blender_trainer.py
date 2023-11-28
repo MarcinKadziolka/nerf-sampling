@@ -52,7 +52,7 @@ class SphereBlenderTrainer(Blender.BlenderTrainer):
         **kwargs
     ) -> Tuple[Optional[torch.Tensor],
         Optional[torch.Tensor], Optional[torch.Tensor],
-    torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+    torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, Optional[torch.Tensor]]:
         """Sample points on given rays.
 
         This method defines how to sample points on given rays.
@@ -94,12 +94,6 @@ class SphereBlenderTrainer(Blender.BlenderTrainer):
         rays_directions = rays_d
         rays = Lines(rays_origins, rays_directions)
 
-        reflected_rays = Lines(
-            torch.zeros_like(rays_origins),
-            F.normalize(rays_origins + rays_directions, dim=-1)
-        )
-        rays = reflected_rays
-
         # Sample points on spheres and transform them into a
         # single number representation
         sphere_nerf_points = self.sample_points_on_spheres(
@@ -122,19 +116,7 @@ class SphereBlenderTrainer(Blender.BlenderTrainer):
             )
 
         # Prepare copies of points and view directions
-        n_copies_tensor = pts.unsqueeze(-1).repeat(1, 1, 1, n_copies)
-        ind = torch.arange(n_copies).view(1, 1, 1, n_copies)
-        _pts_shape = pts.shape
-        fourth_dim = ind.expand(_pts_shape[0], _pts_shape[1], 1, n_copies)
-        final_pts = torch.cat([n_copies_tensor, fourth_dim / n_copies], dim=2)
-        final_pts = final_pts.swapaxes(2, 3)
-
-        n_copies_tensor = viewdirs.unsqueeze(-1).repeat(1, 1, n_copies)
-        ind = torch.ones(1, 1, n_copies)
-        _viewdirs_shape = viewdirs.shape
-        fourth_dim = ind.expand(_viewdirs_shape[0], 1, n_copies)
-        final_viewdirs = torch.cat([n_copies_tensor, fourth_dim], dim=1)
-        final_viewdirs = final_viewdirs.swapaxes(1, 2)
+        final_pts, final_viewdirs = self._prepare_samples(pts, n_copies)
 
         # Choose the network function
         run_fn = network_fn if network_fine is None else network_fine
@@ -149,7 +131,27 @@ class SphereBlenderTrainer(Blender.BlenderTrainer):
             pytest=pytest
         )
 
-        return None, None, None, rgb_map, disp_map, acc_map, raw
+        return None, None, None, rgb_map, disp_map, acc_map, raw, None
+
+    @staticmethod
+    def _prepare_samples(pts, n_copies):
+        """
+            Prepare samples to n canals.
+        """
+        n_copies_tensor = pts.unsqueeze(-1).repeat(1, 1, 1, n_copies)
+        ind = torch.arange(n_copies).view(1, 1, 1, n_copies)
+        _pts_shape = pts.shape
+        fourth_dim = ind.expand(_pts_shape[0], _pts_shape[1], 1, n_copies)
+        final_pts = torch.cat([n_copies_tensor, fourth_dim / n_copies], dim=2)
+        final_pts = final_pts.swapaxes(2, 3)
+
+        n_copies_tensor = viewdirs.unsqueeze(-1).repeat(1, 1, n_copies)
+        ind = torch.ones(1, 1, n_copies)
+        _viewdirs_shape = viewdirs.shape
+        fourth_dim = ind.expand(_viewdirs_shape[0], 1, n_copies)
+        final_viewdirs = torch.cat([n_copies_tensor, fourth_dim], dim=1)
+        final_viewdirs = final_viewdirs.swapaxes(1, 2)
+        return final_pts, final_viewdirs
 
     def sample_points_on_spheres(
         self,
@@ -178,9 +180,6 @@ class SphereBlenderTrainer(Blender.BlenderTrainer):
         intersection_points = rays.find_intersection_points_with_sphere(
             self.spheres
         )
-        #selected_points = rays.select_closest_point_to_origin(
-        #    intersection_points
-        #)
         selected_points = intersection_points[:, :, 1, :]
 
         return torch.nan_to_num(
@@ -190,7 +189,11 @@ class SphereBlenderTrainer(Blender.BlenderTrainer):
     def create_nerf_model(self):
         return self._create_nerf_model(model=SphereMoreViewsNeRFV2)
 
-    def raw2outputs(self, raw, z_vals, rays_d, raw_noise_std=0, white_bkgd=False, pytest=False):
+    def raw2outputs(
+        self, raw, z_vals, rays_d,
+        raw_noise_std=0, white_bkgd=False,
+        pytest=False, **kwargs
+    ):
         """Transforms model's predictions to semantically meaningful values.
         Args:
             raw: [num_rays, num_samples along ray, 4]. Prediction from model.
@@ -203,9 +206,13 @@ class SphereBlenderTrainer(Blender.BlenderTrainer):
             weights: [num_rays, num_samples]. Weights assigned to each sampled color.
             depth_map: [num_rays]. Estimated distance to object.
         """
-        raw2alpha = lambda raw, dists, act_fn=F.relu: 1. - torch.exp(-act_fn(raw) * dists)
+        raw2alpha = lambda raw, dists, act_fn=F.relu: 1. - torch.exp(
+            -act_fn(raw) * dists
+        )
         dists = z_vals[..., 1:] - z_vals[..., :-1]
-        dists = torch.cat([dists, torch.Tensor([1e10]).expand(dists[..., :1].shape)], -1)  # [N_rays, N_samples]
+        dists = torch.cat([dists, torch.Tensor([1e10]).expand(
+            dists[..., :1].shape)], -1
+                          )  # [N_rays, N_samples]
         dists = dists * torch.norm(rays_d[..., None, :], dim=-1)
         rgb = torch.sigmoid(raw[..., :3])  # [N_rays, N_samples, 3]
         noise = 0.
@@ -218,17 +225,17 @@ class SphereBlenderTrainer(Blender.BlenderTrainer):
                 noise = torch.Tensor(noise)
         alpha = raw2alpha(raw[..., 3] + noise, dists)  # [N_rays, N_samples]
         weights = alpha * torch.cumprod(torch.cat(
-            [torch.ones((alpha.shape[0], 1)), 1. - alpha + 1e-10], -1), -1)[:, :-1]
+            [torch.ones(
+                (alpha.shape[0], 1)
+            ), 1. - alpha + 1e-10], -1), -1)[:, :-1]
 
         n_spheres = raw.shape[1]
-        #rgb_map = torch.sum(weights[..., None] * rgb, -2)  # [N_rays, 3]
         rgb_map = torch.sum(raw[..., 3, None] * rgb, -2) / n_spheres
-        # rgb_map = torch.sum(rgb, -1) / n_spheres
         rgb_map = torch.where(rgb_map < 0, 0, rgb_map)
 
         depth_map = torch.sum(weights * z_vals, -1)
-        disp_map = 1. / torch.max(1e-10 * torch.ones_like(depth_map), depth_map / torch.sum(weights, -1))
+        disp_map = 1. / torch.max(
+            1e-10 * torch.ones_like(depth_map), depth_map / torch.sum(weights, -1)
+        )
         acc_map = torch.sum(weights, -1)
-        #if white_bkgd:
-        #    rgb_map = rgb_map + (1. - acc_map[..., None])
         return rgb_map, disp_map, acc_map, weights, depth_map
