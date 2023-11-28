@@ -10,9 +10,7 @@ from sphere_nerf_mod.lines import Lines
 from sphere_nerf_mod.spheres import Spheres
 
 from sphere_nerf_mod.models import (
-    SphereNeRF, MoreDirectionVectorInfo, SphereMoreViewsNeRF,
-    sphereWithoutViews, SphereTwoRGB, SphereMoreViewsNeRFV2,
-    SphereMoreViewsNeRFV6
+    SphereMoreViewsNeRFV2,
 )
 
 from sphere_nerf_mod.utils import change_cartesian_to_spherical
@@ -199,6 +197,9 @@ class SphereBlenderTrainer(Blender.BlenderTrainer):
             raw: [num_rays, num_samples along ray, 4]. Prediction from model.
             z_vals: [num_rays, num_samples along ray]. Integration time.
             rays_d: [num_rays, 3]. Direction of each ray.
+            raw_noise_std: std of noise added to raw
+            white_bkgd: flag, if img have white background,
+            pytest: flag, if it is tested (based on original nerf implementation)
         Returns:
             rgb_map: [num_rays, 3]. Estimated RGB color of a ray.
             disp_map: [num_rays]. Disparity map. Inverse of depth map.

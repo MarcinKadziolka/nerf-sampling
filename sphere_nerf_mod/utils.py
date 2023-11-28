@@ -38,7 +38,6 @@ def change_cartesian_to_spherical(x, y, z, r=None):
     tg(phi) = z/x
     sin(theta) = y/r
     """
-
     if r is None:
         r = torch.sqrt(x**2 + y**2 + z**2)
     phi = torch.arctan(z/x)
