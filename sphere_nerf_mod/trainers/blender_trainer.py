@@ -1,10 +1,9 @@
 """Blender trainer module - trainer for blender data."""
 
 from nerf_pytorch.trainers import Blender
-import numpy as np
 import torch
-import torch.nn.functional as F
 from typing import Optional, Tuple
+import torch.nn.functional as F
 
 from sphere_nerf_mod.lines import Lines
 from sphere_nerf_mod.spheres import Spheres
@@ -13,7 +12,10 @@ from sphere_nerf_mod.models import (
     SphereMoreViewsNeRFV2,
 )
 
-from sphere_nerf_mod.utils import change_cartesian_to_spherical
+from sphere_nerf_mod.utils import (
+    change_cartesian_to_spherical,
+    calc_pts
+)
 
 
 class SphereBlenderTrainer(Blender.BlenderTrainer):
@@ -98,13 +100,12 @@ class SphereBlenderTrainer(Blender.BlenderTrainer):
 
         # Sample points on spheres and transform them into a
         # single number representation
-        sphere_nerf_points = self.sample_points_on_spheres(
+        z_sphere, sphere_nerf_points = self.sample_points_on_spheres(
             rays
-        ).swapaxes(0, 1)  # [n_rays, m_spheres/n_points, 3]
-
-        z_sphere = rays.transform_points_to_single_number_representation(
-            sphere_nerf_points
         )
+
+        sphere_nerf_points = sphere_nerf_points.swapaxes(0, 1)  # [n_rays, m_spheres/n_points, 3]
+        z_sphere = z_sphere.swapaxes(0, 1)  # [m_spheres/n_points, n_rays]
 
         z_vals, _ = torch.sort(z_sphere, -1)
         pts = sphere_nerf_points
@@ -165,7 +166,7 @@ class SphereBlenderTrainer(Blender.BlenderTrainer):
         self,
         rays: Lines,
         point_coordinate_if_nan: float = 100
-    ) -> torch.Tensor:
+    ) -> (torch.Tensor, torch.Tensor):
         """Sample points on given rays.
 
         Samples points on rays - one point per sphere.
@@ -182,17 +183,27 @@ class SphereBlenderTrainer(Blender.BlenderTrainer):
             point_coordinate_if_nan: float - point coordinate value used to
              create points in place of nan points.
         Return:
+            z_vals,
             Tensor containing sampled points with shape (spheres, rays, 3).
 
         """
-        intersection_points = rays.find_intersection_points_with_sphere(
+        z_vals, intersection_points = rays.find_intersection_points_with_sphere(
             self.spheres
         )
-        selected_points = intersection_points[:, :, 1, :]
 
-        return torch.nan_to_num(
-            selected_points, nan=point_coordinate_if_nan
+        # select_closest_point_to_origin
+        z_vals = z_vals[:, :, 0]
+
+        # not intersection
+        z_vals = torch.nan_to_num(z_vals, nan=100)
+
+        selected_points = calc_pts(
+            origin=rays.origin,
+            t=z_vals,
+            direction=rays.direction
         )
+
+        return z_vals, selected_points
 
     def create_nerf_model(self):
         """Create NeRF model."""
@@ -222,39 +233,47 @@ class SphereBlenderTrainer(Blender.BlenderTrainer):
             depth_map: [num_rays]. Estimated distance to object.
 
         """
-        raw2alpha = lambda raw, dists, act_fn=F.relu: 1. - torch.exp(
-            -act_fn(raw) * dists
-        )
+
+        raw2alpha = lambda raw, dists, act_fn=F.relu: 1. - torch.exp(-act_fn(raw) * dists)
+
         dists = z_vals[..., 1:] - z_vals[..., :-1]
-        dists = torch.cat([dists, torch.Tensor([1e10]).expand(
-            dists[..., :1].shape)], -1
-        )  # [N_rays, N_samples]
+        dists = torch.cat([dists, torch.Tensor([1e10]).expand(dists[..., :1].shape)], -1)  # [N_rays, N_samples]
+
         dists = dists * torch.norm(rays_d[..., None, :], dim=-1)
+
         rgb = torch.sigmoid(raw[..., :3])  # [N_rays, N_samples, 3]
         noise = 0.
-        if raw_noise_std > 0.:
-            noise = torch.randn(raw[..., 3].shape) * raw_noise_std
-            # Overwrite randomly sampled data if pytest
-            if pytest:
-                np.random.seed(0)
-                noise = np.random.rand(
-                    *list(raw[..., 3].shape)
-                ) * raw_noise_std
-                noise = torch.Tensor(noise)
+
         alpha = raw2alpha(raw[..., 3] + noise, dists)  # [N_rays, N_samples]
+        # weights = alpha * tf.math.cumprod(1.-alpha + 1e-10, -1, exclusive=True)
+        weights = alpha * torch.cumprod(torch.cat([torch.ones((alpha.shape[0], 1)), 1. - alpha + 1e-10], -1), -1)[:,
+                          :-1]
+        rgb_map = torch.sum(weights[..., None] * rgb, -2)  # [N_rays, 3]
+
+        depth_map = torch.sum(weights * z_vals, -1)
+        disp_map = 1. / torch.max(1e-10 * torch.ones_like(depth_map), depth_map / torch.sum(weights, -1))
+        acc_map = torch.sum(weights, -1)
+
+        if white_bkgd:
+            rgb_map = rgb_map + (1. - acc_map[..., None])
+
+        """
+        rgb = torch.sigmoid(raw[..., :3])
+        alpha = torch.sigmoid(raw[..., 3])
+
         weights = alpha * torch.cumprod(torch.cat(
             [torch.ones(
                 (alpha.shape[0], 1)
             ), 1. - alpha + 1e-10], -1), -1)[:, :-1]
 
-        n_spheres = raw.shape[1]
-        rgb_map = torch.sum(raw[..., 3, None] * rgb, -2) / n_spheres
+        rgb_map = alpha[..., :, None] * rgb
         rgb_map = torch.where(rgb_map < 0, 0, rgb_map)
 
-        depth_map = torch.sum(weights * z_vals, -1)
-        disp_map = 1. / torch.max(
-            1e-10 * torch.ones_like(depth_map),
-            depth_map / torch.sum(weights, -1)
-        )
         acc_map = torch.sum(weights, -1)
+
+        return rgb_map, 1, acc_map, weights, 1
+        
+        """
+
         return rgb_map, disp_map, acc_map, weights, depth_map
+

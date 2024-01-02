@@ -32,7 +32,7 @@ def main(
 
     torch.manual_seed(42)  # 0
 
-    number_of_spheres = 1
+    number_of_spheres = 4
     smallest_sphere_radius = 1
     distance_between_spheres = 1 / 40
 

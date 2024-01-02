@@ -28,19 +28,24 @@ class Lines:
         self.direction = direction
 
     def find_intersection_points_with_sphere(
-            self, sphere: Spheres
-    ) -> torch.Tensor:
+            self, sphere: Spheres,
+            calc_intersection_points_cartesian: bool= False
+    ) -> (torch.Tensor, torch.Tensor):
         """Find intersection points with spheres.
 
         Finds intersection points of the lines with the given spheres.
         Returns nan values if a given line and sphere do not intersect.
         Args:
             sphere: Spheres - the spheres checked for intersection points.
+            calc_intersection_points_cartesian: book if return pts in cartesian.
         Return:
             torch.Tensor containing the intersection points and with shape
             [m_spheres, n_lines, 2 points, 3D].
-
+            t: torch.Tensor, z_vals
         """
+
+        intersection_points = None
+
         # [n_lines, m_spheres, 3D]
         origin_to_sphere_center_vector = torch.unsqueeze(
             self.origin, 1
@@ -56,19 +61,25 @@ class Lines:
             origin_to_sphere_center_vector, dim=2
         ) ** 2 - sphere.radius.T ** 2
 
+        a = torch.unsqueeze(
+            (self.direction * self.direction).sum(dim=1),
+            dim=1
+        )
+
         equation_solutions = solve_quadratic_equation(
-            torch.ones_like(b), b, c
+            a, b, c
         )  # [2_points, n_lines, m_spheres]
 
-        intersection_points = (torch.unsqueeze(
-            self.origin, 2
-        ) + torch.unsqueeze(
-            equation_solutions.T, 2
-        ) * torch.unsqueeze(
-            self.direction, 2
-        )).transpose(3, 2)
+        t = equation_solutions.T  # [n_lines, m_spheres, 2]
 
-        return intersection_points  # [m_spheres, n_lines, 2 points, 3D]
+        if calc_intersection_points_cartesian:
+            intersection_points = (torch.unsqueeze(
+                self.origin, 2
+            ) + torch.unsqueeze(t,  2) * torch.unsqueeze(
+                self.direction, 2
+            )).transpose(3, 2)
+
+        return t, intersection_points  # [m_spheres, n_lines, 2 points, 3D]
 
     def select_closest_point_to_origin(
             self, points: torch.Tensor

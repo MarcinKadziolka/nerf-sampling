@@ -39,7 +39,7 @@ spheres_dataset_airplane_setup: &spheres_dataset_airplane_setup
     expname: "test"
     basedir: "logs"
     datadir: "data/normalized"
-    dataset_type: "sphere_blender"
+    dataset_type: "sphere_blender_test_2_01"
 
 spheres_dataset_airplane_more_train_setup: &spheres_dataset_airplane_more_train_setup
     expname: "test_more_views_normalized_268_in_train_1_spheres_not_reflected_rays_v_2"

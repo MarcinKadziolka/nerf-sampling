@@ -43,3 +43,12 @@ def change_cartesian_to_spherical(x, y, z, r=None):
     phi = torch.arctan(z / x)
     theta = torch.arcsin(y / r)
     return torch.stack((phi.T, theta.T, r.T)).swapaxes(0, 2)
+
+
+def calc_pts(origin, t, direction):
+    pts = (torch.unsqueeze(
+        origin, 0
+    ) + torch.unsqueeze(t, 2) * torch.unsqueeze(
+        direction, 0
+    )) # .transpose(3, 2)
+    return pts
