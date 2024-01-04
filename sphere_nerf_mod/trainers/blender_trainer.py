@@ -212,7 +212,7 @@ class SphereBlenderTrainer(Blender.BlenderTrainer):
     def raw2outputs(
         self, raw, z_vals, rays_d,
         raw_noise_std=0, white_bkgd=False,
-        pytest=False, **kwargs
+        pytest=False, as_in_original_nerf=False, **kwargs
     ):
         """Transforms model's predictions to semantically meaningful values.
 
@@ -224,6 +224,8 @@ class SphereBlenderTrainer(Blender.BlenderTrainer):
             white_bkgd: flag, if img have white background,
             pytest: flag, if it is tested
                 (based on original nerf implementation)
+            as_in_original_nerf: bool, flag, if rgb calc as in original
+            nerf using integer
         Returns:
             rgb_map: [num_rays, 3]. Estimated RGB color of a ray.
             disp_map: [num_rays]. Disparity map. Inverse of depth map.
@@ -234,46 +236,49 @@ class SphereBlenderTrainer(Blender.BlenderTrainer):
 
         """
 
-        raw2alpha = lambda raw, dists, act_fn=F.relu: 1. - torch.exp(-act_fn(raw) * dists)
+        if as_in_original_nerf:
 
-        dists = z_vals[..., 1:] - z_vals[..., :-1]
-        dists = torch.cat([dists, torch.Tensor([1e10]).expand(dists[..., :1].shape)], -1)  # [N_rays, N_samples]
+            raw2alpha = lambda raw, dists, act_fn=F.relu: 1. - torch.exp(-act_fn(raw) * dists)
 
-        dists = dists * torch.norm(rays_d[..., None, :], dim=-1)
+            dists = z_vals[..., 1:] - z_vals[..., :-1]
+            dists = torch.cat([dists, torch.Tensor([1e10]).expand(dists[..., :1].shape)], -1)  # [N_rays, N_samples]
 
-        rgb = torch.sigmoid(raw[..., :3])  # [N_rays, N_samples, 3]
-        noise = 0.
+            dists = dists * torch.norm(rays_d[..., None, :], dim=-1)
 
-        alpha = raw2alpha(raw[..., 3] + noise, dists)  # [N_rays, N_samples]
-        # weights = alpha * tf.math.cumprod(1.-alpha + 1e-10, -1, exclusive=True)
-        weights = alpha * torch.cumprod(torch.cat([torch.ones((alpha.shape[0], 1)), 1. - alpha + 1e-10], -1), -1)[:,
-                          :-1]
-        rgb_map = torch.sum(weights[..., None] * rgb, -2)  # [N_rays, 3]
+            rgb = torch.sigmoid(raw[..., :3])  # [N_rays, N_samples, 3]
+            noise = 0.
 
-        depth_map = torch.sum(weights * z_vals, -1)
-        disp_map = 1. / torch.max(1e-10 * torch.ones_like(depth_map), depth_map / torch.sum(weights, -1))
-        acc_map = torch.sum(weights, -1)
+            alpha = raw2alpha(raw[..., 3] + noise, dists)  # [N_rays, N_samples]
+            # weights = alpha * tf.math.cumprod(1.-alpha + 1e-10, -1, exclusive=True)
+            weights = alpha * torch.cumprod(torch.cat([torch.ones((alpha.shape[0], 1)), 1. - alpha + 1e-10], -1), -1)[:,
+                              :-1]
+            rgb_map = torch.sum(weights[..., None] * rgb, -2)  # [N_rays, 3]
 
-        if white_bkgd:
-            rgb_map = rgb_map + (1. - acc_map[..., None])
+            depth_map = torch.sum(weights * z_vals, -1)
+            disp_map = 1. / torch.max(1e-10 * torch.ones_like(depth_map), depth_map / torch.sum(weights, -1))
+            acc_map = torch.sum(weights, -1)
 
-        """
-        rgb = torch.sigmoid(raw[..., :3])
-        alpha = torch.sigmoid(raw[..., 3])
+            if white_bkgd:
+                rgb_map = rgb_map + (1. - acc_map[..., None])
 
-        weights = alpha * torch.cumprod(torch.cat(
-            [torch.ones(
-                (alpha.shape[0], 1)
-            ), 1. - alpha + 1e-10], -1), -1)[:, :-1]
+        else:
+            rgb = torch.sigmoid(raw[..., :3])  # [N_rays, N_samples, 3]
+            alpha = torch.ones_like(raw[..., 3]) * 0.25
 
-        rgb_map = alpha[..., :, None] * rgb
-        rgb_map = torch.where(rgb_map < 0, 0, rgb_map)
+            weights = alpha * torch.cumprod(torch.cat(
+                [torch.ones(
+                    (alpha.shape[0], 1)
+                ), 1. - alpha + 1e-10], -1), -1)[:, :-1]
 
-        acc_map = torch.sum(weights, -1)
+            _z_vals = torch.ones_like(z_vals)
+            depth_map = torch.sum(weights * _z_vals, -1)
+            disp_map = 1. / torch.max(
+                1e-10 * torch.ones_like(depth_map),
+                depth_map / torch.sum(weights, -1)
+            )
 
-        return rgb_map, 1, acc_map, weights, 1
-        
-        """
+            rgb_map = torch.mean(rgb, dim=1)
+            acc_map = torch.sum(weights, -1)
 
         return rgb_map, disp_map, acc_map, weights, depth_map
 
