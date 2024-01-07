@@ -1,0 +1,30 @@
+sampler_lego_params: &sampler_lego_params
+  N_rand: 1024
+  white_bkgd: true
+  device: 'cpu'
+  i_weights: 100000
+  i_testset: 2000
+  i_video: 50000
+  i_print: 50000
+  lrate_decay: 500
+  input_dims_embed: 3
+  use_viewdirs: true
+  N_samples: 64
+  N_importance: 0
+  no_batching: true
+  half_res: true
+  precrop_iters: 500
+  precrop_frac: 0.5
+
+sampler_dataset_lego_setup: &sampler_dataset_lego_setup
+  expname: "lego_sampler_experiment"
+  basedir: "/Users/mateuszrajski/Desktop/logs"
+  datadir: "/Users/mateuszrajski/Desktop/lego"
+  dataset_type: "blender"
+
+
+lego_sampler_module:
+  module: "sphere_nerf_mod.trainers.SamplingTrainer"
+  kwargs:
+    <<: *sampler_lego_params
+    <<: *sampler_dataset_lego_setup
