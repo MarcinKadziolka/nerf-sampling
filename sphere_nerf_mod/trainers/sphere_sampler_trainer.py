@@ -64,7 +64,7 @@ def swap_nans_in_missing_batch_elements(dim, N_samples):
     fake_acc_map = torch.full((dim[0],), 0)
     fake_weights = torch.full((dim[0], N_samples), 0)
     fake_depth_map = torch.full((dim[0],), 0)
-    fake_raw = torch.full((dim[0], N_samples, 3), 0)
+    fake_raw = torch.full((dim[0], N_samples, 4), 0)
     fake_z_vals = torch.full((dim[0], N_samples), 0)
 
     return fake_rgb_map, fake_disp_map, fake_acc_map, fake_weights, fake_depth_map, fake_raw, fake_z_vals
@@ -90,6 +90,30 @@ class SphereSamplingTrainer(Blender.BlenderTrainer):
         self.as_in_original_nerf = as_in_original_nerf
         # Fine network is not used in this approach, we aim to learn sampling network which points are valuable
         self.N_importance = 0
+
+        self.sampled_times = 1
+        self.lost_rays_percentage = None
+        self.max_lost_rays = 0
+
+    def refresh_mean(self, valid_rays, invalid_rays):
+
+        new_percentage = invalid_rays / (valid_rays + invalid_rays) * 100
+
+        # update max lost 
+        if new_percentage > self.max_lost_rays:
+            self.max_lost_rays = new_percentage
+
+        # update arithmetic mean with recurrent formula
+        if self.sampled_times == 1:
+            self.lost_rays_percentage = new_percentage
+        else:
+            self.lost_rays_percentage = self.lost_rays_percentage + (new_percentage - self.lost_rays_percentage) / self.sampled_times
+
+        self.sampled_times = self.sampled_times + 1
+
+        print(f"CUR LOST RAYS IS {new_percentage}")
+        print(f"NEW MAX LOST RAYS IS {self.max_lost_rays}")
+        print(f"NEW LOST RAYS MEAN IS {self.lost_rays_percentage}")
 
     def sample_main_points(
         self,
@@ -160,6 +184,10 @@ class SphereSamplingTrainer(Blender.BlenderTrainer):
         valid_rays_o, valid_rays_d, valid_intersections, _,\
         invalid_rays_d, _, valid_indices, invalid_indices, valid_viewdirs = split_batch(intersections, rays_o, rays_d, viewdirs)
 
+        valid_rays_number = valid_rays_o.shape[0]
+        invalid_rays_number = rays_o.shape[0] - valid_rays_number
+        self.refresh_mean(valid_rays_number, invalid_rays_number)
+
 
         final_rgb_map, final_disp_map, final_acc_map, final_depth_map = None, None, None, None
         final_raw = None
@@ -170,9 +198,6 @@ class SphereSamplingTrainer(Blender.BlenderTrainer):
 
             pts, z_vals = sampling_network.forward(valid_rays_o, valid_rays_d, valid_intersections)
 
-            print("SHAPE======")
-            print(valid_rays_d.shape)
-            print(invalid_rays_d.shape)
             raw = network_query_fn(pts, valid_viewdirs, network_fn)
             rgb_map, disp_map, acc_map, weights, depth_map = self.raw2outputs(
                 raw, z_vals, rays_d, raw_noise_std, white_bkgd,
