@@ -34,8 +34,8 @@ class BaselineSampler(nn.Module):
 
         self.origin_layers = nn.ModuleList(
             [
-                nn.Linear(self.origin_dims, self.w1),
-                nn.Linear(self.w1,self.w2),
+                nn.Linear(self.origin_dims, self.w2),
+                nn.Linear(self.w2,self.w2),
                 nn.Linear(self.w2,self.w2),
                 nn.Linear(self.w2,self.w2),
                 nn.Linear(self.w2,self.w2),
@@ -45,8 +45,9 @@ class BaselineSampler(nn.Module):
 
         self.direction_layers = nn.ModuleList(
             [
-                nn.Linear(self.origin_dims, self.w1),
-                nn.Linear(self.w1,self.w2),
+                nn.Linear(self.direction_dims, self.w2),
+                nn.Linear(self.w2,self.w2),
+                nn.Linear(self.w2,self.w2),
                 nn.Linear(self.w2,self.w2),
                 nn.Linear(self.w2,self.w2),
                 nn.Linear(self.w2, self.w2),
@@ -59,10 +60,11 @@ class BaselineSampler(nn.Module):
                 nn.Linear(self.w2,self.w2),
                 nn.Linear(self.w2,self.w2),
                 nn.Linear(self.w2, self.w2),
+                nn.Linear(self.w2, self.w1)
             ]
         )
 
-        self.last = nn.Linear(self.w2, self.output_channels)
+        self.last = nn.Linear(self.w1, self.output_channels)
 
     def forward(self, rays_o: torch.Tensor, rays_d: torch.Tensor):
         """
@@ -96,5 +98,11 @@ class BaselineSampler(nn.Module):
         z_vals = self.near * (1 - outputs) + self.far * outputs
         z_vals, _ = z_vals.sort(dim=-1)
 
+        # [N_rays, N_samples, 3] and [N_rays, N_samples]
+        # Scaled points in visualizer have to be associated with ray origin
+        # From origin to points x such that d(origin, x) = 2 line is blue
+        # From x to point y such that d(origin, y) = 6 line is red
+
+        # Save batch from last epoch
         return scale_points_with_weights(z_vals, rays_o, rays_d), z_vals
     

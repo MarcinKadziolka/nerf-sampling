@@ -2,7 +2,8 @@ from nerf_pytorch.trainers import Blender
 import torch
 from nerf_pytorch.nerf_utils import NeRF, create_nerf
 from sphere_nerf_mod.samplers.baseline_sampler import BaselineSampler
-
+from safetensors.torch import save_file
+import os
 
 class SamplingTrainer(Blender.BlenderTrainer):
     """Trainer for blender data."""
@@ -57,7 +58,28 @@ class SamplingTrainer(Blender.BlenderTrainer):
         render_kwargs_train['as_in_original_nerf'] = self.as_in_original_nerf
         render_kwargs_test['as_in_original_nerf'] = self.as_in_original_nerf
 
+        render_kwargs_train['model_mode'] = 'train'
+        render_kwargs_test['model_mode'] = 'test'
+
         return optimizer, render_kwargs_train, render_kwargs_test
+    
+    def save_rays_data(self, rays_o, pts):
+        """
+        Saves rays data for later visualization
+        """
+        n_rays = rays_o.shape[0]
+        if self.global_step % self.i_testset != 0:
+            return
+        
+        filename = os.path.join(self.basedir, self.expname, f'{self.expname}_{self.global_step}.safetensors')
+
+        tensors = {
+            'origins': rays_o.contiguous(),
+            'pts': pts.contiguous(),
+        }
+
+        save_file(tensors, filename)
+
     
     def sample_main_points(
         self,
@@ -77,7 +99,6 @@ class SamplingTrainer(Blender.BlenderTrainer):
         Custom method for sampling `N_samples` points from coarse network. 
         Uses sampling network to get points on the ray
         """
-
         rgb_map, disp_map, acc_map, depth_map = None, None, None, None
         raw = None
         weights = None
@@ -86,6 +107,8 @@ class SamplingTrainer(Blender.BlenderTrainer):
         if N_samples > 0:
 
             pts, z_vals = sampling_network.forward(rays_o, rays_d)
+
+            self.save_rays_data(rays_o, pts)
 
             raw = network_query_fn(pts, viewdirs, network_fn)
             rgb_map, disp_map, acc_map, weights, depth_map = self.raw2outputs(
