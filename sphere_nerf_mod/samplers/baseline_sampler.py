@@ -106,6 +106,7 @@ class BaselineSampler(nn.Module):
             z_vals = z_vals.unsqueeze(-1).repeat(1,1,self.noise_size)
             z_vals = z_vals + torch.normal(mean=0, std=0.001, size=z_vals.size())
             z_vals = z_vals.reshape([n_rays, self.output_channels * self.noise_size])
+            z_vals = torch.clamp(z_vals, min=self.near, max=self.far)
 
         z_vals, _ = z_vals.sort(dim=-1)
         print(f"z_vals output shape {z_vals.shape}")
