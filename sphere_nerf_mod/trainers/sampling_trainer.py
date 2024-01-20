@@ -13,6 +13,8 @@ class SamplingTrainer(Blender.BlenderTrainer):
     def __init__(
             self,
             as_in_original_nerf = False,
+            use_noise = True,
+            noise_size = 10,
             **kwargs
     ):
         """Initialize the sampling trainer.
@@ -26,6 +28,11 @@ class SamplingTrainer(Blender.BlenderTrainer):
         self.as_in_original_nerf = as_in_original_nerf
         # Fine network is not used in this approach, we aim to learn sampling network which points are valuable
         self.N_importance = 0
+        self.use_noise = use_noise
+        self.noise_size = noise_size
+
+        if use_noise:
+            print(f"Using noise {self.noise_size}")
    
     def create_nerf_model(self):
         """Custom create_nerf_model function that adds sampler to the model"""
@@ -42,7 +49,8 @@ class SamplingTrainer(Blender.BlenderTrainer):
 
         # Inject sampler
         sampling_network = BaselineSampler(
-            output_channels=self.N_samples
+            output_channels=self.N_samples,
+            noise_size=self.noise_size if self.use_noise else None
         )
 
         # Add samplet to grad_vars

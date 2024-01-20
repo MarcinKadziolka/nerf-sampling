@@ -17,10 +17,12 @@ class BaselineSampler(nn.Module):
             origin_channels = 3,
             direction_channels = 3,
             output_channels = 40,
+            noise_size = None,
             far = 6,
             near = 2
     ):
         super(BaselineSampler, self).__init__()
+        self.noise_size = noise_size
         self.w1 = 256
         self.w2 = 128
         self.origin_channels = origin_channels
@@ -95,9 +97,18 @@ class BaselineSampler(nn.Module):
         outputs = self.last(outputs)
         outputs = F.sigmoid(outputs)
 
+        # [N_rays, N_samples]
         z_vals = self.near * (1 - outputs) + self.far * outputs
-        z_vals, _ = z_vals.sort(dim=-1)
 
+        # To add noise self.noise_size times we need to broadcast vector
+        n_rays = z_vals.shape[0]
+        if self.noise_size:
+            z_vals = z_vals.unsqueeze(-1).repeat(1,1,self.noise_size)
+            z_vals = z_vals + torch.normal(mean=0, std=0.001, size=z_vals.size())
+            z_vals = z_vals.reshape([n_rays, self.output_channels * self.noise_size])
+
+        z_vals, _ = z_vals.sort(dim=-1)
+        print(f"z_vals output shape {z_vals.shape}")
         # [N_rays, N_samples, 3] and [N_rays, N_samples]
         # Scaled points in visualizer have to be associated with ray origin
         # From origin to points x such that d(origin, x) = 2 line is blue
