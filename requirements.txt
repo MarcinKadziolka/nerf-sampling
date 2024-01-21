@@ -2,7 +2,7 @@ click==8.1.3
 pyyaml==6.0.1
 
 # NeRF, reference to fork
-git+https://github.com/waczjoan/nerf_pytorch@change_train_function_into_object
+git+https://github.com/waczjoan/nerf_pytorch@optional-alphas-in-loss
 
 # Current repository code
 --editable .
