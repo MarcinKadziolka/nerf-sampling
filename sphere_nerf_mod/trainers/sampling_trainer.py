@@ -128,7 +128,7 @@ class SamplingTrainer(Blender.BlenderTrainer):
 
             self.save_rays_data(rays_o, pts, alpha)
 
-        return rgb_map, disp_map, acc_map, weights, depth_map, z_vals, weights, raw
+        return rgb_map, disp_map, acc_map, weights, depth_map, z_vals, weights, raw, alpha
     
     def raw2outputs(self, raw, z_vals, rays_d, raw_noise_std=0, white_bkgd=False, pytest=False, **kwargs):
         """Transforms model's predictions to semantically meaningful values.
