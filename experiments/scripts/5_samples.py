@@ -43,8 +43,14 @@ def main(
     hparams['kwargs']['N_samples'] = 5
     hparams['kwargs']['expname'] = '5_samples'
 
+    # Use regions when alphas are in loss
+    hparams['kwargs']['use_regions'] = False
+    hparams['kwargs']['use_alphas_in_loss'] = False
+    hparams['kwargs']['alphas_loss_weight'] = 0
+    hparams['kwargs']['use_noise'] = False
+
     trainer = load_obj_from_config(cfg=hparams)
-    trainer.train(N_iters=700001)
+    trainer.train(N_iters=50001)
 
 
 if __name__ == "__main__":
