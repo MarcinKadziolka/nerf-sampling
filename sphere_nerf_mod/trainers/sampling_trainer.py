@@ -36,7 +36,7 @@ class SamplingTrainer(Blender.BlenderTrainer):
         else:
             print("[NOISE] Noise in sampling is disabled")
         
-        if self.alphas_loss_weight:
+        if self.use_alphas_in_loss:
             print("[ALPHAS_LOSS] Alphas used in loss")
         else:
             print("[ALPHAS_LOSS] Alphas NOT used in loss")
