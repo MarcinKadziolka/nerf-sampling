@@ -14,7 +14,7 @@ if torch.cuda.is_available():
     "--hparams_path",
     help="Type of selected dataset",
     type=str,
-    default="experiments/configs/lego.yaml"
+    default="experiments/configs/lego_base.yaml"
 )
 @click.option(
     "--model",
