@@ -18,11 +18,13 @@ class BaselineSampler(nn.Module):
             direction_channels = 3,
             output_channels = 40,
             noise_size = None,
+            use_regions = False,
             far = 6,
             near = 2
     ):
         super(BaselineSampler, self).__init__()
         self.noise_size = noise_size
+        self.use_regions = use_regions
         self.w1 = 256
         self.w2 = 128
         self.origin_channels = origin_channels
@@ -68,6 +70,48 @@ class BaselineSampler(nn.Module):
 
         self.last = nn.Linear(self.w1, self.output_channels)
 
+    def scale_without_regions(self, outputs, rays_o, rays_d):
+        """Directly scales points from NN output to the range [NEAR, FAR]"""
+        # [N_rays, N_samples]
+        z_vals = self.near * (1 - outputs) + self.far * outputs
+
+        # To add noise self.noise_size times we need to broadcast vector
+        n_rays = z_vals.shape[0]
+        if self.noise_size:
+            z_vals = z_vals.unsqueeze(-1).repeat(1,1,self.noise_size)
+            z_vals = z_vals + torch.normal(mean=0, std=0.001, size=z_vals.size())
+            z_vals = z_vals.reshape([n_rays, self.output_channels * self.noise_size])
+            z_vals = torch.clamp(z_vals, min=self.near, max=self.far)
+
+        z_vals, _ = z_vals.sort(dim=-1)
+        # [N_rays, N_samples, 3] and [N_rays, N_samples]
+        # Scaled points in visualizer have to be associated with ray origin
+        # From origin to points x such that d(origin, x) = 2 line is blue
+        # From x to point y such that d(origin, y) = 6 line is red
+
+        # Save batch from last epoch
+        return scale_points_with_weights(z_vals, rays_o, rays_d), z_vals
+    
+    def scale_with_regions(self, outputs, rays_o, rays_d):
+        """
+        Splits rays into regions to prevent squeezing all points
+        in one place when alphas are used in loss. 
+        This method does not support adding noise for now.
+        """
+        
+        # We need to divide [NEAR, FAR] into N_samples equal parts
+        intervals = torch.linspace(self.near, self.far, self.output_channels + 1).view(-1, 1)
+        intervals = torch.cat((intervals[:-1], intervals[1:]), dim=1)
+
+        # Now we need to scale i-th output to accordingly to the i-th interval range
+        intervals_exp = intervals.unsqueeze(0).expand(outputs.shape[0], -1, -1)
+        min_vals, max_vals = intervals_exp[:,:,0], intervals_exp[:,:,1]
+        z_vals = min_vals + outputs * (max_vals - min_vals)
+
+        return scale_points_with_weights(z_vals, rays_o, rays_d), z_vals
+
+
+
     def forward(self, rays_o: torch.Tensor, rays_d: torch.Tensor):
         """
         For given ray origins and directions returns points sampled along ray.
@@ -97,24 +141,8 @@ class BaselineSampler(nn.Module):
         outputs = self.last(outputs)
         outputs = F.sigmoid(outputs)
 
-        # [N_rays, N_samples]
-        z_vals = self.near * (1 - outputs) + self.far * outputs
-
-        # To add noise self.noise_size times we need to broadcast vector
-        n_rays = z_vals.shape[0]
-        if self.noise_size:
-            z_vals = z_vals.unsqueeze(-1).repeat(1,1,self.noise_size)
-            z_vals = z_vals + torch.normal(mean=0, std=0.001, size=z_vals.size())
-            z_vals = z_vals.reshape([n_rays, self.output_channels * self.noise_size])
-            z_vals = torch.clamp(z_vals, min=self.near, max=self.far)
-
-        z_vals, _ = z_vals.sort(dim=-1)
-        print(f"z_vals output shape {z_vals.shape}")
-        # [N_rays, N_samples, 3] and [N_rays, N_samples]
-        # Scaled points in visualizer have to be associated with ray origin
-        # From origin to points x such that d(origin, x) = 2 line is blue
-        # From x to point y such that d(origin, y) = 6 line is red
-
-        # Save batch from last epoch
-        return scale_points_with_weights(z_vals, rays_o, rays_d), z_vals
+        if not self.use_regions:
+            return self.scale_without_regions(outputs, rays_o, rays_d)
+        
+        return self.scale_with_regions(outputs, rays_o, rays_d)
     

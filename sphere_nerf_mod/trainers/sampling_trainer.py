@@ -15,6 +15,7 @@ class SamplingTrainer(Blender.BlenderTrainer):
             as_in_original_nerf = False,
             use_noise = True,
             noise_size = 10,
+            use_regions = False,
             **kwargs
     ):
         """Initialize the sampling trainer.
@@ -30,6 +31,7 @@ class SamplingTrainer(Blender.BlenderTrainer):
         self.N_importance = 0
         self.use_noise = use_noise
         self.noise_size = noise_size
+        self.use_regions = use_regions
 
         if use_noise:
             print(f"[NOISE] Using noise {self.noise_size}")
@@ -40,6 +42,11 @@ class SamplingTrainer(Blender.BlenderTrainer):
             print("[ALPHAS_LOSS] Alphas used in loss")
         else:
             print("[ALPHAS_LOSS] Alphas NOT used in loss")
+
+        if self.use_regions:
+            print("[USE_REGIONS] enabled")
+        else:
+            print("[USE_REGIONS] disabled")
    
     def create_nerf_model(self):
         """Custom create_nerf_model function that adds sampler to the model"""
@@ -57,7 +64,8 @@ class SamplingTrainer(Blender.BlenderTrainer):
         # Inject sampler
         sampling_network = BaselineSampler(
             output_channels=self.N_samples,
-            noise_size=self.noise_size if self.use_noise else None
+            noise_size=self.noise_size if self.use_noise else None,
+            use_regions=self.use_regions
         )
 
         # Add samplet to grad_vars
@@ -125,7 +133,6 @@ class SamplingTrainer(Blender.BlenderTrainer):
         if N_samples > 0:
 
             pts, z_vals = sampling_network.forward(rays_o, rays_d)
-
 
             raw = network_query_fn(pts, viewdirs, network_fn)
             rgb_map, disp_map, acc_map, weights, depth_map, alpha = self.raw2outputs(
