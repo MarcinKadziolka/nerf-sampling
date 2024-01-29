@@ -3,6 +3,7 @@ import click
 import torch
 import yaml
 from nerf_pytorch.utils import load_obj_from_config
+import os
 
 if torch.cuda.is_available():
     torch.set_default_tensor_type('torch.cuda.FloatTensor')
@@ -30,6 +31,13 @@ def main(
         hparams = yaml.safe_load(fin)[model]
 
     torch.manual_seed(42)  # 0
+
+    # get names of environment variables
+    datadir = os.environ.get('DATADIR')
+    basedir = os.environ.get('BASEDIR')
+
+    hparams['kwargs']['datadir'] = datadir
+    hparams['kwargs']['basedir'] = basedir
 
     trainer = load_obj_from_config(cfg=hparams)
     trainer.train(N_iters=500001)

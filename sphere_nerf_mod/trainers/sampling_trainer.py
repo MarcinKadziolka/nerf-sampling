@@ -32,7 +32,14 @@ class SamplingTrainer(Blender.BlenderTrainer):
         self.noise_size = noise_size
 
         if use_noise:
-            print(f"Using noise {self.noise_size}")
+            print(f"[NOISE] Using noise {self.noise_size}")
+        else:
+            print("[NOISE] Noise in sampling is disabled")
+        
+        if self.alphas_loss_weight:
+            print("[ALPHAS_LOSS] Alphas used in loss")
+        else:
+            print("[ALPHAS_LOSS] Alphas NOT used in loss")
    
     def create_nerf_model(self):
         """Custom create_nerf_model function that adds sampler to the model"""
