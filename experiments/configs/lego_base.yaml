@@ -17,7 +17,7 @@ sampler_lego_params: &sampler_lego_params
   precrop_frac: 0.5
   use_noise: false
   noise_size: 10
-  use_alphas_in_loss: true
+  use_alphas_in_loss: false
   alphas_loss_weight: 0.01
 
 sampler_dataset_lego_setup: &sampler_dataset_lego_setup
