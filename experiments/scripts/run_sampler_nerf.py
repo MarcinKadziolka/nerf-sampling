@@ -40,7 +40,7 @@ def main(
     hparams['kwargs']['basedir'] = basedir
 
     trainer = load_obj_from_config(cfg=hparams)
-    trainer.train(N_iters=500001)
+    trainer.train(N_iters=700001)
 
 
 if __name__ == "__main__":
