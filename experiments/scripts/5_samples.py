@@ -50,7 +50,7 @@ def main(
     hparams['kwargs']['use_noise'] = False
 
     trainer = load_obj_from_config(cfg=hparams)
-    trainer.train(N_iters=50001)
+    trainer.train(N_iters=700001)
 
 
 if __name__ == "__main__":
