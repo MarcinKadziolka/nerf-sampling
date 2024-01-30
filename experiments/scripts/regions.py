@@ -39,24 +39,18 @@ def main(
     hparams['kwargs']['datadir'] = datadir
     hparams['kwargs']['basedir'] = basedir
 
-    # Whether to use regions when alphas are in loss
-    hparams['kwargs']['use_regions'] = False
-    hparams['kwargs']['use_noise'] = False
+    # Sample only 5 times
+    hparams['kwargs']['N_samples'] = 5
+    hparams['kwargs']['expname'] = 'regions_with_alphas'
 
-    EPOCHS = 150000
-
-    # With alphas
+    # Use regions when alphas are in loss
+    hparams['kwargs']['use_regions'] = True
     hparams['kwargs']['use_alphas_in_loss'] = True
-    for samples in [8, 16, 32]:
-        hparams['kwargs']['N_samples'] = samples
-        for alphas_weight in [0.01, 0.1, 1]:
+    hparams['kwargs']['alphas_loss_weight'] = 1
 
-            expname = f'alphas_samples={samples}_weight={alphas_weight}'
-            hparams['kwargs']['expname'] = expname
-            hparams['kwargs']['alphas_loss_weight'] = alphas_weight
-            trainer = load_obj_from_config(cfg=hparams)
-            trainer.train(N_iters=EPOCHS+1)
-            
+    trainer = load_obj_from_config(cfg=hparams)
+    trainer.train(N_iters=50001)
+
 
 if __name__ == "__main__":
     main()
