@@ -16,6 +16,10 @@ class SamplingTrainer(Blender.BlenderTrainer):
             use_noise = True,
             noise_size = 10,
             use_regions = False,
+            use_summing = False,
+            increase_group_size_after = 1000,
+            max_group_size = 8,
+            train_only_sampler = False,
             **kwargs
     ):
         """Initialize the sampling trainer.
@@ -32,6 +36,17 @@ class SamplingTrainer(Blender.BlenderTrainer):
         self.use_noise = use_noise
         self.noise_size = noise_size
         self.use_regions = use_regions
+        self.use_summing = use_summing
+        self.group_size = 1
+        self.increase_group_size_after = increase_group_size_after
+        self.max_group_size = max_group_size
+
+        self.train_only_sampler = train_only_sampler
+
+        if use_summing:
+            print("[SUMMING] Enabled")
+        else:
+            print("[SUMMING Disabled")
 
         if use_noise:
             print(f"[NOISE] Using noise {self.noise_size}")
@@ -65,11 +80,17 @@ class SamplingTrainer(Blender.BlenderTrainer):
         sampling_network = BaselineSampler(
             output_channels=self.N_samples,
             noise_size=self.noise_size if self.use_noise else None,
-            use_regions=self.use_regions
+            use_regions=self.use_regions,
+            use_summing=self.use_summing
         )
 
-        # Add samplet to grad_vars
-        grad_vars += list(sampling_network.parameters())
+        sampling_network.set_group_size(self.group_size)
+
+        # Add samples to grad_vars
+        if self.train_only_sampler:
+            grad_vars = list(sampling_network.parameters())
+        else:
+            grad_vars += list(sampling_network.parameters())
 
 
         # Create optimizer
@@ -129,6 +150,11 @@ class SamplingTrainer(Blender.BlenderTrainer):
         raw = None
         weights = None
         z_vals = None
+
+
+        if self.global_step % self.increase_group_size_after == 0:
+            self.group_size = min(self.group_size*2, self.max_group_size)
+            sampling_network.set_group_size(self.group_size)
 
         if N_samples > 0:
 

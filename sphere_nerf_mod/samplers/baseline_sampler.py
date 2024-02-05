@@ -19,6 +19,7 @@ class BaselineSampler(nn.Module):
             output_channels = 40,
             noise_size = None,
             use_regions = False,
+            use_summing = False,
             far = 6,
             near = 2
     ):
@@ -32,6 +33,8 @@ class BaselineSampler(nn.Module):
         self.output_channels = output_channels
         self.far = far
         self.near = near
+        self.use_summing = use_summing
+        self.group_size = output_channels
 
         self.origin_embedder, self.origin_dims = get_embedder(multires=10, input_dims=origin_channels)
         self.direction_embedder, self.direction_dims = get_embedder(multires=10, input_dims=direction_channels)
@@ -70,6 +73,11 @@ class BaselineSampler(nn.Module):
 
         self.last = nn.Linear(self.w1, self.output_channels)
 
+    def set_group_size(self, k):
+        """Changes size of group"""
+        print(f"Increased group size to {k}")
+        self.group_size = k
+
     def scale_without_regions(self, outputs, rays_o, rays_d):
         """Directly scales points from NN output to the range [NEAR, FAR]"""
         # [N_rays, N_samples]
@@ -89,7 +97,11 @@ class BaselineSampler(nn.Module):
         # From origin to points x such that d(origin, x) = 2 line is blue
         # From x to point y such that d(origin, y) = 6 line is red
 
-        # Save batch from last epoch
+        if self.use_summing and self.group_size < n_rays and self.group_size > 1:
+            print(f"z_vals shape before summing {z_vals.shape}")
+            z_vals = torch.mean(z_vals.reshape(n_rays,-1,self.group_size), -1)
+            print(f"z_vals shape after summing {z_vals.shape}")
+
         return scale_points_with_weights(z_vals, rays_o, rays_d), z_vals
     
     def scale_with_regions(self, outputs, rays_o, rays_d):
