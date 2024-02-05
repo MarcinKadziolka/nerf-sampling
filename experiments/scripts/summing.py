@@ -5,6 +5,8 @@ import yaml
 from nerf_pytorch.utils import load_obj_from_config
 import os
 
+EPOCHS = 200000
+
 if torch.cuda.is_available():
     torch.set_default_tensor_type('torch.cuda.FloatTensor')
 
@@ -43,17 +45,26 @@ def main(
     hparams['kwargs']['use_regions'] = False
     hparams['kwargs']['use_noise'] = False
 
-    EPOCHS = 150000
 
+    # Use regions when alphas are in loss
+    hparams['kwargs']['use_regions'] = False
     hparams['kwargs']['use_alphas_in_loss'] = False
-    hparams['kwargs']['N_samples'] = 128
-    hparams['kwargs']['expname'] = 'Summing'
-    hparams['kwargs']['use_summing'] = True
-    hparams['kwargs']['increase_group_size_after'] = 1000
-    hparams['kwargs']['max_group_size'] = 16
+    hparams['kwargs']['alphas_loss_weight'] = 0
+    hparams['kwargs']['use_noise'] = False
 
-    trainer = load_obj_from_config(cfg=hparams)
-    trainer.train(N_iters=EPOCHS+1)
+    hparams['kwargs']['use_summing'] = True
+
+    for increase_after in [500, 2500, 5000]:
+        for n_rand in [1024, 2048]:
+            for n_samples, max_group in [(128, 16), (64, 8)]:
+                hparams['kwargs']['expname'] = f'[SUMMING] n_samples={n_samples} max_group={max_group} n_rand={n_rand} increase_after={increase_after}'
+                hparams['kwargs']['max_group_size'] = max_group
+                hparams['kwargs']['N_samples'] = n_samples
+                hparams['kwargs']['increase_group_size_after'] = increase_after
+                hparams['kwargs']['N_rand'] = n_rand
+
+                trainer = load_obj_from_config(cfg=hparams)
+                trainer.train(N_iters=EPOCHS+1)
             
 
 if __name__ == "__main__":
