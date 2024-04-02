@@ -131,6 +131,8 @@ dmypy.json
 # PyCharm
 .idea/
 
-data
+# Custom files
+dataset
+metrics
 logs
 .env_linux
