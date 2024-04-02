@@ -1,4 +1,4 @@
-sampler_lego_params: &sampler_lego_params
+sampler_lego_params: &sampler_lego_params # & adds anchor (reference) with a given name
   N_rand: 1024
   white_bkgd: true
   device: 'cpu'
@@ -27,5 +27,4 @@ sampler_dataset_lego_setup: &sampler_dataset_lego_setup
 lego_sampler_module:
   module: "sphere_nerf_mod.trainers.SamplingTrainer"
   kwargs:
-    <<: *sampler_lego_params
-    <<: *sampler_dataset_lego_setup
+    <<: [*sampler_lego_params, *sampler_dataset_lego_setup] # extract reference
