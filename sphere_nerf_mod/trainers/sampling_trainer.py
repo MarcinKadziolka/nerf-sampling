@@ -7,30 +7,29 @@ import os
 import torch.nn.functional as F
 import numpy as np
 
+
 class SamplingTrainer(Blender.BlenderTrainer):
     """Trainer for blender data."""
 
     def __init__(
-            self,
-            as_in_original_nerf = False,
-            use_noise = True,
-            noise_size = 10,
-            use_regions = False,
-            use_summing = False,
-            increase_group_size_after = 4000,
-            max_group_size = 8,
-            train_only_sampler = False,
-            swap_alphas_loss_with_weights = False,
-            **kwargs
+        self,
+        as_in_original_nerf=False,
+        use_noise=True,
+        noise_size=10,
+        use_regions=False,
+        use_summing=False,
+        increase_group_size_after=4000,
+        max_group_size=8,
+        train_only_sampler=False,
+        swap_alphas_loss_with_weights=False,
+        **kwargs,
     ):
         """Initialize the sampling trainer.
 
         In addition to original nerf_pytorch BlenderTrainer,
         the trainer contains the spheres used in the training process.
         """
-        super().__init__(
-            **kwargs
-        )
+        super().__init__(**kwargs)
         self.as_in_original_nerf = as_in_original_nerf
         # Fine network is not used in this approach, we aim to train sampling network which points are valuable
         self.N_importance = 0
@@ -54,9 +53,11 @@ class SamplingTrainer(Blender.BlenderTrainer):
             print(f"[NOISE] Using noise {self.noise_size}")
         else:
             print("[NOISE] Noise in sampling is disabled")
-        
+
         if self.use_alphas_in_loss:
-            print(f"[ALPHAS_LOSS] {'Weights' if self.swap_alphas_loss_with_weights else 'Alphas'} used in loss")
+            print(
+                f"[ALPHAS_LOSS] {'Weights' if self.swap_alphas_loss_with_weights else 'Alphas'} used in loss"
+            )
         else:
             print("[ALPHAS_LOSS] Alphas NOT used in loss")
 
@@ -64,16 +65,18 @@ class SamplingTrainer(Blender.BlenderTrainer):
             print("[USE_REGIONS] enabled")
         else:
             print("[USE_REGIONS] disabled")
-   
+
     def create_nerf_model(self):
         """Custom create_nerf_model function that adds sampler to the model"""
-        render_kwargs_train, render_kwargs_test, start, grad_vars, _ = create_nerf(self, NeRF)
+        render_kwargs_train, render_kwargs_test, start, grad_vars, _ = create_nerf(
+            self, NeRF
+        )
         self.global_step = start
         self.start = start
 
         bds_dict = {
-            'near': self.near,
-            'far': self.far,
+            "near": self.near,
+            "far": self.far,
         }
         render_kwargs_train.update(bds_dict)
         render_kwargs_test.update(bds_dict)
@@ -83,7 +86,7 @@ class SamplingTrainer(Blender.BlenderTrainer):
             output_channels=self.N_samples,
             noise_size=self.noise_size if self.use_noise else None,
             use_regions=self.use_regions,
-            use_summing=self.use_summing
+            use_summing=self.use_summing,
         )
 
         sampling_network.set_group_size(self.group_size)
@@ -94,23 +97,24 @@ class SamplingTrainer(Blender.BlenderTrainer):
         else:
             grad_vars += list(sampling_network.parameters())
 
-
         # Create optimizer
-        optimizer = torch.optim.Adam(params=grad_vars, lr=self.lrate, betas=(0.9, 0.999))
+        optimizer = torch.optim.Adam(
+            params=grad_vars, lr=self.lrate, betas=(0.9, 0.999)
+        )
 
         # Add sampler to model dicts
-        render_kwargs_train['sampling_network'] = sampling_network
-        render_kwargs_test['sampling_network'] = sampling_network
+        render_kwargs_train["sampling_network"] = sampling_network
+        render_kwargs_test["sampling_network"] = sampling_network
 
         # Pick integral approximation method
-        render_kwargs_train['as_in_original_nerf'] = self.as_in_original_nerf
-        render_kwargs_test['as_in_original_nerf'] = self.as_in_original_nerf
+        render_kwargs_train["as_in_original_nerf"] = self.as_in_original_nerf
+        render_kwargs_test["as_in_original_nerf"] = self.as_in_original_nerf
 
-        render_kwargs_train['model_mode'] = 'train'
-        render_kwargs_test['model_mode'] = 'test'
+        render_kwargs_train["model_mode"] = "train"
+        render_kwargs_test["model_mode"] = "test"
 
         return optimizer, render_kwargs_train, render_kwargs_test
-    
+
     def save_rays_data(self, rays_o, pts, alpha):
         """
         Saves rays data for later visualization
@@ -118,18 +122,19 @@ class SamplingTrainer(Blender.BlenderTrainer):
         n_rays = rays_o.shape[0]
         if self.global_step % self.i_testset != 0:
             return
-        
-        filename = os.path.join(self.basedir, self.expname, f'{self.expname}_{self.global_step}.safetensors')
+
+        filename = os.path.join(
+            self.basedir, self.expname, f"{self.expname}_{self.global_step}.safetensors"
+        )
 
         tensors = {
-            'origins': rays_o.contiguous(),
-            'pts': pts.contiguous(),
-            'alpha': alpha.contiguous(),
+            "origins": rays_o.contiguous(),
+            "pts": pts.contiguous(),
+            "alpha": alpha.contiguous(),
         }
 
         save_file(tensors, filename)
 
-    
     def sample_main_points(
         self,
         N_samples,
@@ -142,10 +147,10 @@ class SamplingTrainer(Blender.BlenderTrainer):
         white_bkgd,
         pytest,
         sampling_network,
-        **kwargs
+        **kwargs,
     ):
         """
-        Custom method for sampling `N_samples` points from coarse network. 
+        Custom method for sampling `N_samples` points from coarse network.
         Uses sampling network to get points on the ray
         """
         rgb_map, disp_map, acc_map, depth_map = None, None, None, None
@@ -153,9 +158,8 @@ class SamplingTrainer(Blender.BlenderTrainer):
         weights = None
         z_vals = None
 
-
         if self.global_step % self.increase_group_size_after == 0:
-            self.group_size = min(self.group_size*2, self.max_group_size)
+            self.group_size = min(self.group_size * 2, self.max_group_size)
             sampling_network.set_group_size(self.group_size)
 
         if N_samples > 0:
@@ -164,15 +168,33 @@ class SamplingTrainer(Blender.BlenderTrainer):
 
             raw = network_query_fn(pts, viewdirs, network_fn)
             rgb_map, disp_map, acc_map, weights, depth_map, alpha = self.raw2outputs(
-                raw, z_vals, rays_d, raw_noise_std, white_bkgd,
-                pytest=pytest
+                raw, z_vals, rays_d, raw_noise_std, white_bkgd, pytest=pytest
             )
 
             self.save_rays_data(rays_o, pts, alpha)
 
-        return rgb_map, disp_map, acc_map, weights, depth_map, z_vals, weights, raw, alpha
-    
-    def raw2outputs(self, raw, z_vals, rays_d, raw_noise_std=0, white_bkgd=False, pytest=False, **kwargs):
+        return (
+            rgb_map,
+            disp_map,
+            acc_map,
+            weights,
+            depth_map,
+            z_vals,
+            weights,
+            raw,
+            alpha,
+        )
+
+    def raw2outputs(
+        self,
+        raw,
+        z_vals,
+        rays_d,
+        raw_noise_std=0,
+        white_bkgd=False,
+        pytest=False,
+        **kwargs,
+    ):
         """Transforms model's predictions to semantically meaningful values.
         Args:
             raw: [num_rays, num_samples along ray, 4]. Prediction from model.
@@ -185,16 +207,20 @@ class SamplingTrainer(Blender.BlenderTrainer):
             weights: [num_rays, num_samples]. Weights assigned to each sampled color.
             depth_map: [num_rays]. Estimated distance to object.
         """
-        raw2alpha = lambda raw, dists, act_fn=F.relu: 1. - torch.exp(-act_fn(raw) * dists)
+        raw2alpha = lambda raw, dists, act_fn=F.relu: 1.0 - torch.exp(
+            -act_fn(raw) * dists
+        )
 
         dists = z_vals[..., 1:] - z_vals[..., :-1]
-        dists = torch.cat([dists, torch.Tensor([1e10]).expand(dists[..., :1].shape)], -1)  # [N_rays, N_samples]
+        dists = torch.cat(
+            [dists, torch.Tensor([1e10]).expand(dists[..., :1].shape)], -1
+        )  # [N_rays, N_samples]
 
         dists = dists * torch.norm(rays_d[..., None, :], dim=-1)
 
         rgb = torch.sigmoid(raw[..., :3])  # [N_rays, N_samples, 3]
-        noise = 0.
-        if raw_noise_std > 0.:
+        noise = 0.0
+        if raw_noise_std > 0.0:
             noise = torch.randn(raw[..., 3].shape) * raw_noise_std
 
             # Overwrite randomly sampled data if pytest
@@ -205,15 +231,29 @@ class SamplingTrainer(Blender.BlenderTrainer):
 
         alpha = raw2alpha(raw[..., 3] + noise, dists)  # [N_rays, N_samples]
         # weights = alpha * tf.math.cumprod(1.-alpha + 1e-10, -1, exclusive=True)
-        weights = alpha * torch.cumprod(torch.cat([torch.ones((alpha.shape[0], 1)), 1. - alpha + 1e-10], -1), -1)[:,
-                          :-1]
+        weights = (
+            alpha
+            * torch.cumprod(
+                torch.cat([torch.ones((alpha.shape[0], 1)), 1.0 - alpha + 1e-10], -1),
+                -1,
+            )[:, :-1]
+        )
         rgb_map = torch.sum(weights[..., None] * rgb, -2)  # [N_rays, 3]
 
         depth_map = torch.sum(weights * z_vals, -1)
-        disp_map = 1. / torch.max(1e-10 * torch.ones_like(depth_map), depth_map / torch.sum(weights, -1))
+        disp_map = 1.0 / torch.max(
+            1e-10 * torch.ones_like(depth_map), depth_map / torch.sum(weights, -1)
+        )
         acc_map = torch.sum(weights, -1)
 
         if white_bkgd:
-            rgb_map = rgb_map + (1. - acc_map[..., None])
+            rgb_map = rgb_map + (1.0 - acc_map[..., None])
 
-        return rgb_map, disp_map, acc_map, weights, depth_map, weights if self.swap_alphas_loss_with_weights else alpha
+        return (
+            rgb_map,
+            disp_map,
+            acc_map,
+            weights,
+            depth_map,
+            weights if self.swap_alphas_loss_with_weights else alpha,
+        )

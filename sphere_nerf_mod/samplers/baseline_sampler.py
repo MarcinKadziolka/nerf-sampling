@@ -1,6 +1,7 @@
 """
 Implements baseline sampling network torch module
 """
+
 import torch
 from torch import nn
 import torch.nn.functional as F
@@ -12,16 +13,17 @@ class BaselineSampler(nn.Module):
     """
     Baseline sampling network
     """
+
     def __init__(
-            self,
-            origin_channels = 3,
-            direction_channels = 3,
-            output_channels = 40,
-            noise_size = None,
-            use_regions = False,
-            use_summing = False,
-            far = 6,
-            near = 2
+        self,
+        origin_channels=3,
+        direction_channels=3,
+        output_channels=40,
+        noise_size=None,
+        use_regions=False,
+        use_summing=False,
+        far=6,
+        near=2,
     ):
         super(BaselineSampler, self).__init__()
         self.noise_size = noise_size
@@ -36,16 +38,20 @@ class BaselineSampler(nn.Module):
         self.use_summing = use_summing
         self.group_size = output_channels
 
-        self.origin_embedder, self.origin_dims = get_embedder(multires=10, input_dims=origin_channels)
-        self.direction_embedder, self.direction_dims = get_embedder(multires=10, input_dims=direction_channels)
+        self.origin_embedder, self.origin_dims = get_embedder(
+            multires=10, input_dims=origin_channels
+        )
+        self.direction_embedder, self.direction_dims = get_embedder(
+            multires=10, input_dims=direction_channels
+        )
 
         self.origin_layers = nn.ModuleList(
             [
                 nn.Linear(self.origin_dims, self.w2),
-                nn.Linear(self.w2,self.w2),
-                nn.Linear(self.w2,self.w2),
-                nn.Linear(self.w2,self.w2),
-                nn.Linear(self.w2,self.w2),
+                nn.Linear(self.w2, self.w2),
+                nn.Linear(self.w2, self.w2),
+                nn.Linear(self.w2, self.w2),
+                nn.Linear(self.w2, self.w2),
                 nn.Linear(self.w2, self.w2),
             ]
         )
@@ -53,10 +59,10 @@ class BaselineSampler(nn.Module):
         self.direction_layers = nn.ModuleList(
             [
                 nn.Linear(self.direction_dims, self.w2),
-                nn.Linear(self.w2,self.w2),
-                nn.Linear(self.w2,self.w2),
-                nn.Linear(self.w2,self.w2),
-                nn.Linear(self.w2,self.w2),
+                nn.Linear(self.w2, self.w2),
+                nn.Linear(self.w2, self.w2),
+                nn.Linear(self.w2, self.w2),
+                nn.Linear(self.w2, self.w2),
                 nn.Linear(self.w2, self.w2),
             ]
         )
@@ -64,10 +70,10 @@ class BaselineSampler(nn.Module):
         self.layers = nn.ModuleList(
             [
                 nn.Linear(self.w2 * 2, self.w2),
-                nn.Linear(self.w2,self.w2),
-                nn.Linear(self.w2,self.w2),
                 nn.Linear(self.w2, self.w2),
-                nn.Linear(self.w2, self.w1)
+                nn.Linear(self.w2, self.w2),
+                nn.Linear(self.w2, self.w2),
+                nn.Linear(self.w2, self.w1),
             ]
         )
 
@@ -86,7 +92,7 @@ class BaselineSampler(nn.Module):
         # To add noise self.noise_size times we need to broadcast vector
         n_rays = z_vals.shape[0]
         if self.noise_size:
-            z_vals = z_vals.unsqueeze(-1).repeat(1,1,self.noise_size)
+            z_vals = z_vals.unsqueeze(-1).repeat(1, 1, self.noise_size)
             z_vals = z_vals + torch.normal(mean=0, std=0.001, size=z_vals.size())
             z_vals = z_vals.reshape([n_rays, self.output_channels * self.noise_size])
             z_vals = torch.clamp(z_vals, min=self.near, max=self.far)
@@ -99,30 +105,30 @@ class BaselineSampler(nn.Module):
 
         if self.use_summing and self.group_size < n_rays and self.group_size > 1:
             print(f"z_vals shape before summing {z_vals.shape}")
-            z_vals = torch.mean(z_vals.reshape(n_rays,-1,self.group_size), -1)
+            z_vals = torch.mean(z_vals.reshape(n_rays, -1, self.group_size), -1)
             print(f"z_vals shape after summing {z_vals.shape}")
 
         return scale_points_with_weights(z_vals, rays_o, rays_d), z_vals
-    
+
     def scale_with_regions(self, outputs, rays_o, rays_d):
         """
         Splits rays into regions to prevent squeezing all points
-        in one place when alphas are used in loss. 
+        in one place when alphas are used in loss.
         This method does not support adding noise for now.
         """
-        
+
         # We need to divide [NEAR, FAR] into N_samples equal parts
-        intervals = torch.linspace(self.near, self.far, self.output_channels + 1).view(-1, 1)
+        intervals = torch.linspace(self.near, self.far, self.output_channels + 1).view(
+            -1, 1
+        )
         intervals = torch.cat((intervals[:-1], intervals[1:]), dim=1)
 
         # Now we need to scale i-th output to accordingly to the i-th interval range
         intervals_exp = intervals.unsqueeze(0).expand(outputs.shape[0], -1, -1)
-        min_vals, max_vals = intervals_exp[:,:,0], intervals_exp[:,:,1]
+        min_vals, max_vals = intervals_exp[:, :, 0], intervals_exp[:, :, 1]
         z_vals = min_vals + outputs * (max_vals - min_vals)
 
         return scale_points_with_weights(z_vals, rays_o, rays_d), z_vals
-
-
 
     def forward(self, rays_o: torch.Tensor, rays_d: torch.Tensor):
         """
@@ -155,6 +161,6 @@ class BaselineSampler(nn.Module):
 
         if not self.use_regions:
             return self.scale_without_regions(outputs, rays_o, rays_d)
-        
+
         return self.scale_with_regions(outputs, rays_o, rays_d)
-    
+

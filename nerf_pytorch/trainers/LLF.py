@@ -45,33 +45,40 @@ class LLFTrainer(Trainer):
 
     def load_data(self):
         images, poses, bds, render_poses, i_test = load_llff_data(
-            self.datadir, self.factor,
-          recenter = True, bd_factor=.75,
-          spherify = self.spherify
+            self.datadir,
+            self.factor,
+            recenter=True,
+            bd_factor=0.75,
+            spherify=self.spherify,
         )
         hwf = poses[0, :3, -1]
         poses = poses[:, :3, :4]
-        print('Loaded llff', images.shape, render_poses.shape, hwf, self.datadir)
+        print("Loaded llff", images.shape, render_poses.shape, hwf, self.datadir)
         if not isinstance(i_test, list):
             i_test = [i_test]
 
         if self.llffhold > 0:
-            print('Auto LLFF holdout,', self.llffhold)
-            i_test = np.arange(images.shape[0])[::self.llffhold]
+            print("Auto LLFF holdout,", self.llffhold)
+            i_test = np.arange(images.shape[0])[:: self.llffhold]
 
         i_val = i_test
-        i_train = np.array([i for i in np.arange(int(images.shape[0])) if
-                            (i not in i_test and i not in i_val)])
+        i_train = np.array(
+            [
+                i
+                for i in np.arange(int(images.shape[0]))
+                if (i not in i_test and i not in i_val)
+            ]
+        )
 
-        print('DEFINING BOUNDS')
+        print("DEFINING BOUNDS")
         if self.no_ndc:
-            near = np.ndarray.min(bds) * .9
-            far = np.ndarray.max(bds) * 1.
+            near = np.ndarray.min(bds) * 0.9
+            far = np.ndarray.max(bds) * 1.0
 
         else:
-            near = 0.
-            far = 1.
-        print('NEAR FAR', near, far)
+            near = 0.0
+            far = 1.0
+        print("NEAR FAR", near, far)
 
         self.near = near
         self.far = far
