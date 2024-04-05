@@ -25,6 +25,6 @@ sampler_dataset_lego_setup: &sampler_dataset_lego_setup
 
 
 lego_sampler_module:
-  module: "sphere_nerf_mod.trainers.SamplingTrainer"
+  module: "sampling_modules.trainers.sampling_trainer.SamplingTrainer"
   kwargs:
     <<: [*sampler_lego_params, *sampler_dataset_lego_setup] # extract reference
