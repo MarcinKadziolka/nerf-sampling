@@ -1,5 +1,7 @@
 from nerf_sampling.nerf_pytorch.trainers import Blender
-from nerf_sampling.nerf_pytorch.nerf_utils import NeRF, create_nerf
+from nerf_sampling.nerf_pytorch.nerf_utils import create_nerf
+from nerf_sampling.nerf_pytorch.run_nerf_helpers import NeRF
+
 from nerf_sampling.samplers.baseline_sampler import BaselineSampler
 from safetensors.torch import save_file
 import torch.nn.functional as F

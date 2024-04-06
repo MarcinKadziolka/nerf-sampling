@@ -1,9 +1,11 @@
 import os
 import imageio
 import time
+import torch
+import numpy as np
 from tqdm import tqdm
+from nerf_sampling.nerf_pytorch import run_nerf_helpers
 
-from nerf_sampling.nerf_pytorch.run_nerf_helpers import *
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 np.random.seed(0)
@@ -76,7 +78,7 @@ def render(
     if c2w is not None:
         # special case to render full image
         print(f"Check c2w 2 {c2w.get_device()}")
-        rays_o, rays_d = get_rays(H, W, K, c2w)
+        rays_o, rays_d = run_nerf_helpers.get_rays(H, W, K, c2w)
     else:
         # use provided ray batch
         rays_o, rays_d = rays
@@ -86,14 +88,14 @@ def render(
         viewdirs = rays_d
         if c2w_staticcam is not None:
             # special case to visualize effect of viewdirs
-            rays_o, rays_d = get_rays(H, W, K, c2w_staticcam)
+            rays_o, rays_d = run_nerf_helpers.get_rays(H, W, K, c2w_staticcam)
         viewdirs = viewdirs / torch.norm(viewdirs, dim=-1, keepdim=True)
         viewdirs = torch.reshape(viewdirs, [-1, 3]).float()
 
     sh = rays_d.shape  # [..., 3]
     if ndc:
         # for forward facing scenes
-        rays_o, rays_d = ndc_rays(H, W, K[0][0], 1.0, rays_o, rays_d)
+        rays_o, rays_d = run_nerf_helpers.ndc_rays(H, W, K[0][0], 1.0, rays_o, rays_d)
 
     # Create ray batch
     rays_o = torch.reshape(rays_o, [-1, 3]).float()
@@ -160,7 +162,7 @@ def render_path(
         """
 
         if savedir is not None:
-            rgb8 = to8b(rgbs[-1])
+            rgb8 = run_nerf_helpers.to8b(rgbs[-1])
             filename = os.path.join(savedir, "{:03d}.png".format(i))
             imageio.imwrite(filename, rgb8)
 
@@ -172,14 +174,14 @@ def render_path(
 
 def create_nerf(args, model):
     """Instantiate NeRF's MLP model."""
-    embed_fn, input_ch = get_embedder(
+    embed_fn, input_ch = run_nerf_helpers.get_embedder(
         args.multires, args.i_embed, args.input_dims_embed
     )
 
     input_ch_views = 0
     embeddirs_fn = None
     if args.use_viewdirs:
-        embeddirs_fn, input_ch_views = get_embedder(
+        embeddirs_fn, input_ch_views = run_nerf_helpers.get_embedder(
             args.multires_views, args.i_embed, args.input_dims_embed
         )
     output_ch = 5 if args.N_importance > 0 else 4

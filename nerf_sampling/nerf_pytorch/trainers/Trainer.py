@@ -1,9 +1,12 @@
+import tqdm
+import imageio
+import torch
+import os
+import numpy as np
 from pathlib import Path
 from tqdm import trange
-
-from torch.utils.tensorboard import SummaryWriter
-
-from nerf_sampling.nerf_pytorch.nerf_utils import *
+from torch.utils.tensorboard.writer import SummaryWriter
+from nerf_sampling.nerf_pytorch import nerf_utils
 
 
 class Trainer:
@@ -137,11 +140,11 @@ class Trainer:
                 file.write(open(self.config_path, "r").read())
 
     def create_nerf_model(self):
-        return self._create_nerf_model(self, model=NeRF)
+        return self._create_nerf_model(self, model=nerf_utils.run_nerf_helpers.NeRF)
 
     def _create_nerf_model(self, model):
         render_kwargs_train, render_kwargs_test, start, grad_vars, optimizer = (
-            create_nerf(self, model=model)
+            nerf_utils.create_nerf(self, model=model)
         )
         self.global_step = start
         self.start = start
@@ -177,7 +180,7 @@ class Trainer:
             os.makedirs(testsavedir, exist_ok=True)
             print("test poses shape", render_poses.shape)
 
-            rgbs, _ = render_path(
+            rgbs, _ = nerf_utils.render_path(
                 render_poses,
                 hwf,
                 self.K,
@@ -189,7 +192,10 @@ class Trainer:
             )
             print("Done rendering", testsavedir)
             imageio.mimwrite(
-                os.path.join(testsavedir, "video.mp4"), to8b(rgbs), fps=30, quality=8
+                os.path.join(testsavedir, "video.mp4"),
+                nerf_utils.run_nerf_helpers.to8b(rgbs),
+                fps=30,
+                quality=8,
             )
 
     def prepare_raybatch_tensor_if_batching_random_rays(self, poses, images, i_train):
@@ -200,7 +206,11 @@ class Trainer:
             # For random ray batching
             print("get rays")
             rays = np.stack(
-                [get_rays_np(self.H, self.W, self.K, p) for p in poses[:, :3, :4]], 0
+                [
+                    nerf_utils.run_nerf_helpers.get_rays_np(self.H, self.W, self.K, p)
+                    for p in poses[:, :3, :4]
+                ],
+                0,
             )  # [N, ro+rd, H, W, 3]
             print("done, concats")
             rays_rgb = np.concatenate(
@@ -220,10 +230,10 @@ class Trainer:
 
         # Move training data to GPU
         if self.use_batching:
-            images = torch.Tensor(images).to(device)
-        poses = torch.Tensor(poses).to(device)
+            images = torch.Tensor(images).to(nerf_utils.device)
+        poses = torch.Tensor(poses).to(nerf_utils.device)
         if self.use_batching:
-            rays_rgb = torch.Tensor(rays_rgb).to(device)
+            rays_rgb = torch.Tensor(rays_rgb).to(nerf_utils.device)
 
         return images, poses, rays_rgb, i_batch
 
@@ -259,16 +269,24 @@ class Trainer:
         if i % self.i_video == 0 and i > 0:
             # Turn on testing mode
             with torch.no_grad():
-                rgbs, disps = render_path(
+                rgbs, disps = nerf_utils.render_path(
                     render_poses, hwf, self.K, self.chunk, render_kwargs_test
                 )
             print("Done, saving", rgbs.shape, disps.shape)
             moviebase = os.path.join(
                 self.basedir, self.expname, "{}_spiral_{:06d}_".format(self.expname, i)
             )
-            imageio.mimwrite(moviebase + "rgb.mp4", to8b(rgbs), fps=30, quality=8)
             imageio.mimwrite(
-                moviebase + "disp.mp4", to8b(disps / np.max(disps)), fps=30, quality=8
+                moviebase + "rgb.mp4",
+                nerf_utils.run_nerf_helpers.to8b(rgbs),
+                fps=30,
+                quality=8,
+            )
+            imageio.mimwrite(
+                moviebase + "disp.mp4",
+                nerf_utils.run_nerf_helpers.to8b(disps / np.max(disps)),
+                fps=30,
+                quality=8,
             )
 
         if i % self.i_testset == 0 and i > 0:
@@ -279,8 +297,8 @@ class Trainer:
             print("test poses shape", poses[i_test].shape)
             with torch.no_grad():
                 target_s = images[i_test]
-                rgbs, _ = render_path(
-                    torch.Tensor(poses[i_test]).to(device),
+                rgbs, _ = nerf_utils.render_path(
+                    torch.Tensor(poses[i_test]).to(nerf_utils.device),
                     hwf,
                     self.K,
                     self.chunk,
@@ -289,9 +307,11 @@ class Trainer:
                     savedir=testsavedir,
                 )
 
-                img_loss = img2mse(torch.Tensor(rgbs), torch.Tensor(target_s))
+                img_loss = nerf_utils.run_nerf_helpers.img2mse(
+                    torch.Tensor(rgbs), torch.Tensor(target_s)
+                )
                 loss = img_loss
-                psnr = mse2psnr(img_loss)
+                psnr = nerf_utils.run_nerf_helpers.mse2psnr(img_loss)
 
                 self.log_on_tensorboard(i, {"test": {"loss": loss, "psnr": psnr}})
             print("Saved test set")
@@ -304,8 +324,8 @@ class Trainer:
             print("test poses shape", poses[i_train[:10]].shape)
             with torch.no_grad():
                 target_s = images[i_test]
-                rgbs, _ = render_path(
-                    torch.Tensor(poses[i_train[:10]]).to(device),
+                rgbs, _ = nerf_utils.render_path(
+                    torch.Tensor(poses[i_train[:10]]).to(nerf_utils.device),
                     hwf,
                     self.K,
                     self.chunk,
@@ -337,12 +357,12 @@ class Trainer:
             # Random from one image
             img_i = np.random.choice(i_train)
             target = images[img_i]
-            target = torch.Tensor(target).to(device)
+            target = torch.Tensor(target).to(nerf_utils.device)
             pose = poses[img_i, :3, :4]
             self.c2w = torch.Tensor(pose)
 
             if self.N_rand is not None:
-                rays_o, rays_d = get_rays(
+                rays_o, rays_d = nerf_utils.run_nerf_helpers.get_rays(
                     self.H, self.W, self.K, self.c2w
                 )  # (H, W, 3), (H, W, 3)
 
@@ -395,7 +415,7 @@ class Trainer:
         i,
         target_s,
     ):
-        rgb, disp, acc, alphas, extras = render(
+        rgb, disp, acc, alphas, extras = nerf_utils.render(
             self.H,
             self.W,
             self.K,
@@ -407,16 +427,16 @@ class Trainer:
         )
 
         optimizer.zero_grad()
-        img_loss = img2mse(rgb, target_s)
+        img_loss = nerf_utils.run_nerf_helpers.img2mse(rgb, target_s)
         trans = extras["raw"][..., -1]
         loss = img_loss
-        psnr = mse2psnr(img_loss)
+        psnr = nerf_utils.run_nerf_helpers.mse2psnr(img_loss)
 
         psnr0 = None
         if "rgb0" in extras:
-            img_loss0 = img2mse(extras["rgb0"], target_s)
+            img_loss0 = nerf_utils.run_nerf_helpers.img2mse(extras["rgb0"], target_s)
             loss = loss + img_loss0
-            psnr0 = mse2psnr(img_loss0)
+            psnr0 = nerf_utils.run_nerf_helpers.mse2psnr(img_loss0)
 
         if self.use_alphas_in_loss and alphas is not None:
             alphas_loss = self.alphas_loss_weight * (1 - torch.mean(alphas))
@@ -445,7 +465,7 @@ class Trainer:
         perturb = perturb
         pytest = pytest
 
-        z_samples = sample_pdf(
+        z_samples = nerf_utils.run_nerf_helpers.sample_pdf(
             z_vals_mid,
             weights[..., 1:-1],
             n_importance,
@@ -733,7 +753,7 @@ class Trainer:
             embedded_dirs = embeddirs_fn(input_dirs_flat)
             embedded = torch.cat([embedded, embedded_dirs], -1)
 
-        outputs_flat = batchify(fn, netchunk)(embedded)
+        outputs_flat = nerf_utils.batchify(fn, netchunk)(embedded)
         outputs = torch.reshape(
             outputs_flat, list(inputs.shape[:-1]) + [outputs_flat.shape[-1]]
         )
