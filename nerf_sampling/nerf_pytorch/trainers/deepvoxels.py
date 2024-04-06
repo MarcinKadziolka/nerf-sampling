@@ -1,7 +1,7 @@
 import numpy as np
 
-from nerf_pytorch.trainers.Trainer import Trainer
-from nerf_pytorch.load_deepvoxels import load_dv_data
+from nerf_sampling.nerf_pytorch.trainers.Trainer import Trainer
+from nerf_sampling.nerf_pytorch.load_deepvoxels import load_dv_data
 
 
 class DeepvoxelsTrainer(Trainer):

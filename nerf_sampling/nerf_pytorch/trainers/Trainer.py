@@ -3,7 +3,7 @@ from tqdm import trange
 
 from torch.utils.tensorboard import SummaryWriter
 
-from nerf_pytorch.nerf_utils import *
+from nerf_sampling.nerf_pytorch.nerf_utils import *
 
 
 class Trainer:

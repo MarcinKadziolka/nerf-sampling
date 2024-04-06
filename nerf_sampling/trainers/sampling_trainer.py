@@ -1,11 +1,11 @@
-from nerf_pytorch.trainers import Blender
-import torch
-from nerf_pytorch.nerf_utils import NeRF, create_nerf
-from sampling_modules.samplers.baseline_sampler import BaselineSampler
+from nerf_sampling.nerf_pytorch.trainers import Blender
+from nerf_sampling.nerf_pytorch.nerf_utils import NeRF, create_nerf
+from nerf_sampling.samplers.baseline_sampler import BaselineSampler
 from safetensors.torch import save_file
-import os
 import torch.nn.functional as F
 import numpy as np
+import torch
+import os
 
 
 class SamplingTrainer(Blender.BlenderTrainer):

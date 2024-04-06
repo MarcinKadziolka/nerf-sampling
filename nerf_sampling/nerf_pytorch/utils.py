@@ -13,4 +13,3 @@ def load_obj_from_config(cfg: dict):
     )
 
     return cls(**cfg["kwargs"])
-

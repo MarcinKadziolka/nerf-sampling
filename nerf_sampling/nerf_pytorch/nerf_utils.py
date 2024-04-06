@@ -3,7 +3,7 @@ import imageio
 import time
 from tqdm import tqdm
 
-from nerf_pytorch.run_nerf_helpers import *
+from nerf_sampling.nerf_pytorch.run_nerf_helpers import *
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 np.random.seed(0)

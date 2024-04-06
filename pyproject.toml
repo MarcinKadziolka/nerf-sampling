@@ -1,0 +1,33 @@
+[build-system]
+requires = ["setuptools", "setuptools-scm"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "nerf-sampling"
+requires-python = ">=3.9"
+description="Python library."
+classifiers=[
+        "Programming Language :: Python :: 3",
+        "Operating System :: OS Independent",
+]
+version="0.0.1"
+dynamic = ["readme"]
+dependencies = [
+        "torch>=1.11.0",
+        "torchvision>=0.9.1",
+        "imageio>=2.31.1",
+        "imageio-ffmpeg>=0.4.8",
+        "matplotlib>=3.7.2",
+        "configargparse>=1.7",
+        "tensorboard>=2.13.0",
+        "tqdm>=4.65.0",
+        "opencv-python>=4.8.0.74"
+    ]
+
+
+[tool.setuptools.dynamic]
+version = {attr = "nerf-pytorch.VERSION"}
+readme = {file = ["README.md"]}
+
+[tool.setuptools.packages]
+find = {}

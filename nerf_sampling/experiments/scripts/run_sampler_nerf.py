@@ -3,7 +3,7 @@
 import click
 import torch
 import yaml
-from nerf_pytorch.utils import load_obj_from_config
+from nerf_sampling.nerf_pytorch.utils import load_obj_from_config
 import os
 
 if torch.cuda.is_available():

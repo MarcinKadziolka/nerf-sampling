@@ -2,11 +2,11 @@
 Implements baseline sampling network torch module
 """
 
-import torch
+from nerf_sampling.nerf_pytorch.run_nerf_helpers import get_embedder
+from .utils import scale_points_with_weights
 from torch import nn
 import torch.nn.functional as F
-from nerf_pytorch.run_nerf_helpers import get_embedder
-from .utils import scale_points_with_weights
+import torch
 
 
 class BaselineSampler(nn.Module):
@@ -163,4 +163,3 @@ class BaselineSampler(nn.Module):
             return self.scale_without_regions(outputs, rays_o, rays_d)
 
         return self.scale_with_regions(outputs, rays_o, rays_d)
-
