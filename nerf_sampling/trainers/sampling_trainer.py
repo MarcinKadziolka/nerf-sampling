@@ -139,7 +139,6 @@ class SamplingTrainer(Blender.BlenderTrainer):
 
     def sample_main_points(
         self,
-        N_samples,
         viewdirs,
         network_fn,
         network_query_fn,
@@ -164,16 +163,14 @@ class SamplingTrainer(Blender.BlenderTrainer):
             self.group_size = min(self.group_size * 2, self.max_group_size)
             sampling_network.set_group_size(self.group_size)
 
-        if N_samples > 0:
+        pts, z_vals = sampling_network.forward(rays_o, rays_d)
 
-            pts, z_vals = sampling_network.forward(rays_o, rays_d)
+        raw = network_query_fn(pts, viewdirs, network_fn)
+        rgb_map, disp_map, acc_map, weights, depth_map, alpha = self.raw2outputs(
+            raw, z_vals, rays_d, raw_noise_std, white_bkgd, pytest=pytest
+        )
 
-            raw = network_query_fn(pts, viewdirs, network_fn)
-            rgb_map, disp_map, acc_map, weights, depth_map, alpha = self.raw2outputs(
-                raw, z_vals, rays_d, raw_noise_std, white_bkgd, pytest=pytest
-            )
-
-            self.save_rays_data(rays_o, pts, alpha)
+        self.save_rays_data(rays_o, pts, alpha)
 
         return (
             rgb_map,
