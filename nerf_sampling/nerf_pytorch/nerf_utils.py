@@ -334,8 +334,23 @@ def render_rays(
     bounds = torch.reshape(ray_batch[..., 6:8], [-1, 1, 2])
     near, far = bounds[..., 0], bounds[..., 1]  # [-1,1]
 
-    rgb_map, disp_map, acc_map, weights, depth_map, z_vals, weights, raw, alphas_map = (
-        trainer.sample_main_points(
+    rgb_map, disp_map, acc_map, depth_map, alphas_map = None, None, None, None, None
+    raw = None
+    weights = None
+    z_vals = None
+
+    if N_samples > 0:
+        (
+            rgb_map,
+            disp_map,
+            acc_map,
+            weights,
+            depth_map,
+            z_vals,
+            weights,
+            raw,
+            alphas_map,
+        ) = trainer.sample_main_points(
             near=near,
             far=far,
             perturb=perturb,
@@ -352,10 +367,20 @@ def render_rays(
             lindisp=lindisp,
             **kwargs,
         )
-    )
 
-    rgb_map_0, disp_map_0, acc_map_0, rgb_map, disp_map, acc_map, raw_0, z_samples = (
-        trainer.sample_points(
+    rgb_map_0, disp_map_0, acc_map_0, raw_0 = None, None, None, None
+    z_samples = None
+    if N_importance > 0:
+        (
+            rgb_map_0,
+            disp_map_0,
+            acc_map_0,
+            rgb_map,
+            disp_map,
+            acc_map,
+            raw_0,
+            z_samples,
+        ) = trainer.sample_points(
             z_vals=z_vals,
             weights=weights,
             perturb=perturb,
@@ -372,7 +397,6 @@ def render_rays(
             raw_noise_std=raw_noise_std,
             white_bkgd=white_bkgd,
         )
-    )
 
     ret = {
         "rgb_map": rgb_map,
