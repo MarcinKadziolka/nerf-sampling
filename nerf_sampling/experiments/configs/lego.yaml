@@ -1,11 +1,11 @@
 sampler_lego_params: &sampler_lego_params # & adds anchor (reference) with a given name
   N_rand: 1024
   white_bkgd: true
-  device: 'cpu'
-  i_weights: 100000
-  i_testset: 2000
+  device: 'cuda'
+  i_weights: 50000
+  i_testset: 20000
   i_video: 50000
-  i_print: 50000
+  i_print: 5000
   lrate_decay: 500
   input_dims_embed: 3
   use_viewdirs: true
@@ -17,7 +17,7 @@ sampler_lego_params: &sampler_lego_params # & adds anchor (reference) with a giv
   precrop_frac: 0.5
   use_noise: false
   noise_size: 10
-  alphas_loss_weight: true
+  alphas_loss_weight: false
 
 sampler_dataset_lego_setup: &sampler_dataset_lego_setup
   expname: "lego_sampler_experiment" 
