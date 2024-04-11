@@ -31,3 +31,9 @@ readme = {file = ["README.md"]}
 
 [tool.setuptools.packages]
 find = {}
+
+[tool.ruff.lint]
+select = ["D"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
