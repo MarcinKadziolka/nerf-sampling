@@ -1,4 +1,4 @@
-import tqdm
+from tqdm import tqdm
 import imageio
 import torch
 import os
@@ -97,7 +97,7 @@ class Trainer:
         self.save_train_set_render = save_train_set_render
         self.use_alphas_in_loss = use_alphas_in_loss
         self.alphas_loss_weight = alphas_loss_weight
-
+        self.no_reload = False
         self.K = None
         self.global_step = None
         self.W = None
@@ -258,6 +258,9 @@ class Trainer:
                 "global_step": self.global_step,
                 "network_fn_state_dict": render_kwargs_train["network_fn"].state_dict(),
                 "optimizer_state_dict": optimizer.state_dict(),
+                "sampling_network": render_kwargs_train[
+                    "sampling_network"
+                ].state_dict(),
             }
             if render_kwargs_train["network_fine"] is not None:
                 data["network_fine_state_dict"] = render_kwargs_train[
@@ -492,7 +495,6 @@ class Trainer:
         if self.render_test:
             render_poses = np.array(poses[i_test])
             render_poses = torch.Tensor(render_poses).to(self.device)
-            print(f"Check device {render_poses.get_device()}")
 
         hwf = self.cast_intrinsics_to_right_types(hwf=hwf)
         self.create_log_dir_and_copy_the_config_file()
