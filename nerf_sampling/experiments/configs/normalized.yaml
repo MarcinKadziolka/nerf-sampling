@@ -51,18 +51,15 @@ spheres_dataset_airplane_more_train_setup: &spheres_dataset_airplane_more_train_
 airplane_more_train_sphere_module:
   module: "sphere_nerf_mod.trainers.SphereBlenderTrainer"
   kwargs:
-    <<: *spheres_setup_params
-    <<: *spheres_dataset_airplane_more_train_setup
+    <<: [*spheres_setup_params, *spheres_dataset_airplane_more_train_setup]
 
 
 airplane_sphere_module:
   module: "sphere_nerf_mod.trainers.SphereBlenderTrainer"
   kwargs:
-    <<: *spheres_setup_params
-    <<: *spheres_dataset_airplane_setup
+    <<: [*spheres_setup_params, *spheres_dataset_airplane_setup]
 
 airplane_default_module:
   module: "nerf_pytorch.trainers.BlenderTrainer"
   kwargs:
-    <<: *default_setup_params
-    <<: *default_dataset_airplane_setup
+    <<: [*default_setup_params, *default_dataset_airplane_setup]
