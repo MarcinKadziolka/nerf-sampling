@@ -1,7 +1,7 @@
 from nerf_sampling.nerf_pytorch.trainers import Blender
 from nerf_sampling.nerf_pytorch.nerf_utils import create_nerf
 from nerf_sampling.nerf_pytorch.run_nerf_helpers import NeRF
-
+from nerf_sampling.nerf_pytorch import visualize
 from nerf_sampling.samplers.baseline_sampler import BaselineSampler
 from safetensors.torch import save_file
 import torch.nn.functional as F
@@ -104,6 +104,28 @@ class SamplingTrainer(Blender.BlenderTrainer):
             params=grad_vars, lr=self.lrate, betas=(0.9, 0.999)
         )
 
+        # Load checkpoints
+        basedir = self.basedir
+        expname = self.expname
+        if self.ft_path is not None and self.ft_path != "None":
+            ckpts = [self.ft_path]
+        else:
+            ckpts = [
+                os.path.join(basedir, expname, f)
+                for f in sorted(os.listdir(os.path.join(basedir, expname)))
+                if "tar" in f
+            ]
+        print("Found ckpts", ckpts)
+        if len(ckpts) > 0 and not self.no_reload:
+            ckpt_path = ckpts[-1]
+            print("Reloading from", ckpt_path)
+            ckpt = torch.load(ckpt_path)
+
+            start = ckpt["global_step"]
+            optimizer.load_state_dict(ckpt["optimizer_state_dict"])
+            sampling_network.load_state_dict(ckpt["sampling_network"])
+            # Load model
+
         # Add sampler to model dicts
         render_kwargs_train["sampling_network"] = sampling_network
         render_kwargs_test["sampling_network"] = sampling_network
@@ -195,10 +217,12 @@ class SamplingTrainer(Blender.BlenderTrainer):
         **kwargs,
     ):
         """Transforms model's predictions to semantically meaningful values.
+
         Args:
             raw: [num_rays, num_samples along ray, 4]. Prediction from model.
             z_vals: [num_rays, num_samples along ray]. Integration time.
             rays_d: [num_rays, 3]. Direction of each ray.
+
         Returns:
             rgb_map: [num_rays, 3]. Estimated RGB color of a ray.
             disp_map: [num_rays]. Disparity map. Inverse of depth map.
@@ -209,7 +233,6 @@ class SamplingTrainer(Blender.BlenderTrainer):
         raw2alpha = lambda raw, dists, act_fn=F.relu: 1.0 - torch.exp(
             -act_fn(raw) * dists
         )
-
         dists = z_vals[..., 1:] - z_vals[..., :-1]
         dists = torch.cat(
             [dists, torch.Tensor([1e10]).expand(dists[..., :1].shape)], -1
