@@ -30,7 +30,7 @@ def main(
 
     # get names of environment variables
     datadir = os.environ.get("DATADIR", "./dataset/lego")
-    basedir = os.environ.get("BASEDIR", "./")
+    basedir = os.environ.get("BASEDIR", "./logs")
 
     hparams["kwargs"]["datadir"] = datadir
     hparams["kwargs"]["basedir"] = basedir
