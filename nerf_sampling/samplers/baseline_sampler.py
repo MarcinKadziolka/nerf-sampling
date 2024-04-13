@@ -1,6 +1,4 @@
-"""
-Implements baseline sampling network torch module
-"""
+"""Implements baseline sampling network torch module."""
 
 from nerf_sampling.nerf_pytorch.run_nerf_helpers import get_embedder
 from .utils import scale_points_with_weights
@@ -10,9 +8,7 @@ import torch
 
 
 class BaselineSampler(nn.Module):
-    """
-    Baseline sampling network
-    """
+    """Baseline sampling network."""
 
     def __init__(
         self,
@@ -80,12 +76,12 @@ class BaselineSampler(nn.Module):
         self.last = nn.Linear(self.w1, self.output_channels)
 
     def set_group_size(self, k):
-        """Changes size of group"""
+        """Changes size of group."""
         print(f"Increased group size to {k}")
         self.group_size = k
 
     def scale_without_regions(self, outputs, rays_o, rays_d):
-        """Directly scales points from NN output to the range [NEAR, FAR]"""
+        """Directly scales points from NN output to the range [NEAR, FAR]."""
         # [N_rays, N_samples]
         z_vals = self.near * (1 - outputs) + self.far * outputs
 
@@ -131,8 +127,8 @@ class BaselineSampler(nn.Module):
         return scale_points_with_weights(z_vals, rays_o, rays_d), z_vals
 
     def forward(self, rays_o: torch.Tensor, rays_d: torch.Tensor):
-        """
-        For given ray origins and directions returns points sampled along ray.
+        """For given ray origins and directions returns points sampled along ray.
+
         `self.output_channels` points per ray.
         Points are within [near, far] distance from the origin.
         """
