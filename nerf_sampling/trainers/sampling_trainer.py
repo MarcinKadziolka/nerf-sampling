@@ -16,10 +16,6 @@ class SamplingTrainer(Blender.BlenderTrainer):
     def __init__(
         self,
         as_in_original_nerf=False,
-        use_noise=True,
-        noise_size=10,
-        use_regions=False,
-        use_summing=False,
         increase_group_size_after=4000,
         max_group_size=8,
         train_only_sampler=False,
@@ -35,10 +31,6 @@ class SamplingTrainer(Blender.BlenderTrainer):
         self.as_in_original_nerf = as_in_original_nerf
         # Fine network is not used in this approach, we aim to train sampling network which points are valuable
         self.N_importance = 0
-        self.use_noise = use_noise
-        self.noise_size = noise_size
-        self.use_regions = use_regions
-        self.use_summing = use_summing
         self.group_size = 1
         self.increase_group_size_after = increase_group_size_after
         self.max_group_size = max_group_size
@@ -46,27 +38,12 @@ class SamplingTrainer(Blender.BlenderTrainer):
 
         self.train_only_sampler = train_only_sampler
 
-        if use_summing:
-            print("[SUMMING] Enabled")
-        else:
-            print("[SUMMING Disabled")
-
-        if use_noise:
-            print(f"[NOISE] Using noise {self.noise_size}")
-        else:
-            print("[NOISE] Noise in sampling is disabled")
-
         if self.use_alphas_in_loss:
             print(
                 f"[ALPHAS_LOSS] {'Weights' if self.swap_alphas_loss_with_weights else 'Alphas'} used in loss"
             )
         else:
             print("[ALPHAS_LOSS] Alphas NOT used in loss")
-
-        if self.use_regions:
-            print("[USE_REGIONS] enabled")
-        else:
-            print("[USE_REGIONS] disabled")
 
     def create_nerf_model(self):
         """Custom create_nerf_model function that adds sampler to the model"""
@@ -86,9 +63,6 @@ class SamplingTrainer(Blender.BlenderTrainer):
         # Inject sampler
         sampling_network = BaselineSampler(
             output_channels=self.N_samples,
-            noise_size=self.noise_size if self.use_noise else None,
-            use_regions=self.use_regions,
-            use_summing=self.use_summing,
         )
 
         sampling_network.set_group_size(self.group_size)
