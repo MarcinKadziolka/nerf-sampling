@@ -7,7 +7,6 @@ from tqdm import tqdm
 from nerf_sampling.nerf_pytorch import run_nerf_helpers
 
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 np.random.seed(0)
 DEBUG = False
 
@@ -194,7 +193,7 @@ def create_nerf(args, model):
         skips=skips,
         input_ch_views=input_ch_views,
         use_viewdirs=args.use_viewdirs,
-    ).to(device)
+    ).to(args.device)
     grad_vars = list(model_nerf.parameters())
 
     model_fine = None
@@ -207,7 +206,7 @@ def create_nerf(args, model):
             skips=skips,
             input_ch_views=input_ch_views,
             use_viewdirs=args.use_viewdirs,
-        ).to(device)
+        ).to(args.device)
         grad_vars += list(model_fine.parameters())
 
     network_query_fn = lambda inputs, viewdirs, network_fn: args.run_network(

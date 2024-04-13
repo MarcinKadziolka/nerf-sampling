@@ -6,9 +6,6 @@ import yaml
 from nerf_sampling.nerf_pytorch.utils import load_obj_from_config
 import os
 
-if torch.cuda.is_available():
-    torch.set_default_tensor_type("torch.cuda.FloatTensor")
-
 
 @click.command()
 @click.option(
@@ -30,10 +27,14 @@ def main(
 
     # get names of environment variables
     datadir = os.environ.get("DATADIR", "./dataset/lego")
-    basedir = os.environ.get("BASEDIR", "./logs")
+    basedir = os.environ.get("BASEDIR", "./current_logs")
 
     hparams["kwargs"]["datadir"] = datadir
     hparams["kwargs"]["basedir"] = basedir
+
+    if hparams["kwargs"]["device"] == "cuda":
+        if torch.cuda.is_available():
+            torch.set_default_tensor_type("torch.cuda.FloatTensor")
 
     trainer = load_obj_from_config(cfg=hparams)
     trainer.train(N_iters=700001)

@@ -230,10 +230,10 @@ class Trainer:
 
         # Move training data to GPU
         if self.use_batching:
-            images = torch.Tensor(images).to(nerf_utils.device)
-        poses = torch.Tensor(poses).to(nerf_utils.device)
+            images = torch.Tensor(images).to(self.device)
+        poses = torch.Tensor(poses).to(self.device)
         if self.use_batching:
-            rays_rgb = torch.Tensor(rays_rgb).to(nerf_utils.device)
+            rays_rgb = torch.Tensor(rays_rgb).to(self.device)
 
         return images, poses, rays_rgb, i_batch
 
@@ -301,7 +301,7 @@ class Trainer:
             with torch.no_grad():
                 target_s = images[i_test]
                 rgbs, _ = nerf_utils.render_path(
-                    torch.Tensor(poses[i_test]).to(nerf_utils.device),
+                    torch.Tensor(poses[i_test]).to(self.device),
                     hwf,
                     self.K,
                     self.chunk,
@@ -328,7 +328,7 @@ class Trainer:
             with torch.no_grad():
                 target_s = images[i_test]
                 rgbs, _ = nerf_utils.render_path(
-                    torch.Tensor(poses[i_train[:10]]).to(nerf_utils.device),
+                    torch.Tensor(poses[i_train[:10]]).to(self.device),
                     hwf,
                     self.K,
                     self.chunk,
@@ -360,7 +360,7 @@ class Trainer:
             # Random from one image
             img_i = np.random.choice(i_train)
             target = images[img_i]
-            target = torch.Tensor(target).to(nerf_utils.device)
+            target = torch.Tensor(target).to(self.device)
             pose = poses[img_i, :3, :4]
             self.c2w = torch.Tensor(pose)
 
