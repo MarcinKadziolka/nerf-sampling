@@ -6,7 +6,6 @@ import numpy as np
 from tqdm import tqdm
 from nerf_sampling.nerf_pytorch import run_nerf_helpers
 
-
 np.random.seed(0)
 DEBUG = False
 
@@ -52,7 +51,8 @@ def render(
     c2w_staticcam=None,
     **kwargs,
 ):
-    """Render rays
+    """Render rays.
+
     Args:
       H: int. Height of image in pixels.
       W: int. Width of image in pixels.
@@ -67,7 +67,8 @@ def render(
       far: float or array of shape [batch_size]. Farthest distance for a ray.
       use_viewdirs: bool. If True, use viewing direction of a point in space in model.
       c2w_staticcam: array of shape [3, 4]. If not None, use this transformation matrix for
-       camera while using other c2w argument for viewing directions.
+        camera while using other c2w argument for viewing directions.
+
     Returns:
       rgb_map: [batch_size, 3]. Predicted RGB values for rays.
       disp_map: [batch_size]. Disparity map. Inverse of depth.
@@ -76,7 +77,6 @@ def render(
     """
     if c2w is not None:
         # special case to render full image
-        print(f"Check c2w 2 {c2w.get_device()}")
         rays_o, rays_d = run_nerf_helpers.get_rays(H, W, K, c2w)
     else:
         # use provided ray batch
@@ -143,7 +143,6 @@ def render_path(
 
     t = time.time()
     for i, c2w in enumerate(tqdm(render_poses)):
-        print(f"Check devicde(c2w): {c2w.get_device()}")
         print(i, time.time() - t)
         t = time.time()
         rgb, disp, acc, alphas, _ = render(
@@ -219,7 +218,7 @@ def create_nerf(args, model):
     )
 
     # Create optimizer
-    optimizer = torch.optim.Adam(params=grad_vars, lr=args.lrate, betas=(0.9, 0.999))
+    # optimizer = torch.optim.Adam(params=grad_vars, lr=args.lrate, betas=(0.9, 0.999))
 
     start = 0
     basedir = args.basedir
@@ -244,7 +243,7 @@ def create_nerf(args, model):
         ckpt = torch.load(ckpt_path)
 
         start = ckpt["global_step"]
-        optimizer.load_state_dict(ckpt["optimizer_state_dict"])
+        # optimizer.load_state_dict(ckpt["optimizer_state_dict"])
 
         # Load model
         model_nerf.load_state_dict(ckpt["network_fn_state_dict"])
@@ -276,7 +275,7 @@ def create_nerf(args, model):
     render_kwargs_test["perturb"] = False
     render_kwargs_test["raw_noise_std"] = 0.0
 
-    return render_kwargs_train, render_kwargs_test, start, grad_vars, optimizer
+    return (render_kwargs_train, render_kwargs_test, start, grad_vars, None)
 
 
 def render_rays(
@@ -328,7 +327,6 @@ def render_rays(
     """
     N_rays = ray_batch.shape[0]
     rays_o, rays_d = ray_batch[:, 0:3], ray_batch[:, 3:6]  # [N_rays, 3] each
-
     viewdirs = ray_batch[:, -3:] if ray_batch.shape[-1] > 8 else None
     bounds = torch.reshape(ray_batch[..., 6:8], [-1, 1, 2])
     near, far = bounds[..., 0], bounds[..., 1]  # [-1,1]
