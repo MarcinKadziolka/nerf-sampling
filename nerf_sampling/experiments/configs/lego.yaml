@@ -1,7 +1,7 @@
 sampler_lego_params: &sampler_lego_params # & adds anchor (reference) with a given name
   N_rand: 1024
   white_bkgd: true
-  device: 'cuda'
+  device: 'cpu'
   i_weights: 50000
   i_testset: 20000
   i_video: 50000

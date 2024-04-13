@@ -19,7 +19,6 @@ class SamplingTrainer(Blender.BlenderTrainer):
         increase_group_size_after=4000,
         max_group_size=8,
         train_only_sampler=False,
-        swap_alphas_loss_with_weights=False,
         **kwargs,
     ):
         """Initialize the sampling trainer.
@@ -34,16 +33,8 @@ class SamplingTrainer(Blender.BlenderTrainer):
         self.group_size = 1
         self.increase_group_size_after = increase_group_size_after
         self.max_group_size = max_group_size
-        self.swap_alphas_loss_with_weights = swap_alphas_loss_with_weights
 
         self.train_only_sampler = train_only_sampler
-
-        if self.use_alphas_in_loss:
-            print(
-                f"[ALPHAS_LOSS] {'Weights' if self.swap_alphas_loss_with_weights else 'Alphas'} used in loss"
-            )
-        else:
-            print("[ALPHAS_LOSS] Alphas NOT used in loss")
 
     def create_nerf_model(self):
         """Custom create_nerf_model function that adds sampler to the model"""
@@ -245,11 +236,4 @@ class SamplingTrainer(Blender.BlenderTrainer):
         if white_bkgd:
             rgb_map = rgb_map + (1.0 - acc_map[..., None])
 
-        return (
-            rgb_map,
-            disp_map,
-            acc_map,
-            weights,
-            depth_map,
-            weights if self.swap_alphas_loss_with_weights else alpha,
-        )
+        return (rgb_map, disp_map, acc_map, weights, depth_map, alpha)
