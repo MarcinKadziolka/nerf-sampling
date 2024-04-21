@@ -102,7 +102,7 @@ class Trainer:
 
         if ~self.render_only & tensorboard_logging:
             self.writer = SummaryWriter(
-                log_dir=f"{self.basedir}/metrics/{self.expname}"
+                log_dir=f"{self.basedir}/{self.expname}/metrics"
             )
 
     def load_data(self, datadir: Path):
