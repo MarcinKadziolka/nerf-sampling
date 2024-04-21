@@ -13,3 +13,13 @@ def load_obj_from_config(cfg: dict):
     )
 
     return cls(**cfg["kwargs"])
+
+
+def freeze_model(model):
+    for param in model.parameters():
+        param.requires_grad = False
+
+
+def unfreeze_model(model):
+    for param in model.parameters():
+        param.requires_grad = True
