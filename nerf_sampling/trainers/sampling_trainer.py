@@ -16,8 +16,6 @@ class SamplingTrainer(Blender.BlenderTrainer):
     def __init__(
         self,
         as_in_original_nerf=False,
-        increase_group_size_after=4000,
-        max_group_size=8,
         train_only_sampler=False,
         **kwargs,
     ):
@@ -30,11 +28,8 @@ class SamplingTrainer(Blender.BlenderTrainer):
         self.as_in_original_nerf = as_in_original_nerf
         # Fine network is not used in this approach, we aim to train sampling network which points are valuable
         self.N_importance = 0
-        self.group_size = 1
-        self.increase_group_size_after = increase_group_size_after
-        self.max_group_size = max_group_size
-
         self.train_only_sampler = train_only_sampler
+        print(f"{train_only_sampler=}")
 
     def create_nerf_model(self):
         """Custom create_nerf_model function that adds sampler to the model"""
@@ -55,8 +50,6 @@ class SamplingTrainer(Blender.BlenderTrainer):
         sampling_network = BaselineSampler(
             output_channels=self.N_samples,
         )
-
-        sampling_network.set_group_size(self.group_size)
 
         # Add samples to grad_vars
         if self.train_only_sampler:
@@ -146,12 +139,7 @@ class SamplingTrainer(Blender.BlenderTrainer):
         weights = None
         z_vals = None
 
-        if self.global_step % self.increase_group_size_after == 0:
-            self.group_size = min(self.group_size * 2, self.max_group_size)
-            sampling_network.set_group_size(self.group_size)
-
         pts, z_vals = sampling_network.forward(rays_o, rays_d)
-
         raw = network_query_fn(pts, viewdirs, network_fn)
         rgb_map, disp_map, acc_map, weights, depth_map, alpha = self.raw2outputs(
             raw, z_vals, rays_d, raw_noise_std, white_bkgd, pytest=pytest

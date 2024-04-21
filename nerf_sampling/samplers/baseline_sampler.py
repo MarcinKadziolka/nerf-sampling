@@ -26,7 +26,6 @@ class BaselineSampler(nn.Module):
         self.output_channels = output_channels
         self.far = far
         self.near = near
-        self.group_size = output_channels
 
         self.origin_embedder, self.origin_dims = get_embedder(
             multires=10, input_dims=origin_channels
@@ -68,11 +67,6 @@ class BaselineSampler(nn.Module):
         )
 
         self.last = nn.Linear(self.w1, self.output_channels)
-
-    def set_group_size(self, k):
-        """Changes size of group."""
-        print(f"Increased group size to {k}")
-        self.group_size = k
 
     def scale_to_near_far(self, outputs, rays_o, rays_d):
         """Directly scales points from NN output to the range [NEAR, FAR]."""
