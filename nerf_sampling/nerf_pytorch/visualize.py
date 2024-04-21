@@ -16,8 +16,10 @@ def plot_density_histogram(densities: torch.Tensor, title: str = "Histogram"):
     """
     # densities [N_rays, N_samples]
     densities = torch.flatten(densities).detach().cpu()
-    plt.title(title)
     plt.hist(densities)
+    plt.title(title)
+    plt.xlabel("Density")
+    plt.ylabel("N of samples")
     plt.show()
 
 
@@ -28,6 +30,7 @@ def visualize_random_rays_pts(
     n_rays: int = 10,
     near: float = 2.0,
     far: float = 6.0,
+    title: str = "3D plot",
 ) -> None:
     """Plot randomly selected rays and sampled points (if they are provided).
 
@@ -38,6 +41,7 @@ def visualize_random_rays_pts(
         n_rays: Num of rays to randomly select.
         near: Nearest distance for a ray.
         far: Farthest distance for a ray.
+        title: Title for the plot.
     """
     n_rays = min(n_rays, len(rays_o))
     indices = random.sample(range(len(rays_o)), n_rays)
@@ -50,7 +54,7 @@ def visualize_random_rays_pts(
     plot_rays(ax, selected_rays_o, selected_rays_d, near, far)
     if selected_pts is not None:
         plot_points(ax, selected_pts)
-
+    plt.title(title)
     plt.show()
 
 
@@ -58,6 +62,10 @@ def initialize_3d_plot() -> tuple:
     """Initialize 3d plot and set axis labels."""
     fig = plt.figure()
     ax = fig.add_subplot(111, projection="3d")
+
+    ax.xaxis._axinfo["label"]["space_factor"] = 2.0
+    ax.yaxis._axinfo["label"]["space_factor"] = 2.0
+    ax.zaxis._axinfo["label"]["space_factor"] = 2.0
     ax.set_xlabel("X")
     ax.set_ylabel("Y")
     ax.set_zlabel("Z")
@@ -113,13 +121,13 @@ def plot_rays(
             [origin[0], near_pt[0]],
             [origin[1], near_pt[1]],
             [origin[2], near_pt[2]],
-            color="blue",
+            color="red",
         )
         ax.plot(
             [near_pt[0], far_pt[0]],
             [near_pt[1], far_pt[1]],
             [near_pt[2], far_pt[2]],
-            color="red",
+            color="gray",
         )
 
 
