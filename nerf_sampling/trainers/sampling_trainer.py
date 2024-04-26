@@ -1,13 +1,16 @@
-from nerf_sampling.nerf_pytorch.trainers import Blender
-from nerf_sampling.nerf_pytorch.nerf_utils import create_nerf
-from nerf_sampling.nerf_pytorch.run_nerf_helpers import NeRF
-from nerf_sampling.nerf_pytorch import visualize
-from nerf_sampling.samplers.baseline_sampler import BaselineSampler
-from safetensors.torch import save_file
-import torch.nn.functional as F
+import os
+
 import numpy as np
 import torch
-import os
+import torch.nn.functional as F
+from safetensors.torch import save_file
+
+from nerf_sampling.nerf_pytorch import visualize
+from nerf_sampling.nerf_pytorch import utils
+from nerf_sampling.nerf_pytorch.nerf_utils import create_nerf
+from nerf_sampling.nerf_pytorch.run_nerf_helpers import NeRF
+from nerf_sampling.nerf_pytorch.trainers import Blender
+from nerf_sampling.samplers.baseline_sampler import BaselineSampler
 
 
 class SamplingTrainer(Blender.BlenderTrainer):
@@ -98,12 +101,8 @@ class SamplingTrainer(Blender.BlenderTrainer):
         return optimizer, render_kwargs_train, render_kwargs_test
 
     def save_rays_data(self, rays_o, pts, alpha):
-        """
-        Saves rays data for later visualization
-        """
+        """Saves rays data for later visualization."""
         n_rays = rays_o.shape[0]
-        if self.global_step % self.i_testset != 0:
-            return
 
         filename = os.path.join(
             self.basedir, self.expname, f"{self.expname}_{self.global_step}.safetensors"
@@ -144,9 +143,8 @@ class SamplingTrainer(Blender.BlenderTrainer):
         rgb_map, disp_map, acc_map, weights, depth_map, alpha = self.raw2outputs(
             raw, z_vals, rays_d, raw_noise_std, white_bkgd, pytest=pytest
         )
-
-        self.save_rays_data(rays_o, pts, alpha)
-
+        if self.global_step % self.i_testset == 0:
+            self.save_rays_data(rays_o, pts, alpha)
         return (
             rgb_map,
             disp_map,
@@ -157,6 +155,7 @@ class SamplingTrainer(Blender.BlenderTrainer):
             weights,
             raw,
             alpha,
+            pts,
         )
 
     def raw2outputs(
