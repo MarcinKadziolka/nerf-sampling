@@ -1,12 +1,19 @@
 """Provides functions for visualization of outputs of NeRF model and sampler."""
 
+import argparse
 import random
 import torch
 from typing import Optional
 import matplotlib.pyplot as plt
+import matplotlib.figure
+import matplotlib.axes
+import wandb
+import pickle
 
 
-def plot_density_histogram(densities: torch.Tensor, title: str = "Histogram"):
+def plot_density_histogram(
+    densities: torch.Tensor, title: str = "Histogram"
+) -> tuple[matplotlib.figure.Figure, matplotlib.axes.Axes]:
     """Plot density histogram.
 
     Args:
@@ -16,22 +23,24 @@ def plot_density_histogram(densities: torch.Tensor, title: str = "Histogram"):
     """
     # densities [N_rays, N_samples]
     densities = torch.flatten(densities).detach().cpu()
-    plt.hist(densities)
-    plt.title(title)
-    plt.xlabel("Density")
-    plt.ylabel("N of samples")
-    plt.show()
+    fig = plt.figure()
+    ax = fig.add_subplot()
+    ax.hist(densities)
+    ax.set_title(title)
+    ax.set_xlabel("Density")
+    ax.set_ylabel("N of samples")
+    return fig, ax
 
 
 def visualize_random_rays_pts(
     rays_o: torch.Tensor,
     rays_d: torch.Tensor,
     pts: Optional[torch.Tensor] = None,
-    n_rays: int = 10,
+    n_rays: int = 3,
     near: float = 2.0,
     far: float = 6.0,
-    title: str = "3D plot",
-) -> None:
+    title: str = "Points sampled on rays",
+) -> tuple[matplotlib.figure.Figure, matplotlib.axes.Axes]:
     """Plot randomly selected rays and sampled points (if they are provided).
 
     Args:
@@ -50,15 +59,15 @@ def visualize_random_rays_pts(
     selected_rays_d = rays_d[indices].cpu()
     selected_pts = pts[indices].detach().cpu() if pts is not None else None
 
-    _, ax = initialize_3d_plot()
-    plot_rays(ax, selected_rays_o, selected_rays_d, near, far)
+    fig, ax = _initialize_3d_plot()
+    _plot_rays(ax, selected_rays_o, selected_rays_d, near, far)
     if selected_pts is not None:
-        plot_points(ax, selected_pts)
+        _plot_points(ax, selected_pts)
     plt.title(title)
-    plt.show()
+    return fig, ax
 
 
-def initialize_3d_plot() -> tuple:
+def _initialize_3d_plot() -> tuple[matplotlib.figure.Figure, matplotlib.axes.Axes]:
     """Initialize 3d plot and set axis labels."""
     fig = plt.figure()
     ax = fig.add_subplot(111, projection="3d")
@@ -69,6 +78,10 @@ def initialize_3d_plot() -> tuple:
     ax.set_xlabel("X")
     ax.set_ylabel("Y")
     ax.set_zlabel("Z")
+    ax.view_init(elev=30, azim=45)
+    ax.set_xlim([-3, 3])
+    ax.set_ylim([-3, 3])
+    ax.set_zlim([-3, 3])
     return fig, ax
 
 
@@ -84,7 +97,7 @@ def normalize_directions(rays_d: torch.Tensor) -> torch.Tensor:
     return rays_d / torch.linalg.norm(rays_d, dim=1, keepdims=True)
 
 
-def test_normalize_directions():
+def test_normalize_directions():  # noqa: D103
     rays_d = torch.Tensor([[1.5, 0, 3.14], [-1, 0.25, 0.33]])
     # vector = [x, y, z]
     # magnitude = sqrt(x^2 + y^2 + z^2)
@@ -101,14 +114,30 @@ def test_normalize_directions():
 
 
 def plot_rays(
-    ax, rays_o: torch.Tensor, rays_d: torch.Tensor, near: float = 2, far: float = 6
-) -> None:
+    rays_o: torch.Tensor, rays_d: torch.Tensor, near: float = 2, far: float = 6
+) -> tuple[matplotlib.figure.Figure, matplotlib.axes.Axes]:
     """Plots rays in 3D space.
 
     Args:
+        rays_o: [N_rays, 3]. Origin points of rays.
+        rays_d: [N_rays, 3]. Direction vectors of rays.
+        near: Nearest distance for a ray.
+        far: Farthest distance for a ray.
+    """
+    fig, ax = _initialize_3d_plot()
+    _plot_rays(ax, rays_o, rays_d, near, far)
+    return fig, ax
+
+
+def _plot_rays(
+    ax, rays_o: torch.Tensor, rays_d: torch.Tensor, near: float = 2, far: float = 6
+) -> None:
+    """Plots rays in 3D space on given axes.
+
+    Args:
         ax: The 3D axes to plot on.
-        rays_o: [N_rays, 3]. Origin points of rays
-        rays_d: [N_rays, 3]. Direction vectors of rays
+        rays_o: [N_rays, 3]. Origin points of rays.
+        rays_d: [N_rays, 3]. Direction vectors of rays.
         near: Nearest distance for a ray.
         far: Farthest distance for a ray.
     """
@@ -131,19 +160,35 @@ def plot_rays(
         )
 
 
-def plot_points(ax, ray_pts: torch.Tensor) -> None:
+def plot_points(ray_pts: torch.Tensor, s: int = 20):
     """Plot points per rays.
+
+    Args:
+      ray_pts: [N_rays, N_samples, 3]. 3D points to plot
+      s: Marker size.
+    """
+    fig, ax = _initialize_3d_plot()
+    _plot_points(ax, ray_pts, s=s)
+    return fig, ax
+
+
+def _plot_points(ax, ray_pts: torch.Tensor, s: int = 20) -> matplotlib.axes.Axes:
+    """Plot points per rays on axes.
 
     Args:
       ax: matplotlib.axes
       ray_pts: [N_rays, N_samples, 3]. 3D points to plot on given axes
+      s: Marker size.
     """
     for pts in ray_pts:
-        ax.scatter(pts[:, 0], pts[:, 1], pts[:, 2])
+        ax.scatter(pts[:, 0], pts[:, 1], pts[:, 2], s=s)
+    return ax
 
 
-def main():
+def main(args):
     """Run example visualization of rays and points."""
+    test_wandb = args.wandb
+    save = args.save
     rays_o = torch.zeros((6, 3))
     rays_d = torch.Tensor(
         [[1, 0, 0], [0, 1, 0], [0, 0, 1], [-1, 0, 0], [0, -1, 0], [0, 0, -1]]
@@ -158,8 +203,29 @@ def main():
             [[0, 0, -6]],
         ]
     )
-    visualize_random_rays_pts(rays_o, rays_d, pts)
+    points_fig, _ = plot_points(pts)
+    rays_fig = visualize_random_rays_pts(rays_o, rays_d, pts, n_rays=6)
+    densities = torch.Tensor([10, 20, 30, 40, 50, 60, 70, 80])
+    histogram_fig = plot_density_histogram(densities=densities)
+    if save:
+        pickle.dump(rays_fig, open("rays_fig.fig.pickle", "wb"))
+        pickle.dump(points_fig, open("points_fig.fig.pickle", "wb"))
+    elif test_wandb:
+        wandb.init(project="nerf-sampling")
+        wandb.log(
+            {
+                "Test ray plot": wandb.Image(rays_fig),
+                "Test histogram": wandb.Image(histogram_fig),
+            }
+        )
+    else:
+        plt.show()
+        plt.close()
 
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--wandb", action="store_true")
+    parser.add_argument("--save", action="store_true")
+    args = parser.parse_args()
+    main(args)
