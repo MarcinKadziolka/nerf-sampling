@@ -3,9 +3,9 @@ sampler_lego_params: &sampler_lego_params # & adds anchor (reference) with a giv
   white_bkgd: True
   device: 'cuda'
   i_weights: 50000
-  i_testset: 20000
+  i_testset: 50000
   i_video: 50000
-  i_print: 5000
+  i_print: 1000
   lrate_decay: 500
   input_dims_embed: 3
   use_viewdirs: True
@@ -16,10 +16,11 @@ sampler_lego_params: &sampler_lego_params # & adds anchor (reference) with a giv
   precrop_iters: 500
   precrop_frac: 0.5
 
-  density_in_loss: False
+  # set this parameters explicitly in the code
+  density_in_loss: None
   density_loss_weight: None
-  sampling_train_frequency: 10
-
+  sampling_train_frequency: None
+  max_density: None
 
 sampler_dataset_lego_setup: &sampler_dataset_lego_setup
   expname: "lego_sampler_experiment" 
