@@ -14,16 +14,25 @@ class BaselineSampler(nn.Module):
         self,
         origin_channels=3,
         direction_channels=3,
-        output_channels=40,
-        far=6,
         near=2,
+        far=6,
+        n_samples=40,
     ):
+        """Initializes sampling network.
+
+        Args:
+            origin_channels: Expected number of channels of ray origin vector.
+            direction_channels: Expected number of channels of ray direction vector.
+            near: Nearest distance for a ray.
+            far: Farthest distance for a ray.
+            n_samples: Number of samples to output along a ray.
+        """
         super(BaselineSampler, self).__init__()
         self.w1 = 256
         self.w2 = 128
         self.origin_channels = origin_channels
         self.direction_channels = direction_channels
-        self.output_channels = output_channels
+        self.n_samples = n_samples
         self.far = far
         self.near = near
 
@@ -66,7 +75,7 @@ class BaselineSampler(nn.Module):
             ]
         )
 
-        self.last = nn.Linear(self.w1, self.output_channels)
+        self.last = nn.Linear(self.w1, self.n_samples)
 
     def scale_to_near_far(self, outputs, rays_o, rays_d):
         """Directly scales points from NN output to the range [NEAR, FAR]."""
@@ -83,7 +92,7 @@ class BaselineSampler(nn.Module):
     def forward(self, rays_o: torch.Tensor, rays_d: torch.Tensor):
         """For given ray origins and directions returns points sampled along ray.
 
-        `self.output_channels` points per ray.
+        self.n_samples points per ray.
         Points are within [near, far] distance from the origin.
         """
         embedded_origin = self.origin_embedder(rays_o)
