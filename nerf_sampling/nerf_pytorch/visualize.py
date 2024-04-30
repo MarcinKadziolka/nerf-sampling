@@ -124,7 +124,7 @@ def plot_rays(
 
 def _plot_rays(
     ax, rays_o: torch.Tensor, rays_d: torch.Tensor, near: float = 2, far: float = 6
-) -> None:
+) -> matplotlib.axes.Axes:
     """Plots rays in 3D space on given axes.
 
     Args:
@@ -151,6 +151,7 @@ def _plot_rays(
             [near_pt[2], far_pt[2]],
             color="gray",
         )
+    return ax
 
 
 def plot_points(ray_pts: torch.Tensor, s: int = 20, c: Optional[torch.Tensor] = None):
