@@ -14,11 +14,11 @@ from nerf_sampling.nerf_pytorch.utils import load_obj_from_config
 @click.command()
 @click.option(
     "--hparams_path",
-    help="Type of selected dataset",
+    help="Path to configuration file.",
     type=str,
     default="experiments/configs/lego.yaml",
 )
-@click.option("--model", help="Selected model", type=str, default="lego_sampler_module")
+@click.option("--model", help="Model type.", type=str, default="lego_sampler_module")
 @click.option(
     "--wandb_mode",
     type=click.Choice(["online", "offline", "disabled"], case_sensitive=False),
@@ -30,7 +30,7 @@ def main(
     wandb_mode: Literal["online", "offline", "disabled"],
     model: str,
 ):
-    """Main."""
+    """Run NeRF and sampling network training with provided configuration."""
     with open(hparams_path, "r") as fin:
         hparams = yaml.safe_load(fin)[model]
 
