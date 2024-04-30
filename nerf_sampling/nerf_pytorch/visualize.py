@@ -28,7 +28,7 @@ def plot_histogram(
     return fig, ax
 
 
-def visualize_random_rays_pts(
+def visualize_rays_pts(
     rays_o: torch.Tensor,
     rays_d: torch.Tensor,
     pts: Optional[torch.Tensor] = None,
