@@ -1,6 +1,7 @@
 """Script for running SphereNeRF."""
 
 import os
+from typing import Literal
 
 import click
 import torch
@@ -18,8 +19,15 @@ from nerf_sampling.nerf_pytorch.utils import load_obj_from_config
     default="experiments/configs/lego.yaml",
 )
 @click.option("--model", help="Selected model", type=str, default="lego_sampler_module")
+@click.option(
+    "--wandb_mode",
+    type=click.Choice(["online", "offline", "disabled"], case_sensitive=False),
+    default="online",
+    help="Set the mode for wandb logging.",
+)
 def main(
     hparams_path: str,
+    wandb_mode: Literal["online", "offline", "disabled"],
     model: str,
 ):
     """Main."""
@@ -52,7 +60,9 @@ def main(
     hparams["kwargs"]["density_loss_weight"] = density_loss_weight
     expname = f"density_in_loss_samples_{samples}_weight_{density_loss_weight}_every_{n_iter}_iter_max_{max_density}"
     hparams["kwargs"]["expname"] = expname
-    wandb.init(project="nerf-sampling", config=hparams["kwargs"], mode="disabled")
+
+    print(f"{wandb_mode=}")
+    wandb.init(project="nerf-sampling", config=hparams["kwargs"], mode=wandb_mode)
     trainer = load_obj_from_config(cfg=hparams)
     trainer.train(N_iters=EPOCHS + 1)
 
