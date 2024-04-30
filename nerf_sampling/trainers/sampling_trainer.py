@@ -18,8 +18,6 @@ class SamplingTrainer(Blender.BlenderTrainer):
 
     def __init__(
         self,
-        as_in_original_nerf=False,
-        train_only_sampler=False,
         **kwargs,
     ):
         """Initialize the sampling trainer.
@@ -28,14 +26,10 @@ class SamplingTrainer(Blender.BlenderTrainer):
         the trainer contains the spheres used in the training process.
         """
         super().__init__(**kwargs)
-        self.as_in_original_nerf = as_in_original_nerf
         # Fine network is not used in this approach, we aim to train sampling network which points are valuable
-        self.N_importance = 0
-        self.train_only_sampler = train_only_sampler
-        print(f"{train_only_sampler=}")
 
     def create_nerf_model(self):
-        """Custom create_nerf_model function that adds sampler to the model"""
+        """Custom create_nerf_model function that adds sampler to the model."""
         render_kwargs_train, render_kwargs_test, start, grad_vars, _ = create_nerf(
             self, NeRF
         )
@@ -51,14 +45,10 @@ class SamplingTrainer(Blender.BlenderTrainer):
 
         # Inject sampler
         sampling_network = BaselineSampler(
-            output_channels=self.N_samples,
+            n_samples=self.N_samples,
         )
 
-        # Add samples to grad_vars
-        if self.train_only_sampler:
-            grad_vars = list(sampling_network.parameters())
-        else:
-            grad_vars += list(sampling_network.parameters())
+        grad_vars += list(sampling_network.parameters())
 
         # Create optimizer
         optimizer = torch.optim.Adam(
@@ -90,10 +80,6 @@ class SamplingTrainer(Blender.BlenderTrainer):
         # Add sampler to model dicts
         render_kwargs_train["sampling_network"] = sampling_network
         render_kwargs_test["sampling_network"] = sampling_network
-
-        # Pick integral approximation method
-        render_kwargs_train["as_in_original_nerf"] = self.as_in_original_nerf
-        render_kwargs_test["as_in_original_nerf"] = self.as_in_original_nerf
 
         render_kwargs_train["model_mode"] = "train"
         render_kwargs_test["model_mode"] = "test"
@@ -129,8 +115,8 @@ class SamplingTrainer(Blender.BlenderTrainer):
         sampling_network,
         **kwargs,
     ):
-        """
-        Custom method for sampling `N_samples` points from coarse network.
+        """Custom method for sampling `N_samples` points from coarse network.
+
         Uses sampling network to get points on the ray
         """
         rgb_map, disp_map, acc_map, depth_map = None, None, None, None
@@ -149,7 +135,6 @@ class SamplingTrainer(Blender.BlenderTrainer):
             rgb_map,
             disp_map,
             acc_map,
-            weights,
             depth_map,
             z_vals,
             weights,
@@ -205,13 +190,15 @@ class SamplingTrainer(Blender.BlenderTrainer):
 
         alpha = raw2alpha(raw[..., 3] + noise, dists)  # [N_rays, N_samples]
         # weights = alpha * tf.math.cumprod(1.-alpha + 1e-10, -1, exclusive=True)
+        # weights = alpha * cumprod(1.0 - alpha)
+        # weights = (1 - exp(-sigma_i * dists_i)) * cumprod(1.0 - (1 - exp(-sigma_i * dists_i)))
         weights = (
             alpha
             * torch.cumprod(
                 torch.cat([torch.ones((alpha.shape[0], 1)), 1.0 - alpha + 1e-10], -1),
                 -1,
             )[:, :-1]
-        )
+        )  # [N_rays, N_samples]
         rgb_map = torch.sum(weights[..., None] * rgb, -2)  # [N_rays, 3]
 
         depth_map = torch.sum(weights * z_vals, -1)
