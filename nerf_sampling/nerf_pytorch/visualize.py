@@ -1,13 +1,10 @@
 """Provides functions for visualization of outputs of NeRF model and sampler."""
 
-import argparse
 import torch
 from typing import Optional
 import matplotlib.pyplot as plt
 import matplotlib.figure
 import matplotlib.axes
-import wandb
-import pickle
 
 
 def plot_histogram(
@@ -175,49 +172,4 @@ def _plot_points(ax, ray_pts: torch.Tensor, s: int = 20) -> matplotlib.axes.Axes
     for pts in ray_pts:
         ax.scatter(pts[:, 0], pts[:, 1], pts[:, 2], s=s)
     return ax
-
-
-def main(args):
-    """Run example visualization of rays and points."""
-    test_wandb = args.wandb
-    save = args.save
-    rays_o = torch.zeros((6, 3))
-    rays_d = torch.Tensor(
-        [[1, 0, 0], [0, 1, 0], [0, 0, 1], [-1, 0, 0], [0, -1, 0], [0, 0, -1]]
     )
-    pts = torch.Tensor(
-        [
-            [[1, 0, 0]],
-            [[0, 2, 0]],
-            [[0, 0, 3]],
-            [[-4, 0, 0]],
-            [[0, -5, 0]],
-            [[0, 0, -6]],
-        ]
-    )
-    points_fig, _ = plot_points(pts)
-    rays_fig = visualize_random_rays_pts(rays_o, rays_d, pts, n_rays=6)
-    densities = torch.Tensor([10, 20, 30, 40, 50, 60, 70, 80])
-    histogram_fig = plot_density_histogram(densities=densities)
-    if save:
-        pickle.dump(rays_fig, open("rays_fig.fig.pickle", "wb"))
-        pickle.dump(points_fig, open("points_fig.fig.pickle", "wb"))
-    elif test_wandb:
-        wandb.init(project="nerf-sampling")
-        wandb.log(
-            {
-                "Test ray plot": wandb.Image(rays_fig),
-                "Test histogram": wandb.Image(histogram_fig),
-            }
-        )
-    else:
-        plt.show()
-        plt.close()
-
-
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--wandb", action="store_true")
-    parser.add_argument("--save", action="store_true")
-    args = parser.parse_args()
-    main(args)
