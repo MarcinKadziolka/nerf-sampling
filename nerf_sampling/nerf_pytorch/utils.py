@@ -34,18 +34,7 @@ def unfreeze_model(model):
         param.requires_grad = True
 
 
-def wandb_log_rays(rays_o, rays_d, pts, info, step, title):
-    """Log ray and points plot to wandb."""
-    rays_fig, _ = visualize.visualize_random_rays_pts(rays_o, rays_d, pts, title=title)
-    wandb.log(
-        {
-            f"Ray plot {info} {step}": wandb.Image(rays_fig),
-        }
-    )
-    plt.close(rays_fig)
-
-
-def get_dense_indices(densities: torch.Tensor, min_density: float):
+def get_dense_indices(densities: torch.Tensor, min_density: torch.Tensor):
     """Obtains indices of points that have density > min_density.
 
     Args:
