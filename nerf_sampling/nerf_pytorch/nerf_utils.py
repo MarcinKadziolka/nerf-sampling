@@ -3,14 +3,14 @@ import pickle
 import imageio
 import time
 import torch
-import numpy as np
-import torch.nn.functional as F
-from tqdm import tqdm
-from nerf_sampling.nerf_pytorch import run_nerf_helpers
-from nerf_sampling.nerf_pytorch.utils import wandb_log_rays
-from nerf_sampling.nerf_pytorch import utils
-from nerf_sampling.nerf_pytorch import visualize
 import matplotlib.pyplot as plt
+import numpy as np
+import torch
+import torch.nn.functional as F
+import wandb
+from tqdm import tqdm
+
+from nerf_sampling.nerf_pytorch import run_nerf_helpers, utils, visualize
 
 np.random.seed(0)
 DEBUG = False
@@ -66,7 +66,7 @@ def render(
     W,
     K,
     chunk=1024 * 32,
-    rays=None,
+    rays: Optional[tuple[torch.Tensor, torch.Tensor]] = None,
     c2w=None,
     ndc=True,
     near=0.0,
@@ -97,6 +97,7 @@ def render(
       rgb_map: [batch_size, 3]. Predicted RGB values for rays.
       disp_map: [batch_size]. Disparity map. Inverse of depth.
       acc_map: [batch_size]. Accumulated opacity (alpha) along a ray.
+      alphas_map:
       extras: dict with everything returned by render_rays().
     """
     if c2w is not None:
@@ -154,7 +155,7 @@ def render_path(
     chunk,
     render_kwargs,
     step,
-    info,
+    wandb_log=False,
     excavator_fig=False,
     gt_imgs=None,
     savedir=None,
@@ -174,10 +175,13 @@ def render_path(
 
     t = time.time()
     all_pts = []
+    densities = []
+    alphas = []
+    weights = []
     for i, c2w in enumerate(tqdm(render_poses)):
         print(i, time.time() - t)
         t = time.time()
-        rgb, disp, acc, alphas, extras = render(
+        rgb, disp, acc, alpha, extras = render(
             H, W, K, chunk=chunk, c2w=c2w[:3, :4], **render_kwargs
         )
         rgbs.append(rgb.cpu().numpy())
@@ -201,14 +205,54 @@ def render_path(
                 indices = utils.get_dense_indices(density.cpu(), min_density=30)
                 dense_points = pts[indices]
                 all_pts.append(dense_points.cpu())
-        if info == "testset":
-            rays_o = extras["rays_o"]
-            rays_d = extras["rays_d"]
-            pts = torch.flatten(extras["pts"], end_dim=1)
-            wandb_log_rays(
-                rays_o, rays_d, pts, info, step, title="{:03d}.png".format(i)
+        if wandb_log:
+            density = torch.flatten(
+                extras["raw"][..., 3], end_dim=1
+            )  # [H*W, N_samples]
+            rand_indices = random.sample(range(len(density)), k=400)
+            densities.append(torch.flatten(density)[rand_indices].cpu())
+            alphas.append(torch.flatten(alpha)[rand_indices].cpu())
+            weights.append(torch.flatten(extras["weights"])[rand_indices].cpu())
+            pts = torch.flatten(extras["pts"], end_dim=1)  # [H*W, N_samples, 3]
+            rays_o = extras["rays_o"]  # [H*W, 3]
+            rays_d = extras["rays_d"]  # [H*W, 3]
+            indices = random.sample(range(len(rays_o)), k=3)
+            rays_fig, _ = visualize.visualize_rays_pts(
+                rays_o=rays_o[indices].cpu(),
+                rays_d=rays_d[indices].cpu(),
+                pts=pts[indices].cpu(),
+                title="{:03d}.png".format(i),
+                c=density[indices].cpu(),
             )
-
+            wandb.log(
+                {
+                    f"Ray plot {step}": wandb.Image(rays_fig),
+                }
+            )
+            plt.close(rays_fig)
+    if wandb_log:
+        densities = torch.cat(densities)
+        hist_fig, _ = visualize.plot_histogram(
+            densities=densities,
+            title=f"Density histogram of random samples from testset",
+        )
+        weights = torch.cat(weights)
+        weights_fig, _ = visualize.plot_histogram(
+            densities=weights,
+            title=f"Weights histogram of random samples from testset",
+        )
+        alphas = torch.cat(alphas)
+        alphas_fig, _ = visualize.plot_histogram(
+            densities=alphas,
+            title=f"Alphas histogram of random samples from testset",
+        )
+        wandb.log(
+            {
+                f"Density histogram {step}": wandb.Image(hist_fig),
+                f"Weights histogram {step}": wandb.Image(weights_fig),
+                f"Alphas histogram {step}": wandb.Image(alphas_fig),
+            }
+        )
     if excavator_fig and savedir is not None:
         all_pts = torch.cat(all_pts)  # [n, 3]
         points_to_plot = utils.get_random_points(all_pts, k=5000)  # [k, 3]

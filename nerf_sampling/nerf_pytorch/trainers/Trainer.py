@@ -5,13 +5,17 @@ import os
 import numpy as np
 from pathlib import Path
 from tqdm import trange
+import imageio
+import numpy as np
+import torch
+import wandb
 from torch.utils.tensorboard.writer import SummaryWriter
-from nerf_sampling.nerf_pytorch import nerf_utils
-from nerf_sampling.nerf_pytorch import utils
+from tqdm import tqdm, trange
+
+from nerf_sampling.nerf_pytorch import nerf_utils, utils
 
 
 class Trainer:
-
     def __init__(
         self,
         dataset_type,
@@ -250,9 +254,9 @@ class Trainer:
 
         return images, poses, rays_rgb, i_batch
 
-    def rest_is_logging(
+    def log(
         self,
-        i,
+        i: int,
         render_poses,
         hwf,
         poses,
@@ -266,46 +270,7 @@ class Trainer:
         optimizer,
         density,
     ):
-        if i % self.i_weights == 0:
-            path = os.path.join(self.basedir, self.expname, "{:06d}.tar".format(i))
-            data = {
-                "global_step": self.global_step,
-                "network_fn_state_dict": render_kwargs_train["network_fn"].state_dict(),
-                "optimizer_state_dict": optimizer.state_dict(),
-                "sampling_network": render_kwargs_train[
-                    "sampling_network"
-                ].state_dict(),
-            }
-            if render_kwargs_train["network_fine"] is not None:
-                data["network_fine_state_dict"] = render_kwargs_train[
-                    "network_fine"
-                ].state_dict()
-            torch.save(data, path)
-            print("Saved checkpoints at", path)
-
-        if i % self.i_video == 0 and i > 0:
-            # Turn on testing mode
-            with torch.no_grad():
-                rgbs, disps = nerf_utils.render_path(
-                    render_poses, hwf, self.K, self.chunk, render_kwargs_test
-                )
-            print("Done, saving", rgbs.shape, disps.shape)
-            moviebase = os.path.join(
-                self.basedir, self.expname, "{}_spiral_{:06d}_".format(self.expname, i)
-            )
-            imageio.mimwrite(
-                moviebase + "rgb.mp4",
-                nerf_utils.run_nerf_helpers.to8b(rgbs),
-                fps=30,
-                quality=8,
-            )
-            imageio.mimwrite(
-                moviebase + "disp.mp4",
-                nerf_utils.run_nerf_helpers.to8b(disps / np.max(disps)),
-                fps=30,
-                quality=8,
-            )
-
+        """Handle logging and saving logic."""
         if i % self.i_testset == 0 and i > 0:
             testsavedir = os.path.join(
                 self.basedir, self.expname, "testset_{:06d}".format(i)
@@ -320,6 +285,9 @@ class Trainer:
                     self.K,
                     self.chunk,
                     render_kwargs_test,
+                    step=self.global_step,
+                    wandb_log=False,
+                    excavator_fig=True,
                     gt_imgs=target_s,
                     savedir=testsavedir,
                 )
@@ -347,11 +315,57 @@ class Trainer:
                     self.K,
                     self.chunk,
                     render_kwargs_test,
+                    step=self.global_step,
                     gt_imgs=target_s,
                     savedir=testsavedir,
                 )
 
             print("Saved train set")
+
+        if i % self.i_weights == 0:
+            path = os.path.join(self.basedir, self.expname, "{:06d}.tar".format(i))
+            data = {
+                "global_step": self.global_step,
+                "network_fn_state_dict": render_kwargs_train["network_fn"].state_dict(),
+                "optimizer_state_dict": optimizer.state_dict(),
+                "sampling_network": render_kwargs_train[
+                    "sampling_network"
+                ].state_dict(),
+            }
+            if render_kwargs_train["network_fine"] is not None:
+                data["network_fine_state_dict"] = render_kwargs_train[
+                    "network_fine"
+                ].state_dict()
+            torch.save(data, path)
+            print("Saved checkpoints at", path)
+
+        if i % self.i_video == 0 and i > 0:
+            # Turn on testing mode
+            with torch.no_grad():
+                rgbs, disps = nerf_utils.render_path(
+                    render_poses,
+                    hwf,
+                    self.K,
+                    self.chunk,
+                    render_kwargs_test,
+                    step=self.global_step,
+                )
+            print("Done, saving", rgbs.shape, disps.shape)
+            moviebase = os.path.join(
+                self.basedir, self.expname, "{}_spiral_{:06d}_".format(self.expname, i)
+            )
+            imageio.mimwrite(
+                moviebase + "rgb.mp4",
+                nerf_utils.run_nerf_helpers.to8b(rgbs),
+                fps=30,
+                quality=8,
+            )
+            imageio.mimwrite(
+                moviebase + "disp.mp4",
+                nerf_utils.run_nerf_helpers.to8b(disps / np.max(disps)),
+                fps=30,
+                quality=8,
+            )
 
         if i % self.i_print == 0:
             info = f"[TRAIN] Iter: {i} Loss: {loss.item()}  PSNR: {psnr.item()}, Mean density: {torch.mean(density)}"
