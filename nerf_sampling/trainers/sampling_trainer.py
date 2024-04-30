@@ -103,44 +103,16 @@ class SamplingTrainer(Blender.BlenderTrainer):
 
     def sample_main_points(
         self,
-        viewdirs,
-        network_fn,
-        network_query_fn,
         rays_o,
         rays_d,
-        raw_noise_std,
-        white_bkgd,
-        pytest,
         sampling_network,
-        **kwargs,
     ):
         """Custom method for sampling `N_samples` points from coarse network.
 
         Uses sampling network to get points on the ray
         """
-        rgb_map, disp_map, acc_map, depth_map = None, None, None, None
-        raw = None
-        weights = None
-        z_vals = None
-
         pts, z_vals = sampling_network.forward(rays_o, rays_d)
-        raw = network_query_fn(pts, viewdirs, network_fn)
-        rgb_map, disp_map, acc_map, weights, depth_map, alpha = self.raw2outputs(
-            raw, z_vals, rays_d, raw_noise_std, white_bkgd, pytest=pytest
-        )
-        if self.global_step % self.i_testset == 0:
-            self.save_rays_data(rays_o, pts, alpha)
-        return (
-            rgb_map,
-            disp_map,
-            acc_map,
-            depth_map,
-            z_vals,
-            weights,
-            raw,
-            alpha,
-            pts,
-        )
+        return pts, z_vals
 
     def raw2outputs(
         self,

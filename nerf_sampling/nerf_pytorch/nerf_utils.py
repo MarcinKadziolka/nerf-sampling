@@ -443,33 +443,22 @@ def render_rays(
     z_vals = None
     pts = None
     if N_samples > 0:
-        (
-            rgb_map,
-            disp_map,
-            acc_map,
-            depth_map,
-            z_vals,
-            weights,
-            raw,
-            alphas_map,
-            pts,
-        ) = trainer.sample_main_points(
-            near=near,
-            far=far,
-            perturb=perturb,
-            N_rays=N_rays,
-            N_samples=N_samples,
-            viewdirs=viewdirs,
-            network_fn=network_fn,
-            network_query_fn=network_query_fn,
-            rays_o=rays_o,
-            rays_d=rays_d,
-            raw_noise_std=raw_noise_std,
-            white_bkgd=white_bkgd,
-            pytest=pytest,
-            lindisp=lindisp,
-            **kwargs,
+        pts, z_vals = trainer.sample_main_points(
+            rays_o=rays_o, rays_d=rays_d, sampling_network=kwargs["sampling_network"]
         )
+        raw = network_query_fn(pts, viewdirs, network_fn)
+        rgb_map, disp_map, acc_map, weights, depth_map, alphas_map = (
+            trainer.raw2outputs(
+                raw=raw,
+                z_vals=z_vals,
+                rays_d=rays_d,
+                raw_noise=raw_noise_std,
+                white_bkdg=white_bkgd,
+                pytest=pytest,
+            )
+        )
+        if trainer.global_step % trainer.i_testset == 0:
+            trainer.save_rays_data(rays_o, pts, alphas_map)
 
     raw_0 = None
     if N_importance > 0:
