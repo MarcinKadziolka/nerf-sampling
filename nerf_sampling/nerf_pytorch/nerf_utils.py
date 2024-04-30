@@ -1,8 +1,12 @@
+"""Utility functions for running NeRF training."""
+
 import os
 import pickle
-import imageio
+import random
 import time
-import torch
+from typing import Optional
+
+import imageio
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
@@ -103,7 +107,7 @@ def render(
     if c2w is not None:
         # special case to render full image
         rays_o, rays_d = run_nerf_helpers.get_rays(H, W, K, c2w)
-    else:
+    elif rays is not None:
         # use provided ray batch
         rays_o, rays_d = rays
 
@@ -202,8 +206,11 @@ def render_path(
             if excavator_fig:
                 pts = extras["pts"]  # [H, W, N_samples, 3]
                 density = extras["raw"][..., 3]  # [H, W, N_samples]
-                indices = utils.get_dense_indices(density.cpu(), min_density=30)
+                indices = utils.get_dense_indices(
+                    density.cpu(), min_density=torch.mean(density).cpu()
+                )
                 dense_points = pts[indices]
+                densities.append(density[indices])
                 all_pts.append(dense_points.cpu())
         if wandb_log:
             density = torch.flatten(
@@ -255,6 +262,7 @@ def render_path(
         )
     if excavator_fig and savedir is not None:
         all_pts = torch.cat(all_pts)  # [n, 3]
+        densities = torch.cat(densities)  # [n, 1]
         points_to_plot = utils.get_random_points(all_pts, k=5000)  # [k, 3]
         fig, _ = visualize.plot_points(points_to_plot.unsqueeze(0), s=10)
         pickle.dump(fig, open(os.path.join(savedir, "excavator.fig.pickle"), "wb"))
@@ -391,6 +399,7 @@ def render_rays(
     **kwargs,
 ):
     """Volumetric rendering.
+
     Args:
       ray_batch: array of shape [batch_size, ...]. All information necessary
         for sampling along a ray, including: ray origin, ray direction, min
@@ -409,6 +418,7 @@ def render_rays(
       white_bkgd: bool. If True, assume a white background.
       raw_noise_std: ...
       verbose: bool. If True, print more debugging info.
+
     Returns:
       rgb_map: [num_rays, 3]. Estimated RGB color of a ray. Comes from fine model.
       disp_map: [num_rays]. Disparity map. 1 / depth.
@@ -420,6 +430,7 @@ def render_rays(
       z_std: [num_rays]. Standard deviation of distances along ray for each
         sample.
     """
+    ret = {}
     N_rays = ray_batch.shape[0]
     rays_o, rays_d = ray_batch[:, 0:3], ray_batch[:, 3:6]  # [N_rays, 3] each
     viewdirs = ray_batch[:, -3:] if ray_batch.shape[-1] > 8 else None
@@ -430,13 +441,12 @@ def render_rays(
     raw = None
     weights = None
     z_vals = None
-
+    pts = None
     if N_samples > 0:
         (
             rgb_map,
             disp_map,
             acc_map,
-            weights,
             depth_map,
             z_vals,
             weights,
@@ -461,8 +471,7 @@ def render_rays(
             **kwargs,
         )
 
-    rgb_map_0, disp_map_0, acc_map_0, raw_0 = None, None, None, None
-    z_samples = None
+    raw_0 = None
     if N_importance > 0:
         (
             rgb_map_0,
@@ -490,12 +499,17 @@ def render_rays(
             raw_noise_std=raw_noise_std,
             white_bkgd=white_bkgd,
         )
+        ret["rgb0"] = rgb_map_0
+        ret["disp0"] = disp_map_0
+        ret["acc0"] = acc_map_0
+        ret["z_std"] = torch.std(z_samples, dim=-1, unbiased=False)  # [N_rays]
 
     ret = {
         "rgb_map": rgb_map,
         "disp_map": disp_map,
         "acc_map": acc_map,
         "alphas_map": alphas_map,
+        "weights": weights,
         "pts": pts,
     }
     if retraw:
@@ -503,21 +517,16 @@ def render_rays(
             ret["raw"] = raw
         else:
             ret["raw"] = raw_0
-    if N_importance > 0:
-        ret["rgb0"] = rgb_map_0
-        ret["disp0"] = disp_map_0
-        ret["acc0"] = acc_map_0
-        ret["z_std"] = torch.std(z_samples, dim=-1, unbiased=False)  # [N_rays]
 
-    for k in ret:
-        if (torch.isnan(ret[k]).any() or torch.isinf(ret[k]).any()) and DEBUG:
-            print(f"! [Numerical Error] {k} contains nan or inf.")
+    for key in ret:
+        if (torch.isnan(ret[key]).any() or torch.isinf(ret[key]).any()) and DEBUG:
+            print(f"! [Numerical Error] {key} contains nan or inf.")
 
     return ret
 
 
 def config_parser():
-
+    """Handle console arguments logic."""
     import configargparse
 
     parser = configargparse.ArgumentParser()
