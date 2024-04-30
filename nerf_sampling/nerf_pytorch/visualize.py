@@ -18,7 +18,7 @@ def plot_histogram(
         title: Title of the plot.
     """
     # densities [N_rays, N_samples]
-    densities = torch.flatten(densities).detach().cpu()
+    densities = torch.flatten(densities)
     fig = plt.figure()
     ax = fig.add_subplot()
     ax.hist(densities)
