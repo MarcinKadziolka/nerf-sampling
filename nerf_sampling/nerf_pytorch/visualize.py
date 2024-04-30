@@ -10,7 +10,7 @@ import wandb
 import pickle
 
 
-def plot_density_histogram(
+def plot_histogram(
     densities: torch.Tensor, title: str = "Histogram"
 ) -> tuple[matplotlib.figure.Figure, matplotlib.axes.Axes]:
     """Plot density histogram.
