@@ -1,10 +1,6 @@
-from tqdm import tqdm
-import imageio
-import torch
 import os
-import numpy as np
 from pathlib import Path
-from tqdm import trange
+
 import imageio
 import numpy as np
 import torch
@@ -59,6 +55,7 @@ class Trainer:
         density_in_loss: bool = False,
         density_loss_weight: float = 1,
         sampling_train_frequency: int = 1,
+        max_density: bool = False,
     ):
         self.start = None
         self.dataset_type = dataset_type
@@ -111,6 +108,7 @@ class Trainer:
         self.density_in_loss = density_in_loss
         self.density_loss_weight = density_loss_weight
         self.sampling_train_frequency = sampling_train_frequency
+        self.max_density = max_density
 
         print(f"{self}")
         print(f"{self.use_viewdirs=}")
@@ -120,13 +118,14 @@ class Trainer:
         if self.density_in_loss:
             print(f"{self.density_loss_weight=}")
             print(f"{self.sampling_train_frequency=}")
+            print(f"{self.max_density=}")
 
         if ~self.render_only & tensorboard_logging:
             self.writer = SummaryWriter(
                 log_dir=f"{self.basedir}/{self.expname}/metrics"
             )
 
-    def load_data(self, datadir: Path):
+    def load_data(self):
         """Load data and prepare poses."""
         pass
 
@@ -157,7 +156,7 @@ class Trainer:
                 file.write(open(self.config_path, "r").read())
 
     def create_nerf_model(self):
-        return self._create_nerf_model(self, model=nerf_utils.run_nerf_helpers.NeRF)
+        return self._create_nerf_model(model=nerf_utils.run_nerf_helpers.NeRF)
 
     def _create_nerf_model(self, model):
         render_kwargs_train, render_kwargs_test, start, grad_vars, optimizer = (
@@ -203,6 +202,7 @@ class Trainer:
                 self.K,
                 self.chunk,
                 render_kwargs_test,
+                step=self.global_step,
                 gt_imgs=images,
                 savedir=testsavedir,
                 render_factor=self.render_factor,
@@ -368,7 +368,15 @@ class Trainer:
             )
 
         if i % self.i_print == 0:
-            info = f"[TRAIN] Iter: {i} Loss: {loss.item()}  PSNR: {psnr.item()}, Mean density: {torch.mean(density)}"
+            info = f"[TRAIN] Iter: {i} Loss: {loss.item()}  PSNR: {psnr.item()}, Mean density: {torch.mean(density):2}, Max density: {torch.max(density):2}"
+            wandb.log(
+                {
+                    "Loss": loss.item(),
+                    "PSNR": psnr.item(),
+                    "Mean density": torch.mean(density),
+                    "Max density": torch.max(density),
+                }
+            )
             tqdm.write(info)
             f = os.path.join(self.basedir, self.expname, "psnr.txt")
             with open(f, "a") as file:
@@ -450,7 +458,7 @@ class Trainer:
         i,
         target_s,
     ):
-
+        """Runs rendering and backpropagates."""
         rgb, disp, acc, alphas, extras = nerf_utils.render(
             self.H,
             self.W,
@@ -480,8 +488,14 @@ class Trainer:
         density = extras["raw"][..., -1]  # raw_density = extras["raw"][..., 3]
         if self.density_in_loss and train_sampler_only:
             utils.freeze_model(render_kwargs_train["network_fn"])
-            density_loss = -self.density_loss_weight * torch.mean(density)
-            density_loss.backward()
+            if self.max_density:
+                density_loss = -self.density_loss_weight * torch.mean(
+                    torch.max(density, dim=1, keepdim=True)[0]
+                )
+                density_loss.backward()
+            else:
+                density_loss = -self.density_loss_weight * torch.mean(density)
+                density_loss.backward()
             utils.unfreeze_model(render_kwargs_train["network_fn"])
         else:
             loss.backward()
@@ -574,7 +588,7 @@ class Trainer:
 
             self.update_learning_rate(optimizer)
 
-            self.rest_is_logging(
+            self.log(
                 i=i,
                 render_poses=render_poses,
                 hwf=hwf,
@@ -728,10 +742,12 @@ class Trainer:
         **kwargs,
     ):
         """Transforms model's predictions to semantically meaningful values.
+
         Args:
             raw: [num_rays, num_samples along ray, 4]. Prediction from model.
             z_vals: [num_rays, num_samples along ray]. Integration time.
             rays_d: [num_rays, 3]. Direction of each ray.
+
         Returns:
             rgb_map: [num_rays, 3]. Estimated RGB color of a ray.
             disp_map: [num_rays]. Disparity map. Inverse of depth map.
