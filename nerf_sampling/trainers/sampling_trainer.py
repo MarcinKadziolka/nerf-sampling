@@ -5,8 +5,7 @@ import torch
 import torch.nn.functional as F
 from safetensors.torch import save_file
 
-from nerf_sampling.nerf_pytorch import visualize
-from nerf_sampling.nerf_pytorch import utils
+from nerf_sampling.nerf_pytorch import nerf_utils
 from nerf_sampling.nerf_pytorch.nerf_utils import create_nerf
 from nerf_sampling.nerf_pytorch.run_nerf_helpers import NeRF
 from nerf_sampling.nerf_pytorch.trainers import Blender
@@ -167,9 +166,6 @@ class SamplingTrainer(Blender.BlenderTrainer):
             weights: [num_rays, num_samples]. Weights assigned to each sampled color.
             depth_map: [num_rays]. Estimated distance to object.
         """
-        raw2alpha = lambda raw, dists, act_fn=F.relu: 1.0 - torch.exp(
-            -act_fn(raw) * dists
-        )
         dists = z_vals[..., 1:] - z_vals[..., :-1]
         dists = torch.cat(
             [dists, torch.Tensor([1e10]).expand(dists[..., :1].shape)], -1
@@ -188,7 +184,7 @@ class SamplingTrainer(Blender.BlenderTrainer):
                 noise = np.random.rand(*list(raw[..., 3].shape)) * raw_noise_std
                 noise = torch.Tensor(noise)
 
-        alpha = raw2alpha(raw[..., 3] + noise, dists)  # [N_rays, N_samples]
+        alpha = nerf_utils.raw2alpha(raw[..., 3] + noise, dists)  # [N_rays, N_samples]
         # weights = alpha * tf.math.cumprod(1.-alpha + 1e-10, -1, exclusive=True)
         # weights = alpha * cumprod(1.0 - alpha)
         # weights = (1 - exp(-sigma_i * dists_i)) * cumprod(1.0 - (1 - exp(-sigma_i * dists_i)))

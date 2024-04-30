@@ -4,6 +4,7 @@ import imageio
 import time
 import torch
 import numpy as np
+import torch.nn.functional as F
 from tqdm import tqdm
 from nerf_sampling.nerf_pytorch import run_nerf_helpers
 from nerf_sampling.nerf_pytorch.utils import wandb_log_rays
@@ -13,6 +14,24 @@ import matplotlib.pyplot as plt
 
 np.random.seed(0)
 DEBUG = False
+
+
+def raw2alpha(raw, dists):
+    """Converts raw density to alpha values.
+
+    In NeRF paper (https://arxiv.org/pdf/2003.08934)
+    section 4, page 6, equation (3)
+
+    ^C(r) = sum(T_i * (1 - exp(-sigma_i * delta_i)) * color_i),
+
+    where T_i = exp(-sum(sigma_j * delta_j)) -> probability of not hitting anything
+    and delta_i = t_{i+1} - t_i -> the distance between adjacent samples
+
+    This function for calculating ^C(r) from the set of (color_i, sigma_i) values
+    is trivially differentiable and reduces to traditional alpha compositing
+    with alpha values alpha_i = 1 − exp(−sigma_i * delta_i)
+    """
+    return 1.0 - torch.exp(-F.relu(raw) * dists)
 
 
 def batchify(fn, chunk):
