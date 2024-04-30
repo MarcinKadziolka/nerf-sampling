@@ -1,7 +1,6 @@
 """Provides functions for visualization of outputs of NeRF model and sampler."""
 
 import argparse
-import random
 import torch
 from typing import Optional
 import matplotlib.pyplot as plt
@@ -52,17 +51,10 @@ def visualize_random_rays_pts(
         far: Farthest distance for a ray.
         title: Title for the plot.
     """
-    n_rays = min(n_rays, len(rays_o))
-    indices = random.sample(range(len(rays_o)), n_rays)
-
-    selected_rays_o = rays_o[indices].cpu()
-    selected_rays_d = rays_d[indices].cpu()
-    selected_pts = pts[indices].detach().cpu() if pts is not None else None
-
     fig, ax = _initialize_3d_plot()
-    _plot_rays(ax, selected_rays_o, selected_rays_d, near, far)
-    if selected_pts is not None:
-        _plot_points(ax, selected_pts)
+    _plot_rays(ax, rays_o, rays_d, near, far)
+    if pts is not None:
+        _plot_points(ax, pts, s=s, c=c)
     plt.title(title)
     return fig, ax
 

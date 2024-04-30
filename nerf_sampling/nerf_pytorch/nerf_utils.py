@@ -1,10 +1,15 @@
 import os
+import pickle
 import imageio
 import time
 import torch
 import numpy as np
 from tqdm import tqdm
 from nerf_sampling.nerf_pytorch import run_nerf_helpers
+from nerf_sampling.nerf_pytorch.utils import wandb_log_rays
+from nerf_sampling.nerf_pytorch import utils
+from nerf_sampling.nerf_pytorch import visualize
+import matplotlib.pyplot as plt
 
 np.random.seed(0)
 DEBUG = False
@@ -25,16 +30,16 @@ def batchify(fn, chunk):
 
 def batchify_rays(rays_flat, chunk=1024 * 32, **kwargs):
     """Render rays in smaller minibatches to avoid OOM."""
-    all_ret = {}
+    all_returned = {}
     for i in range(0, rays_flat.shape[0], chunk):
-        ret = render_rays(rays_flat[i : i + chunk], **kwargs)
-        for k in ret:
-            if k not in all_ret:
-                all_ret[k] = []
-            all_ret[k].append(ret[k])
+        returned = render_rays(rays_flat[i : i + chunk], **kwargs)
+        for key in returned:
+            if key not in all_returned:
+                all_returned[key] = []
+            all_returned[key].append(returned[key])
 
-    all_ret = {k: torch.cat(all_ret[k], 0) for k in all_ret}
-    return all_ret
+    all_returned = {key: torch.cat(all_returned[key], 0) for key in all_returned}
+    return all_returned
 
 
 def render(
@@ -108,14 +113,18 @@ def render(
         rays = torch.cat([rays, viewdirs], -1)
 
     # Render and reshape
-    all_ret = batchify_rays(rays, chunk, **kwargs)
-    for k in all_ret:
-        k_sh = list(sh[:-1]) + list(all_ret[k].shape[1:])
-        all_ret[k] = torch.reshape(all_ret[k], k_sh)
+    all_returned = batchify_rays(rays, chunk, **kwargs)
+    for key in all_returned:
+        k_sh = list(sh[:-1]) + list(all_returned[key].shape[1:])
+        all_returned[key] = torch.reshape(all_returned[key], k_sh)
 
-    k_extract = ["rgb_map", "disp_map", "acc_map", "alphas_map"]
-    ret_list = [all_ret[k] for k in k_extract]
-    ret_dict = {k: all_ret[k] for k in all_ret if k not in k_extract}
+    key_extract = ["rgb_map", "disp_map", "acc_map", "alphas_map"]
+    ret_list = [all_returned[key] for key in key_extract]
+    ret_dict = {
+        key: all_returned[key] for key in all_returned if key not in key_extract
+    }
+    ret_dict["rays_o"] = rays_o
+    ret_dict["rays_d"] = rays_d
     return ret_list + [ret_dict]
 
 
@@ -125,6 +134,9 @@ def render_path(
     K,
     chunk,
     render_kwargs,
+    step,
+    info,
+    excavator_fig=False,
     gt_imgs=None,
     savedir=None,
     render_factor=0,
@@ -142,10 +154,11 @@ def render_path(
     disps = []
 
     t = time.time()
+    all_pts = []
     for i, c2w in enumerate(tqdm(render_poses)):
         print(i, time.time() - t)
         t = time.time()
-        rgb, disp, acc, alphas, _ = render(
+        rgb, disp, acc, alphas, extras = render(
             H, W, K, chunk=chunk, c2w=c2w[:3, :4], **render_kwargs
         )
         rgbs.append(rgb.cpu().numpy())
@@ -163,6 +176,25 @@ def render_path(
             rgb8 = run_nerf_helpers.to8b(rgbs[-1])
             filename = os.path.join(savedir, "{:03d}.png".format(i))
             imageio.imwrite(filename, rgb8)
+            if excavator_fig:
+                pts = extras["pts"]  # [H, W, N_samples, 3]
+                density = extras["raw"][..., 3]  # [H, W, N_samples]
+                indices = utils.get_dense_indices(density.cpu(), min_density=30)
+                dense_points = pts[indices]
+                all_pts.append(dense_points.cpu())
+        if info == "testset":
+            rays_o = extras["rays_o"]
+            rays_d = extras["rays_d"]
+            pts = torch.flatten(extras["pts"], end_dim=1)
+            wandb_log_rays(
+                rays_o, rays_d, pts, info, step, title="{:03d}.png".format(i)
+            )
+
+    if excavator_fig and savedir is not None:
+        all_pts = torch.cat(all_pts)  # [n, 3]
+        points_to_plot = utils.get_random_points(all_pts, k=5000)  # [k, 3]
+        fig, _ = visualize.plot_points(points_to_plot.unsqueeze(0), s=10)
+        pickle.dump(fig, open(os.path.join(savedir, "excavator.fig.pickle"), "wb"))
 
     rgbs = np.stack(rgbs, 0)
     disps = np.stack(disps, 0)
@@ -284,7 +316,7 @@ def render_rays(
     network_query_fn,
     N_samples,
     trainer,
-    retraw=False,
+    retraw=True,
     lindisp=False,
     perturb=0.0,
     N_importance=0,
@@ -347,6 +379,7 @@ def render_rays(
             weights,
             raw,
             alphas_map,
+            pts,
         ) = trainer.sample_main_points(
             near=near,
             far=far,
@@ -400,6 +433,7 @@ def render_rays(
         "disp_map": disp_map,
         "acc_map": acc_map,
         "alphas_map": alphas_map,
+        "pts": pts,
     }
     if retraw:
         if raw_0 is None:
