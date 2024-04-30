@@ -286,8 +286,7 @@ class Trainer:
                     self.chunk,
                     render_kwargs_test,
                     step=self.global_step,
-                    wandb_log=False,
-                    excavator_fig=True,
+                    wandb_log=True,
                     gt_imgs=target_s,
                     savedir=testsavedir,
                 )
