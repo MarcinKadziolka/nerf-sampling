@@ -36,6 +36,8 @@ def visualize_rays_pts(
     near: float = 2.0,
     far: float = 6.0,
     title: str = "Points sampled on rays",
+    s: int = 20,
+    c: Optional[torch.Tensor] = None,
 ) -> tuple[matplotlib.figure.Figure, matplotlib.axes.Axes]:
     """Plot randomly selected rays and sampled points (if they are provided).
 
@@ -47,6 +49,8 @@ def visualize_rays_pts(
         near: Nearest distance for a ray.
         far: Farthest distance for a ray.
         title: Title for the plot.
+        s: Marker size.
+        c: Array-like or list of colors or color, optional
     """
     fig, ax = _initialize_3d_plot()
     _plot_rays(ax, rays_o, rays_d, near, far)
@@ -149,27 +153,40 @@ def _plot_rays(
         )
 
 
-def plot_points(ray_pts: torch.Tensor, s: int = 20):
+def plot_points(ray_pts: torch.Tensor, s: int = 20, c: Optional[torch.Tensor] = None):
     """Plot points per rays.
 
     Args:
       ray_pts: [N_rays, N_samples, 3]. 3D points to plot
       s: Marker size.
+      c: Array-like or list of colors or color, optional
     """
     fig, ax = _initialize_3d_plot()
-    _plot_points(ax, ray_pts, s=s)
+    _plot_points(ax, ray_pts, s=s, c=c)
     return fig, ax
 
 
-def _plot_points(ax, ray_pts: torch.Tensor, s: int = 20) -> matplotlib.axes.Axes:
+def _plot_points(
+    ax, ray_pts: torch.Tensor, s: int = 20, c: Optional[torch.Tensor] = None
+) -> matplotlib.axes.Axes:
     """Plot points per rays on axes.
 
     Args:
       ax: matplotlib.axes
       ray_pts: [N_rays, N_samples, 3]. 3D points to plot on given axes
       s: Marker size.
+      c: [N_rays, N_samples]. Array-like or list of colors or color, optional
     """
-    for pts in ray_pts:
-        ax.scatter(pts[:, 0], pts[:, 1], pts[:, 2], s=s)
-    return ax
+    pts = torch.flatten(ray_pts, end_dim=1)  # [N_rays*N_samples, 3]
+    if c is not None:
+        c = torch.flatten(c)  # [N_rays * N_samples]
+    ax.scatter(
+        pts[:, 0],  # x = [N_rays * N_samples]
+        pts[:, 1],  # y = [N_rays * N_samples]
+        pts[:, 2],  # z = [N_rays * N_samples]
+        s=s,
+        c=c,
+        cmap="Reds",
+        depthshade=False,
     )
+    return ax
