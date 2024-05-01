@@ -101,7 +101,7 @@ def load_nerf(network_fn: NeRF, network_fine: Optional[NeRF], optimizer, ckpt):
       network_fn: Usually coarse network, unless network_fine is None, then it's the main NeRF model.
       network_fine: Network evaluating N_c + N_f samples (section 5.3: Implementation details). Optional.
       optimizer: Optimizer for NeRF model.
-      ckpt: Path to save directory including filename. Example: /your/dir/data.tar
+      ckpt: Loaded data dict. ckpt = torch.load(path)
     """
     optimizer.load_state_dict(ckpt["optimizer_state_dict"])
 
@@ -112,5 +112,12 @@ def load_nerf(network_fn: NeRF, network_fine: Optional[NeRF], optimizer, ckpt):
 
 
 def load_sampling_network(sampling_network, sampling_optimizer, ckpt):
+    """Loades states of sampling model and optim from checkpoint.
+
+    Args:
+      sampling_network: Model responsibile for sampling.
+      sampling_optimizer: Optimizer for sampling model.
+      ckpt: Loaded data dict. ckpt = torch.load(path)
+    """
     sampling_optimizer.load_state_dict(ckpt["sampling_optimizer_state_dict"])
     sampling_network.load_state_dict(ckpt["sampling_network"])
