@@ -6,6 +6,7 @@ import torch.nn.functional as F
 from safetensors.torch import save_file
 
 from nerf_sampling.nerf_pytorch import nerf_utils
+from nerf_sampling.nerf_pytorch import utils
 from nerf_sampling.nerf_pytorch.nerf_utils import create_nerf
 from nerf_sampling.nerf_pytorch.run_nerf_helpers import NeRF
 from nerf_sampling.nerf_pytorch.trainers import Blender
@@ -29,8 +30,8 @@ class SamplingTrainer(Blender.BlenderTrainer):
 
     def create_nerf_model(self):
         """Custom create_nerf_model function that adds sampler to the model."""
-        render_kwargs_train, render_kwargs_test, start, grad_vars, _ = create_nerf(
-            self, NeRF
+        render_kwargs_train, render_kwargs_test, start, grad_vars, optimizer = (
+            create_nerf(self, NeRF)
         )
         self.global_step = start
         self.start = start
@@ -47,11 +48,10 @@ class SamplingTrainer(Blender.BlenderTrainer):
             n_samples=self.N_samples,
         )
 
-        grad_vars += list(sampling_network.parameters())
+        sampling_params = list(sampling_network.parameters())
 
-        # Create optimizer
-        optimizer = torch.optim.Adam(
-            params=grad_vars, lr=self.lrate, betas=(0.9, 0.999)
+        sampling_optimizer = torch.optim.Adam(
+            params=sampling_params, lr=self.sampling_lr
         )
 
         # Load checkpoints
@@ -70,11 +70,8 @@ class SamplingTrainer(Blender.BlenderTrainer):
             ckpt_path = ckpts[-1]
             print("Reloading from", ckpt_path)
             ckpt = torch.load(ckpt_path)
-
-            start = ckpt["global_step"]
-            optimizer.load_state_dict(ckpt["optimizer_state_dict"])
-            sampling_network.load_state_dict(ckpt["sampling_network"])
             # Load model
+            utils.load_sampling_network(sampling_network, sampling_optimizer, ckpt)
 
         # Add sampler to model dicts
         render_kwargs_train["sampling_network"] = sampling_network
@@ -83,7 +80,12 @@ class SamplingTrainer(Blender.BlenderTrainer):
         render_kwargs_train["model_mode"] = "train"
         render_kwargs_test["model_mode"] = "test"
 
-        return optimizer, render_kwargs_train, render_kwargs_test
+        return (
+            optimizer,
+            sampling_optimizer,
+            render_kwargs_train,
+            render_kwargs_test,
+        )
 
     def save_rays_data(self, rays_o, pts, alpha):
         """Saves rays data for later visualization."""

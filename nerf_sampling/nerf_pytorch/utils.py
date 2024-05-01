@@ -2,10 +2,13 @@
 
 import importlib
 import random
+from typing import Optional
 
 import matplotlib.pyplot as plt
 import torch
 import wandb
+
+from nerf_sampling.nerf_pytorch.run_nerf_helpers import NeRF
 
 from . import visualize
 
@@ -56,3 +59,58 @@ def get_random_points(pts: torch.Tensor, k: int):
     """
     indices = random.sample(range(len(pts)), k=k)
     return pts[indices]
+
+
+def save_state(
+    global_step: int,
+    network_fn: NeRF,
+    network_fine: Optional[NeRF],
+    optimizer,
+    sampling_network,
+    sampling_optimizer,
+    path: str,
+) -> None:
+    """Saves states of provided data to path.
+
+    Args:
+      global_step: Current iteration of the training.
+      network_fn: Usually coarse network, unless network_fine is None, then it's the main NeRF model.
+      network_fine: Network evaluating N_c + N_f samples (section 5.3: Implementation details). Optional.
+      optimizer: Optimizer for NeRF model.
+      sampling_network: Model responsibile for sampling.
+      sampling_optimizer: Optimizer of sampling network.
+      path: Path to save directory including filename. Example: /your/dir/data.tar
+    """
+    data = {
+        "global_step": global_step,
+        "network_fn_state_dict": network_fn.state_dict(),
+        "optimizer_state_dict": optimizer.state_dict(),
+        "sampling_optimizer_state_dict": sampling_optimizer.state_dict(),
+        "sampling_network": sampling_network.state_dict(),
+    }
+    if network_fine is not None:
+        data["network_fine_state_dict"] = network_fine.state_dict()
+    torch.save(data, path)
+    print("Saved checkpoints at", path)
+
+
+def load_nerf(network_fn: NeRF, network_fine: Optional[NeRF], optimizer, ckpt):
+    """Loades states of nerf models and optim from checkpoint.
+
+    Args:
+      network_fn: Usually coarse network, unless network_fine is None, then it's the main NeRF model.
+      network_fine: Network evaluating N_c + N_f samples (section 5.3: Implementation details). Optional.
+      optimizer: Optimizer for NeRF model.
+      ckpt: Path to save directory including filename. Example: /your/dir/data.tar
+    """
+    optimizer.load_state_dict(ckpt["optimizer_state_dict"])
+
+    # Load model
+    network_fn.load_state_dict(ckpt["network_fn_state_dict"])
+    if network_fine is not None:
+        network_fine.load_state_dict(ckpt["network_fine_state_dict"])
+
+
+def load_sampling_network(sampling_network, sampling_optimizer, ckpt):
+    sampling_optimizer.load_state_dict(ckpt["sampling_optimizer_state_dict"])
+    sampling_network.load_state_dict(ckpt["sampling_network"])

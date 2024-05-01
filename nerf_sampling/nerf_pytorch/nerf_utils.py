@@ -321,7 +321,7 @@ def create_nerf(args, model):
     )
 
     # Create optimizer
-    # optimizer = torch.optim.Adam(params=grad_vars, lr=args.lrate, betas=(0.9, 0.999))
+    optimizer = torch.optim.Adam(params=grad_vars, lr=args.lrate, betas=(0.9, 0.999))
 
     start = 0
     basedir = args.basedir
@@ -346,12 +346,7 @@ def create_nerf(args, model):
         ckpt = torch.load(ckpt_path)
 
         start = ckpt["global_step"]
-        # optimizer.load_state_dict(ckpt["optimizer_state_dict"])
-
-        # Load model
-        model_nerf.load_state_dict(ckpt["network_fn_state_dict"])
-        if model_fine is not None:
-            model_fine.load_state_dict(ckpt["network_fine_state_dict"])
+        utils.load_nerf(model_nerf, model_fine, optimizer, ckpt)
 
     ##########################
 
@@ -378,7 +373,7 @@ def create_nerf(args, model):
     render_kwargs_test["perturb"] = False
     render_kwargs_test["raw_noise_std"] = 0.0
 
-    return (render_kwargs_train, render_kwargs_test, start, grad_vars, None)
+    return (render_kwargs_train, render_kwargs_test, start, grad_vars, optimizer)
 
 
 def render_rays(

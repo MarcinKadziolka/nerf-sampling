@@ -56,6 +56,7 @@ class Trainer:
         density_loss_weight: float = 1,
         sampling_train_frequency: int = 1,
         max_density: bool = False,
+        sampling_lr: float = 0.0001,
     ):
         self.start = None
         self.dataset_type = dataset_type
@@ -109,6 +110,7 @@ class Trainer:
         self.density_loss_weight = density_loss_weight
         self.sampling_train_frequency = sampling_train_frequency
         self.max_density = max_density
+        self.sampling_lr = sampling_lr
 
         print(f"{self}")
         print(f"{self.use_viewdirs=}")
@@ -118,6 +120,7 @@ class Trainer:
         if self.density_in_loss:
             print(f"{self.density_loss_weight=}")
             print(f"{self.sampling_train_frequency=}")
+            print(f"{self.sampling_lr=}")
             print(f"{self.max_density=}")
 
         if ~self.render_only & tensorboard_logging:
@@ -268,6 +271,7 @@ class Trainer:
         render_kwargs_train,
         render_kwargs_test,
         optimizer,
+        sampling_optimizer,
         density,
     ):
         """Handle logging and saving logic."""
@@ -323,21 +327,15 @@ class Trainer:
 
         if i % self.i_weights == 0:
             path = os.path.join(self.basedir, self.expname, "{:06d}.tar".format(i))
-            data = {
-                "global_step": self.global_step,
-                "network_fn_state_dict": render_kwargs_train["network_fn"].state_dict(),
-                "optimizer_state_dict": optimizer.state_dict(),
-                "sampling_network": render_kwargs_train[
-                    "sampling_network"
-                ].state_dict(),
-            }
-            if render_kwargs_train["network_fine"] is not None:
-                data["network_fine_state_dict"] = render_kwargs_train[
-                    "network_fine"
-                ].state_dict()
-            torch.save(data, path)
-            print("Saved checkpoints at", path)
-
+            utils.save_state(
+                global_step=self.global_step,
+                network_fn=render_kwargs_train["network_fn"],
+                network_fine=render_kwargs_train["network_fine"],
+                optimizer=optimizer,
+                sampling_network=render_kwargs_train["sampling_network"],
+                sampling_optimizer=sampling_optimizer,
+                path=path,
+            )
         if i % self.i_video == 0 and i > 0:
             # Turn on testing mode
             with torch.no_grad():
@@ -452,6 +450,7 @@ class Trainer:
     def core_optimization_loop(
         self,
         optimizer,
+        sampling_optimizer,
         render_kwargs_train,
         batch_rays,
         i,
@@ -470,6 +469,7 @@ class Trainer:
         )
 
         optimizer.zero_grad()
+        sampling_optimizer.zero_grad()
         img_loss = nerf_utils.run_nerf_helpers.img2mse(rgb, target_s)
         #
         # raw model output = [R, G, B, D] - D -> density
@@ -500,6 +500,7 @@ class Trainer:
             loss.backward()
 
         optimizer.step()
+        sampling_optimizer.step()
 
         return density, loss, psnr, psnr0
 
@@ -551,7 +552,9 @@ class Trainer:
 
         hwf = self.cast_intrinsics_to_right_types(hwf=hwf)
         self.create_log_dir_and_copy_the_config_file()
-        optimizer, render_kwargs_train, render_kwargs_test = self.create_nerf_model()
+        optimizer, sampling_optimizer, render_kwargs_train, render_kwargs_test = (
+            self.create_nerf_model()
+        )
 
         if self.render_only:
             self.render(
@@ -576,6 +579,7 @@ class Trainer:
 
             density, loss, psnr, psnr0 = self.core_optimization_loop(
                 optimizer,
+                sampling_optimizer,
                 render_kwargs_train,
                 batch_rays,
                 i,
@@ -600,6 +604,7 @@ class Trainer:
                 render_kwargs_train=render_kwargs_train,
                 render_kwargs_test=render_kwargs_test,
                 optimizer=optimizer,
+                sampling_optimizer=sampling_optimizer,
                 density=density,
             )
 
