@@ -5,7 +5,6 @@ import imageio
 import numpy as np
 import torch
 import wandb
-from torch.utils.tensorboard.writer import SummaryWriter
 from tqdm import tqdm, trange
 
 from nerf_sampling.nerf_pytorch import nerf_utils, utils
@@ -49,7 +48,6 @@ class Trainer:
         i_testset=100,
         i_video=5000,
         i_print=100,
-        tensorboard_logging: bool = True,
         input_dims_embed: int = 1,
         save_train_set_render: bool = True,
         density_in_loss: bool = False,
@@ -96,7 +94,6 @@ class Trainer:
         self.i_testset = i_testset
         self.i_video = i_video
         self.i_print = i_print
-        self.tensorboard_logging = tensorboard_logging
         self.input_dims_embed = input_dims_embed
         self.save_train_set_render = save_train_set_render
         self.no_reload = False
@@ -122,11 +119,6 @@ class Trainer:
             print(f"{self.sampling_train_frequency=}")
             print(f"{self.sampling_lr=}")
             print(f"{self.max_density=}")
-
-        if ~self.render_only & tensorboard_logging:
-            self.writer = SummaryWriter(
-                log_dir=f"{self.basedir}/{self.expname}/metrics"
-            )
 
     def load_data(self):
         """Load data and prepare poses."""
@@ -301,7 +293,6 @@ class Trainer:
                 loss = img_loss
                 psnr = nerf_utils.run_nerf_helpers.mse2psnr(img_loss)
 
-                self.log_on_tensorboard(i, {"test": {"loss": loss, "psnr": psnr}})
             print("Saved test set")
 
         if i % self.i_testset == 0 and i > 0 and self.save_train_set_render:
@@ -537,12 +528,6 @@ class Trainer:
         )  # [N_rays, N_importance, 3]
         return z_samples, pts
 
-    def log_on_tensorboard(self, step, metrics):
-        for i in metrics:
-            for j in metrics[i]:
-                self.writer.add_scalar(f"{i}/{j}", metrics[i][j], step)
-        self.writer.flush()
-
     def train(self, N_iters=200000 + 1):
         hwf, poses, i_test, i_val, i_train, images, render_poses = self.load_data()
 
@@ -585,9 +570,6 @@ class Trainer:
                 i,
                 target_s,
             )
-
-            if self.tensorboard_logging:
-                self.log_on_tensorboard(i, {"train": {"loss": loss, "psnr": psnr}})
 
             self.update_learning_rate(optimizer)
 
