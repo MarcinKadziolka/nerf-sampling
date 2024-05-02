@@ -365,7 +365,7 @@ class Trainer:
             )
 
         if i % self.i_print == 0:
-            info = f"[TRAIN] Iter: {i} Loss: {loss.item()}  PSNR: {psnr.item()}, Mean density: {torch.mean(density):2}, Max density: {torch.max(density):2}"
+            info = f"[TRAIN] Iter: {i} Loss: {loss.item()}  PSNR: {psnr.item()}, Mean density: {torch.mean(density):.3f}, Max density: {torch.max(density):.3f}"
             wandb.log(
                 {
                     "Loss": loss.item(),
