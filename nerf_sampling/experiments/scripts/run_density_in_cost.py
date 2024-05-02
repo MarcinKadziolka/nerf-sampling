@@ -22,7 +22,7 @@ from nerf_sampling.nerf_pytorch.utils import load_obj_from_config
 @click.option(
     "--wandb_mode",
     type=click.Choice(["online", "offline", "disabled"], case_sensitive=False),
-    default="online",
+    default="disabled",
     help="Set the mode for wandb logging.",
 )
 def main(
