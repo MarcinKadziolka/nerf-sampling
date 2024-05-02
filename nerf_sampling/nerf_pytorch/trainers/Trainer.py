@@ -363,7 +363,8 @@ class Trainer:
                     "PSNR": psnr.item(),
                     "Mean density": torch.mean(density),
                     "Max density": torch.max(density),
-                }
+                },
+                step=self.global_step,
             )
             tqdm.write(info)
             f = os.path.join(self.basedir, self.expname, "psnr.txt")
