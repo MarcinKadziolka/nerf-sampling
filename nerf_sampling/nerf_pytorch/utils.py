@@ -4,13 +4,9 @@ import importlib
 import random
 from typing import Optional
 
-import matplotlib.pyplot as plt
 import torch
-import wandb
 
 from nerf_sampling.nerf_pytorch.run_nerf_helpers import NeRF
-
-from . import visualize
 
 
 def load_obj_from_config(cfg: dict):
@@ -121,3 +117,21 @@ def load_sampling_network(sampling_network, sampling_optimizer, ckpt):
     """
     sampling_optimizer.load_state_dict(ckpt["sampling_optimizer_state_dict"])
     sampling_network.load_state_dict(ckpt["sampling_network"])
+
+
+def override_config(config, update):
+    """Overrides config with update dict only when the keys match.
+
+    Args:
+        config: Dictionary to override.
+        update: Dictionary with changes to apply.
+
+    Raises:
+        KeyError: If key that is supposed to be overwritten does not exist.
+    """
+    config_keys = config.keys()
+    for key, value in update.items():
+        if key in config_keys:
+            config[key] = value
+        else:
+            raise KeyError(f"Key {key} does not exist in config")
