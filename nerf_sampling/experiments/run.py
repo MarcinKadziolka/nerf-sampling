@@ -72,6 +72,7 @@ def main(**click_kwargs):
         project="nerf-sampling", config=config["kwargs"], mode=click_kwargs["wandb"]
     )
     basedir = wandb.run.dir
+    print(f"{basedir=}")
     datadir = click_kwargs["dataset"]
     config["kwargs"]["datadir"] = datadir
     config["kwargs"]["basedir"] = basedir
