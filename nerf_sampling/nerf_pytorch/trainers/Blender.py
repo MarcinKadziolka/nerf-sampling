@@ -28,5 +28,5 @@ class BlenderTrainer(Trainer):
         else:
             images = images[..., :3]
 
-        render_poses = torch.Tensor(render_poses).to(self.device)
+        render_poses = render_poses.clone().detach()
         return hwf, poses, i_test, i_val, i_train, images, render_poses

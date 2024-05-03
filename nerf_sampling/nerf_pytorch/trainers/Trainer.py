@@ -397,7 +397,7 @@ class Trainer:
             target = images[img_i]
             target = torch.Tensor(target).to(self.device)
             pose = poses[img_i, :3, :4]
-            self.c2w = torch.Tensor(pose)
+            self.c2w = pose.clone().detach()
 
             if self.N_rand is not None:
                 rays_o, rays_d = nerf_utils.run_nerf_helpers.get_rays(
