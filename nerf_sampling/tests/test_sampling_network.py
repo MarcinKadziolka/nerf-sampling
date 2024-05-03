@@ -34,7 +34,7 @@ def train(**kwargs):
     rays_o = torch.zeros(len(target_centers), 3)
     for i, ray in enumerate(rays_o):
         ray[2] += i
-    rays_d = torch.Tensor([[1, 0, 0]]).repeat(len(target_centers), 1)
+    rays_d = torch.tensor([[1, 0, 0]]).repeat(len(target_centers), 1)
     optim = torch.optim.Adam(sampling_network.parameters())
 
     for i in range(500):

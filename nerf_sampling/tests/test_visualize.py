@@ -6,10 +6,10 @@ def main(args):
     test_wandb = args.wandb
     save = args.save
     rays_o = torch.zeros((6, 3))
-    rays_d = torch.Tensor(
+    rays_d = torch.tensor(
         [[1, 0, 0], [0, 1, 0], [0, 0, 1], [-1, 0, 0], [0, -1, 0], [0, 0, -1]]
     )
-    pts = torch.Tensor(
+    pts = torch.tensor(
         [
             [[1, 0, 0]],
             [[0, 2, 0]],
@@ -19,10 +19,10 @@ def main(args):
             [[0, 0, -6]],
         ]
     )
-    density = torch.Tensor([[-100], [0], [5], [10], [15], [100]])
+    density = torch.tensor([[-100], [0], [5], [10], [15], [100]])
     points_fig, _ = plot_points(pts, c=density)
     rays_fig = visualize_rays_pts(rays_o, rays_d, pts, n_rays=6, c=density)
-    densities = torch.Tensor([10, 20, 30, 40, 50, 60, 70, 80])
+    densities = torch.tensor([10, 20, 30, 40, 50, 60, 70, 80])
     histogram_fig = plot_histogram(densities=densities)
     if save:
         pickle.dump(rays_fig, open("rays_fig.fig.pickle", "wb"))

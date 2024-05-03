@@ -245,10 +245,10 @@ class Trainer:
 
         # Move training data to GPU
         if self.use_batching:
-            images = torch.Tensor(images).to(self.device)
-        poses = torch.Tensor(poses).to(self.device)
+            images = torch.tensor(images).to(self.device)
+        poses = torch.tensor(poses).to(self.device)
         if self.use_batching:
-            rays_rgb = torch.Tensor(rays_rgb).to(self.device)
+            rays_rgb = torch.tensor(rays_rgb).to(self.device)
 
         return images, poses, rays_rgb, i_batch
 
@@ -280,7 +280,7 @@ class Trainer:
             with torch.no_grad():
                 target_s = images[i_test]
                 rgbs, _ = nerf_utils.render_path(
-                    torch.Tensor(poses[i_test]).to(self.device),
+                    torch.tensor(poses[i_test]).to(self.device),
                     hwf,
                     self.K,
                     self.chunk,
@@ -292,7 +292,7 @@ class Trainer:
                 )
 
                 img_loss = nerf_utils.run_nerf_helpers.img2mse(
-                    torch.Tensor(rgbs), torch.Tensor(target_s)
+                    torch.tensor(rgbs), torch.tensor(target_s)
                 )
                 loss = img_loss
                 psnr = nerf_utils.run_nerf_helpers.mse2psnr(img_loss)
@@ -308,7 +308,7 @@ class Trainer:
             with torch.no_grad():
                 target_s = images[i_test]
                 rgbs, _ = nerf_utils.render_path(
-                    torch.Tensor(poses[i_train[:10]]).to(self.device),
+                    torch.tensor(poses[i_train[:10]]).to(self.device),
                     hwf,
                     self.K,
                     self.chunk,
@@ -395,7 +395,7 @@ class Trainer:
             # Random from one image
             img_i = np.random.choice(i_train)
             target = images[img_i]
-            target = torch.Tensor(target).to(self.device)
+            target = torch.tensor(target)
             pose = poses[img_i, :3, :4]
             self.c2w = pose.clone().detach()
 
@@ -535,7 +535,7 @@ class Trainer:
 
         if self.render_test:
             render_poses = np.array(poses[i_test])
-            render_poses = torch.Tensor(render_poses).to(self.device)
+            render_poses = torch.tensor(render_poses).to(self.device)
 
         hwf = self.cast_intrinsics_to_right_types(hwf=hwf)
         self.create_log_dir_and_copy_the_config_file()
@@ -642,7 +642,7 @@ class Trainer:
                 if pytest:
                     np.random.seed(0)
                     t_rand = np.random.rand(*list(z_vals.shape))
-                    t_rand = torch.Tensor(t_rand)
+                    t_rand = torch.tensor(t_rand)
 
                 z_vals = lower + (upper - lower) * t_rand
 
@@ -750,7 +750,7 @@ class Trainer:
 
         dists = z_vals[..., 1:] - z_vals[..., :-1]
         dists = torch.cat(
-            [dists, torch.Tensor([1e10]).expand(dists[..., :1].shape)], -1
+            [dists, torch.tensor([1e10]).expand(dists[..., :1].shape)], -1
         )  # [N_rays, N_samples]
 
         dists = dists * torch.norm(rays_d[..., None, :], dim=-1)
@@ -764,7 +764,7 @@ class Trainer:
             if pytest:
                 np.random.seed(0)
                 noise = np.random.rand(*list(raw[..., 3].shape)) * raw_noise_std
-                noise = torch.Tensor(noise)
+                noise = torch.tensor(noise)
 
         alpha = raw2alpha(raw[..., 3] + noise, dists)  # [N_rays, N_samples]
         # weights = alpha * tf.math.cumprod(1.-alpha + 1e-10, -1, exclusive=True)

@@ -91,11 +91,11 @@ def normalize_directions(rays_d: torch.Tensor) -> torch.Tensor:
 
 
 def test_normalize_directions():  # noqa: D103
-    rays_d = torch.Tensor([[1.5, 0, 3.14], [-1, 0.25, 0.33]])
+    rays_d = torch.tensor([[1.5, 0, 3.14], [-1, 0.25, 0.33]])
     # vector = [x, y, z]
     # magnitude = sqrt(x^2 + y^2 + z^2)
     # expected_vector =  [x/magnitude, y/magnitude, z/magnitude]
-    expected = torch.Tensor(
+    expected = torch.tensor(
         [
             [0.43104810784, 0, 0.90232737241],
             [-0.92394970017, 0.23098742504, 0.30490340105],

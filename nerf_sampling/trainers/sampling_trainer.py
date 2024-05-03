@@ -142,7 +142,7 @@ class SamplingTrainer(Blender.BlenderTrainer):
         """
         dists = z_vals[..., 1:] - z_vals[..., :-1]
         dists = torch.cat(
-            [dists, torch.Tensor([1e10]).expand(dists[..., :1].shape)], -1
+            [dists, torch.tensor([1e10]).expand(dists[..., :1].shape)], -1
         )  # [N_rays, N_samples]
 
         dists = dists * torch.norm(rays_d[..., None, :], dim=-1)
@@ -156,7 +156,7 @@ class SamplingTrainer(Blender.BlenderTrainer):
             if pytest:
                 np.random.seed(0)
                 noise = np.random.rand(*list(raw[..., 3].shape)) * raw_noise_std
-                noise = torch.Tensor(noise)
+                noise = torch.tensor(noise)
 
         alpha = nerf_utils.raw2alpha(raw[..., 3] + noise, dists)  # [N_rays, N_samples]
         # weights = alpha * tf.math.cumprod(1.-alpha + 1e-10, -1, exclusive=True)
