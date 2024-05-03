@@ -173,7 +173,8 @@ class SamplingTrainer(Blender.BlenderTrainer):
 
         depth_map = torch.sum(weights * z_vals, -1)
         disp_map = 1.0 / torch.max(
-            1e-10 * torch.ones_like(depth_map), depth_map / torch.sum(weights, -1)
+            1e-10 * torch.ones_like(depth_map),
+            depth_map / (torch.sum(weights, -1) + 1e-10),
         )
         acc_map = torch.sum(weights, -1)
 
