@@ -12,11 +12,11 @@ class BaselineSampler(nn.Module):
 
     def __init__(
         self,
-        origin_channels=3,
-        direction_channels=3,
-        near=2,
-        far=6,
-        n_samples=40,
+        origin_channels: int = 3,
+        direction_channels: int = 3,
+        near: int = 2,
+        far: int = 6,
+        n_samples: int = 32,
     ):
         """Initializes sampling network.
 
