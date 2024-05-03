@@ -10,6 +10,7 @@ from nerf_sampling.nerf_pytorch.utils import load_obj_from_config, override_conf
 
 @click.command()
 @click.option(
+    "-c",
     "--config",
     help="Path to configuration file.",
     type=str,
@@ -17,6 +18,7 @@ from nerf_sampling.nerf_pytorch.utils import load_obj_from_config, override_conf
     show_default=True,
 )
 @click.option(
+    "-d",
     "--dataset",
     help="Path to dataset folder.",
     type=str,
@@ -24,6 +26,7 @@ from nerf_sampling.nerf_pytorch.utils import load_obj_from_config, override_conf
     show_default=True,
 )
 @click.option(
+    "-m",
     "--model",
     help="Model type.",
     type=str,
@@ -31,6 +34,7 @@ from nerf_sampling.nerf_pytorch.utils import load_obj_from_config, override_conf
     show_default=True,
 )
 @click.option(
+    "-w",
     "--wandb",
     type=click.Choice(["online", "offline", "disabled"], case_sensitive=False),
     default="disabled",
