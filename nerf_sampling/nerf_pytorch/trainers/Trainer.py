@@ -259,6 +259,7 @@ class Trainer:
         i_train,
         images,
         loss,
+        sampler_loss,
         psnr,
         render_kwargs_train,
         render_kwargs_test,
@@ -356,10 +357,12 @@ class Trainer:
             )
 
         if i % self.i_print == 0:
-            info = f"[TRAIN] Iter: {i} Loss: {loss.item()}  PSNR: {psnr.item()}, Mean density: {torch.mean(density):.3f}, Max density: {torch.max(density):.3f}"
+            sampler_loss = sampler_loss.item() if sampler_loss is not None else None
+            info = f"Iter: {i} Loss: {loss.item()}, Sampler loss: {sampler_loss}, Mean/Max density: {torch.mean(density):.2f}/{torch.max(density):.2f}, PSNR: {psnr.item():.5f}"
             wandb.log(
                 {
                     "Loss": loss.item(),
+                    "Sampler loss": sampler_loss,
                     "PSNR": psnr.item(),
                     "Mean density": torch.mean(density),
                     "Max density": torch.max(density),
@@ -477,16 +480,17 @@ class Trainer:
 
         train_sampler_only = i % self.sampling_train_frequency == 0
         density = extras["raw"][..., -1]  # raw_density = extras["raw"][..., 3]
+        sampler_loss = None
         if self.density_in_loss and train_sampler_only:
             utils.freeze_model(render_kwargs_train["network_fn"])
             if self.max_density:
-                density_loss = -self.density_loss_weight * torch.mean(
+                sampler_loss = -self.density_loss_weight * torch.mean(
                     torch.max(density, dim=1, keepdim=True)[0]
                 )
-                density_loss.backward()
+                sampler_loss.backward()
             else:
-                density_loss = -self.density_loss_weight * torch.mean(density)
-                density_loss.backward()
+                sampler_loss = -self.density_loss_weight * torch.mean(density)
+                sampler_loss.backward()
             utils.unfreeze_model(render_kwargs_train["network_fn"])
         else:
             loss.backward()
@@ -494,7 +498,7 @@ class Trainer:
         optimizer.step()
         sampling_optimizer.step()
 
-        return density, loss, psnr, psnr0
+        return density, loss, sampler_loss, psnr, psnr0
 
     def update_learning_rate(self, optimizer):
         decay_rate = 0.1
@@ -563,7 +567,7 @@ class Trainer:
                 rays_rgb, i_batch, i_train, images, poses, i
             )
 
-            density, loss, psnr, psnr0 = self.core_optimization_loop(
+            density, loss, sampler_loss, psnr, psnr0 = self.core_optimization_loop(
                 optimizer,
                 sampling_optimizer,
                 render_kwargs_train,
@@ -583,6 +587,7 @@ class Trainer:
                 i_train=i_train,
                 images=images,
                 loss=loss,
+                sampler_loss=sampler_loss,
                 psnr=psnr,
                 render_kwargs_train=render_kwargs_train,
                 render_kwargs_test=render_kwargs_test,
