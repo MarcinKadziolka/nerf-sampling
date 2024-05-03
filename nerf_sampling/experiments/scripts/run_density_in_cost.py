@@ -1,8 +1,5 @@
 """Script for running SphereNeRF."""
 
-import os
-from typing import Literal
-
 import click
 import torch
 import wandb
