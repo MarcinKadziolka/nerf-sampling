@@ -7,7 +7,7 @@ import torch
 import wandb
 from tqdm import tqdm, trange
 
-from nerf_sampling.nerf_pytorch import nerf_utils, utils
+from nerf_sampling.nerf_pytorch import nerf_utils, utils, loss_functions
 
 
 class Trainer:
@@ -51,10 +51,10 @@ class Trainer:
         input_dims_embed: int = 1,
         save_train_set_render: bool = True,
         density_in_loss: bool = False,
-        density_loss_weight: float = 1,
-        sampling_train_frequency: int = 1,
+        sampler_loss_weight: float = 1,
+        sampler_train_frequency: int = 1,
         max_density: bool = False,
-        sampling_lr: float = 0.0001,
+        sampler_lr: float = 0.0001,
     ):
         self.start = None
         self.dataset_type = dataset_type
@@ -104,21 +104,24 @@ class Trainer:
         self.c2w = None
 
         self.density_in_loss = density_in_loss
-        self.density_loss_weight = density_loss_weight
-        self.sampling_train_frequency = sampling_train_frequency
+        self.sampler_loss_weight = sampler_loss_weight
+        self.sampler_train_frequency = sampler_train_frequency
         self.max_density = max_density
-        self.sampling_lr = sampling_lr
+        self.sampler_lr = sampler_lr
 
         print(f"{self}")
-        print(f"{self.use_viewdirs=}")
         print(f"{self.N_samples=}")
         print(f"{self.N_importance=}")
         print(f"{self.density_in_loss=}")
         if self.density_in_loss:
-            print(f"{self.density_loss_weight=}")
-            print(f"{self.sampling_train_frequency=}")
-            print(f"{self.sampling_lr=}")
+            print(f"{self.sampler_loss_weight=}")
+            print(f"{self.sampler_train_frequency=}")
+            print(f"{self.sampler_lr=}")
             print(f"{self.max_density=}")
+            if self.max_density:
+                self.sampler_loss_fn = loss_functions.max_density_loss
+            else:
+                self.sampler_loss_fn = loss_functions.mean_density_loss
 
     def load_data(self):
         """Load data and prepare poses."""
@@ -478,23 +481,17 @@ class Trainer:
             loss = loss + img_loss0
             psnr0 = nerf_utils.run_nerf_helpers.mse2psnr(img_loss0)
 
-        train_sampler_only = i % self.sampling_train_frequency == 0
+        train_sampler_only = i % self.sampler_train_frequency == 0
         density = extras["raw"][..., -1]  # raw_density = extras["raw"][..., 3]
         sampler_loss = None
-        if self.density_in_loss and train_sampler_only:
-            utils.freeze_model(render_kwargs_train["network_fn"])
-            if self.max_density:
-                sampler_loss = -self.density_loss_weight * torch.mean(
-                    torch.max(density, dim=1, keepdim=True)[0]
-                )
-                sampler_loss.backward()
-            else:
-                sampler_loss = -self.density_loss_weight * torch.mean(density)
-                sampler_loss.backward()
-            utils.unfreeze_model(render_kwargs_train["network_fn"])
-        else:
-            loss.backward()
-
+        if self.sampler_loss_fn is not None:
+            train_sampler_only = i % self.sampler_train_frequency == 0
+            if train_sampler_only:
+                utils.freeze_model(render_kwargs_train["network_fn"])
+                sampler_loss = self.sampler_loss_weight * self.sampler_loss_fn(density)
+                sampler_loss.backward(retain_graph=True)
+                utils.unfreeze_model(render_kwargs_train["network_fn"])
+        loss.backward()
         optimizer.step()
         sampling_optimizer.step()
 
@@ -597,7 +594,7 @@ class Trainer:
             )
 
             self.global_step += 1
-
+        wandb.finish()
         self.writer.close()
 
     def sample_main_points(

@@ -51,7 +51,7 @@ class SamplingTrainer(Blender.BlenderTrainer):
         sampling_params = list(sampling_network.parameters())
 
         sampling_optimizer = torch.optim.Adam(
-            params=sampling_params, lr=self.sampling_lr
+            params=sampling_params, lr=self.sampler_lr
         )
 
         # Load checkpoints

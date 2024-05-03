@@ -61,9 +61,9 @@ def main(**click_kwargs):
         "density_in_loss": True,
         "max_density": False,
         "N_samples": 64,
-        "sampling_lr": 1e-4,
-        "density_loss_weight": 1e-3,
-        "sampling_train_frequency": 10,
+        "sampler_lr": 1e-4,
+        "sampler_loss_weight": 1e-3,
+        "sampler_train_frequency": 10,
     }
     override_config(config=config["kwargs"], update=override)
 
