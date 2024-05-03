@@ -107,3 +107,86 @@ def test_update_config_key_does_not_exists(test_config):
 
     # Optionally, assert the message of the error
     assert f"Key {invalid_key} does not exist in config" in str(exc_info.value)
+
+
+class TestBaselineSampler:
+    def test_baseline_sampler_layers_and_depth(self):
+        hidden_sizes = [16, 32, 64]
+        cat_hidden_sizes = [32, 64, 128]
+        n_samples = 8
+        sampler = baseline_sampler.BaselineSampler(
+            hidden_sizes=hidden_sizes, cat_hidden_sizes=cat_hidden_sizes, n_samples=8
+        )
+
+        # Check if all linear layers are followed by relu
+        for i, (ol, dl) in enumerate(
+            zip(sampler.origin_layers, sampler.direction_layers)
+        ):
+            if i % 2 == 0:
+                assert isinstance(ol, torch.nn.Linear)
+                assert isinstance(dl, torch.nn.Linear)
+            else:
+                assert isinstance(ol, torch.nn.ReLU)
+                assert isinstance(dl, torch.nn.ReLU)
+
+        for i, cl in enumerate(sampler.cat_layers):
+            if i % 2 == 0:
+                assert isinstance(cl, torch.nn.Linear)
+                assert isinstance(cl, torch.nn.Linear)
+            else:
+                assert isinstance(cl, torch.nn.ReLU)
+                assert isinstance(cl, torch.nn.ReLU)
+
+        assert isinstance(sampler.sigmoid, torch.nn.Sigmoid)
+
+        # Check depth of network
+        # multiply by 2 to account for ReLU after each layer
+        assert len(sampler.origin_layers) == len(hidden_sizes) * 2
+        assert len(sampler.origin_layers) == len(hidden_sizes) * 2
+        assert len(sampler.cat_layers) == len(cat_hidden_sizes) * 2
+
+        # Check width of network
+        # origin layers
+        assert sampler.origin_layers[0].in_features == sampler.origin_dims
+        assert sampler.origin_layers[0].out_features == hidden_sizes[0]
+
+        assert sampler.origin_layers[2].in_features == hidden_sizes[0]
+        assert sampler.origin_layers[2].out_features == hidden_sizes[1]
+
+        assert sampler.origin_layers[4].in_features == hidden_sizes[1]
+        assert sampler.origin_layers[4].out_features == hidden_sizes[2]
+
+        # concatenated_layers
+        assert (
+            sampler.cat_layers[0].in_features == hidden_sizes[-1] * 2
+        )  # * 2 because we concatenate origin and direction
+        assert sampler.cat_layers[0].out_features == cat_hidden_sizes[0]
+
+        assert sampler.cat_layers[2].in_features == cat_hidden_sizes[0]
+        assert sampler.cat_layers[2].out_features == cat_hidden_sizes[1]
+
+        assert sampler.cat_layers[4].in_features == cat_hidden_sizes[1]
+        assert sampler.cat_layers[4].out_features == cat_hidden_sizes[2]
+
+        assert sampler.to_n_samples.in_features == cat_hidden_sizes[-1]
+        assert sampler.to_n_samples.out_features == n_samples
+
+    def test_baseline_sampler_one_layer(self):
+        hidden_sizes = [16]
+        concatenated_hidden_sizes = [32]
+        sampler = baseline_sampler.BaselineSampler(
+            hidden_sizes=hidden_sizes,
+            cat_hidden_sizes=concatenated_hidden_sizes,
+        )
+        assert len(sampler.origin_layers) == len(hidden_sizes) * 2
+        assert len(sampler.origin_layers) == len(hidden_sizes) * 2
+        assert len(sampler.cat_layers) == len(concatenated_hidden_sizes) * 2
+
+    def test_baseline_sampler_output_shape(self):
+        batch_size = 2
+        n_rays = 4
+        n_samples = 5
+        rays_o = rays_d = torch.zeros(batch_size, n_rays, 3)
+        sampler = baseline_sampler.BaselineSampler(n_samples=n_samples)
+        pts, _ = sampler(rays_o, rays_d)
+        assert pts.shape == (batch_size, n_rays, n_samples, 3)
