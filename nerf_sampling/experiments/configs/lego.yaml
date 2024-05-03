@@ -9,7 +9,6 @@ sampler_lego_params: &sampler_lego_params # & adds anchor (reference) with a giv
   lrate_decay: 500
   input_dims_embed: 3
   use_viewdirs: True
-  N_samples: 64
   N_importance: 0
   no_batching: True
   half_res: True
@@ -17,6 +16,7 @@ sampler_lego_params: &sampler_lego_params # & adds anchor (reference) with a giv
   precrop_frac: 0.5
 
   # set this parameters explicitly in the code
+  N_samples: None
   density_in_loss: None
   density_loss_weight: None
   sampling_train_frequency: None
