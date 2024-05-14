@@ -1,11 +1,13 @@
 import os
 from pathlib import Path
+from typing import Optional
 
 import imageio
 import numpy as np
 import torch
 import wandb
 from tqdm import tqdm, trange
+import optuna
 
 from nerf_sampling.nerf_pytorch import nerf_utils, utils, loss_functions
 
@@ -55,6 +57,7 @@ class Trainer:
         sampler_train_frequency: int = 1,
         max_density: bool = False,
         sampler_lr: float = 0.0001,
+        trial: Optional[optuna.trial.Trial] = None,
     ):
         self.start = None
         self.dataset_type = dataset_type
@@ -108,6 +111,8 @@ class Trainer:
         self.sampler_train_frequency = sampler_train_frequency
         self.max_density = max_density
         self.sampler_lr = sampler_lr
+
+        self.trial = trial
 
         print(f"{self}")
         print(f"{self.N_samples=}")
@@ -377,6 +382,13 @@ class Trainer:
             with open(f, "a") as file:
                 file.write(f"{info}\n")
 
+            if self.trial is not None:
+                self.trial.report(psnr.item(), self.global_step)
+                if self.trial.should_prune():
+                    wandb.run.summary["state"] = "pruned"
+                    wandb.finish(quiet=True)
+                    raise optuna.exceptions.TrialPruned()
+
     def sample_random_ray_batch(self, rays_rgb, i_batch, i_train, images, poses, i):
         if self.use_batching:
             # Random over all images
@@ -572,7 +584,6 @@ class Trainer:
                 i,
                 target_s,
             )
-
             self.update_learning_rate(optimizer)
 
             self.log(
@@ -594,8 +605,7 @@ class Trainer:
             )
 
             self.global_step += 1
-        wandb.finish()
-        self.writer.close()
+        return psnr
 
     def sample_main_points(
         self,
