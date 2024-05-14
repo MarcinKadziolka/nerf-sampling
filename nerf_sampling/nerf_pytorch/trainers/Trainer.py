@@ -295,7 +295,7 @@ class Trainer:
                     torch.tensor(rgbs), torch.tensor(target_s)
                 )
                 loss = img_loss
-                psnr = nerf_utils.run_nerf_helpers.mse2psnr(img_loss)
+                test_psnr = nerf_utils.run_nerf_helpers.mse2psnr(img_loss)
 
             print("Saved test set")
 
