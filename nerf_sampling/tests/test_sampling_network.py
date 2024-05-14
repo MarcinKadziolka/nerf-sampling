@@ -12,8 +12,6 @@ def calculate_densities(pts, target_center, gaussian_width):
 
 
 @click.command()
-@click.option("--mean", is_flag=True, help="Use mean density loss function.")
-@click.option("--max", is_flag=True, help="Use max density loss function.")
 @click.option("--plot", default=False, is_flag=True, help="Plot every 10 iters.")
 @click.option("--no_final_plot", default=True, is_flag=True, help="Don't plot results.")
 def train(**kwargs):
@@ -23,18 +21,13 @@ def train(**kwargs):
 
     target_centers = [2, 3, 4, 5, 6]
     n_samples = 64
-    if kwargs["mean"]:
-        print("Mean loss function")
-        loss_fn = loss_functions.mean_density_loss
-    elif kwargs["max"]:
-        print("Max loss function")
-        loss_fn = loss_functions.max_density_loss
+    loss_fn = loss_functions.mean_density_loss
     gaussian_width = 0.5
     sampling_network = BaselineSampler(n_samples=n_samples)
-    rays_o = torch.zeros(len(target_centers), 3)
+    rays_o = torch.zeros(len(target_centers), 3, dtype=torch.float)
     for i, ray in enumerate(rays_o):
         ray[2] += i
-    rays_d = torch.tensor([[1, 0, 0]]).repeat(len(target_centers), 1)
+    rays_d = torch.tensor([[1, 0, 0]], dtype=torch.float).repeat(len(target_centers), 1)
     optim = torch.optim.Adam(sampling_network.parameters())
 
     for i in range(500):
