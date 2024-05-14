@@ -1,4 +1,7 @@
 from nerf_sampling.nerf_pytorch.visualize import *
+import wandb
+import pickle
+import argparse
 
 
 def main(args):
@@ -7,7 +10,8 @@ def main(args):
     save = args.save
     rays_o = torch.zeros((6, 3))
     rays_d = torch.tensor(
-        [[1, 0, 0], [0, 1, 0], [0, 0, 1], [-1, 0, 0], [0, -1, 0], [0, 0, -1]]
+        [[1, 0, 0], [0, 1, 0], [0, 0, 1], [-1, 0, 0], [0, -1, 0], [0, 0, -1]],
+        dtype=torch.float,
     )
     pts = torch.tensor(
         [
