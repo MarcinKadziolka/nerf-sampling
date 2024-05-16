@@ -15,6 +15,7 @@ import wandb
 from tqdm import tqdm
 
 from nerf_sampling.nerf_pytorch import run_nerf_helpers, utils, visualize
+from nerf_sampling.nerf_pytorch.loss_functions import SamplerLossInput
 
 np.random.seed(0)
 DEBUG = False
@@ -142,7 +143,7 @@ def render(
         k_sh = list(sh[:-1]) + list(all_returned[key].shape[1:])
         all_returned[key] = torch.reshape(all_returned[key], k_sh)
 
-    key_extract = ["rgb_map", "disp_map", "acc_map", "alphas_map"]
+    key_extract = ["rgb_map", "disp_map", "acc_map"]
     ret_list = [all_returned[key] for key in key_extract]
     ret_dict = {
         key: all_returned[key] for key in all_returned if key not in key_extract
@@ -432,9 +433,9 @@ def render_rays(
     bounds = torch.reshape(ray_batch[..., 6:8], [-1, 1, 2])
     near, far = bounds[..., 0], bounds[..., 1]  # [-1,1]
 
-    rgb_map, disp_map, acc_map, depth_map, alphas_map = None, None, None, None, None
+    (rgb_map, disp_map, acc_map, depth_map) = None, None, None, None
     raw = None
-    weights = None
+    density, alphas, weights = None, None, None
     z_vals = None
     pts = None
     if N_samples > 0:
@@ -442,18 +443,24 @@ def render_rays(
             rays_o=rays_o, rays_d=rays_d, sampling_network=kwargs["sampling_network"]
         )
         raw = network_query_fn(pts, viewdirs, network_fn)
-        rgb_map, disp_map, acc_map, weights, depth_map, alphas_map = (
-            trainer.raw2outputs(
-                raw=raw,
-                z_vals=z_vals,
-                rays_d=rays_d,
-                raw_noise=raw_noise_std,
-                white_bkdg=white_bkgd,
-                pytest=pytest,
-            )
+        (
+            rgb_map,
+            disp_map,
+            acc_map,
+            depth_map,
+            density,
+            alphas,
+            weights,
+        ) = trainer.raw2outputs(
+            raw=raw,
+            z_vals=z_vals,
+            rays_d=rays_d,
+            raw_noise=raw_noise_std,
+            white_bkdg=white_bkgd,
+            pytest=pytest,
         )
         if trainer.global_step % trainer.i_testset == 0:
-            trainer.save_rays_data(rays_o, pts, alphas_map)
+            trainer.save_rays_data(rays_o, pts, alphas)
 
     raw_0 = None
     if N_importance > 0:
@@ -492,7 +499,8 @@ def render_rays(
         "rgb_map": rgb_map,
         "disp_map": disp_map,
         "acc_map": acc_map,
-        "alphas_map": alphas_map,
+        "density": density,
+        "alphas": alphas,
         "weights": weights,
         "pts": pts,
     }
@@ -501,6 +509,13 @@ def render_rays(
             ret["raw"] = raw
         else:
             ret["raw"] = raw_0
+
+    if trainer.sampler_loss_input == SamplerLossInput.DENSITY:
+        ret["sampler_loss_input"] = density
+    elif trainer.sampler_loss_input == SamplerLossInput.ALPHAS:
+        ret["sampler_loss_input"] = alphas
+    elif trainer.sampler_loss_input == SamplerLossInput.WEIGHTS:
+        ret["sampler_loss_input"] = weights
 
     for key in ret:
         if (torch.isnan(ret[key]).any() or torch.isinf(ret[key]).any()) and DEBUG:

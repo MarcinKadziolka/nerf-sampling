@@ -158,14 +158,15 @@ class SamplingTrainer(Blender.BlenderTrainer):
                 noise = np.random.rand(*list(raw[..., 3].shape)) * raw_noise_std
                 noise = torch.tensor(noise)
 
-        alpha = nerf_utils.raw2alpha(raw[..., 3] + noise, dists)  # [N_rays, N_samples]
+        density = raw[..., 3]
+        alphas = nerf_utils.raw2alpha(density + noise, dists)  # [N_rays, N_samples]
         # weights = alpha * tf.math.cumprod(1.-alpha + 1e-10, -1, exclusive=True)
         # weights = alpha * cumprod(1.0 - alpha)
         # weights = (1 - exp(-sigma_i * dists_i)) * cumprod(1.0 - (1 - exp(-sigma_i * dists_i)))
         weights = (
-            alpha
+            alphas
             * torch.cumprod(
-                torch.cat([torch.ones((alpha.shape[0], 1)), 1.0 - alpha + 1e-10], -1),
+                torch.cat([torch.ones((alphas.shape[0], 1)), 1.0 - alphas + 1e-10], -1),
                 -1,
             )[:, :-1]
         )  # [N_rays, N_samples]
@@ -181,4 +182,12 @@ class SamplingTrainer(Blender.BlenderTrainer):
         if white_bkgd:
             rgb_map = rgb_map + (1.0 - acc_map[..., None])
 
-        return (rgb_map, disp_map, acc_map, weights, depth_map, alpha)
+        return (
+            rgb_map,
+            disp_map,
+            acc_map,
+            depth_map,
+            density,
+            alphas,
+            weights,
+        )

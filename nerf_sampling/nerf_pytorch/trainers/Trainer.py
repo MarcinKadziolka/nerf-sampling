@@ -10,6 +10,7 @@ from tqdm import tqdm, trange
 import optuna
 
 from nerf_sampling.nerf_pytorch import nerf_utils, utils, loss_functions
+from nerf_sampling.nerf_pytorch.loss_functions import SamplerLossInput
 
 
 class Trainer:
@@ -52,10 +53,9 @@ class Trainer:
         i_print=100,
         input_dims_embed: int = 1,
         save_train_set_render: bool = True,
-        density_in_loss: bool = False,
+        sampler_loss_input: SamplerLossInput = SamplerLossInput.DENSITY,
         sampler_loss_weight: float = 1,
         sampler_train_frequency: int = 1,
-        max_density: bool = False,
         sampler_lr: float = 0.0001,
         trial: Optional[optuna.trial.Trial] = None,
     ):
@@ -106,10 +106,9 @@ class Trainer:
         self.H = None
         self.c2w = None
 
-        self.density_in_loss = density_in_loss
+        self.sampler_loss_input = sampler_loss_input
         self.sampler_loss_weight = sampler_loss_weight
         self.sampler_train_frequency = sampler_train_frequency
-        self.max_density = max_density
         self.sampler_lr = sampler_lr
 
         self.trial = trial
@@ -117,16 +116,20 @@ class Trainer:
         print(f"{self}")
         print(f"{self.N_samples=}")
         print(f"{self.N_importance=}")
-        print(f"{self.density_in_loss=}")
-        if self.density_in_loss:
-            print(f"{self.sampler_loss_weight=}")
-            print(f"{self.sampler_train_frequency=}")
-            print(f"{self.sampler_lr=}")
-            print(f"{self.max_density=}")
-            if self.max_density:
-                self.sampler_loss_fn = loss_functions.max_density_loss
-            else:
-                self.sampler_loss_fn = loss_functions.mean_density_loss
+        print(f"{self.sampler_loss_weight=}")
+        print(f"{self.sampler_train_frequency=}")
+        print(f"{self.sampler_lr=}")
+        print(f"{self.sampler_loss_input=}")
+        if self.sampler_loss_input == SamplerLossInput.DENSITY:
+            self.sampler_loss_fn = loss_functions.mean_density_loss
+        elif (
+            self.sampler_loss_input == SamplerLossInput.ALPHAS
+            or self.sampler_loss_input == SamplerLossInput.WEIGHTS
+        ):
+            self.sampler_loss_fn = loss_functions.alphas_or_weights_loss
+        else:
+            raise ValueError(f"Invalid sampler_loss_input: {self.sampler_loss_input}")
+        print(f"{self.sampler_loss_fn=}")
 
     def load_data(self):
         """Load data and prepare poses."""
@@ -273,7 +276,7 @@ class Trainer:
         render_kwargs_test,
         optimizer,
         sampling_optimizer,
-        density,
+        logs,
     ):
         """Handle logging and saving logic."""
         if i % self.i_testset == 0 and i > 0:
@@ -365,6 +368,9 @@ class Trainer:
             )
 
         if i % self.i_print == 0:
+            density = logs["density"]
+            alphas = logs["alphas"]
+            weights = logs["weights"]
             sampler_loss = sampler_loss.item() if sampler_loss is not None else None
             info = f"Iter: {i} Loss: {loss.item()}, Sampler loss: {sampler_loss}, Mean/Max density: {torch.mean(density):.2f}/{torch.max(density):.2f}, PSNR: {psnr.item():.5f}"
             wandb.log(
@@ -374,6 +380,8 @@ class Trainer:
                     "PSNR": psnr.item(),
                     "Mean density": torch.mean(density),
                     "Max density": torch.max(density),
+                    "Mean alphas": torch.mean(alphas),
+                    "Mean weights": torch.mean(weights),
                 },
                 step=self.global_step,
             )
@@ -467,7 +475,7 @@ class Trainer:
         target_s,
     ):
         """Runs rendering and backpropagates."""
-        rgb, disp, acc, alphas, extras = nerf_utils.render(
+        rgb, disp, acc, extras = nerf_utils.render(
             self.H,
             self.W,
             self.K,
@@ -481,8 +489,6 @@ class Trainer:
         optimizer.zero_grad()
         sampling_optimizer.zero_grad()
         img_loss = nerf_utils.run_nerf_helpers.img2mse(rgb, target_s)
-        #
-        # raw model output = [R, G, B, D] - D -> density
         loss = img_loss
 
         psnr = nerf_utils.run_nerf_helpers.mse2psnr(img_loss)
@@ -493,21 +499,26 @@ class Trainer:
             loss = loss + img_loss0
             psnr0 = nerf_utils.run_nerf_helpers.mse2psnr(img_loss0)
 
-        train_sampler_only = i % self.sampler_train_frequency == 0
-        density = extras["raw"][..., -1]  # raw_density = extras["raw"][..., 3]
         sampler_loss = None
-        if self.sampler_loss_fn is not None:
-            train_sampler_only = i % self.sampler_train_frequency == 0
-            if train_sampler_only:
-                utils.freeze_model(render_kwargs_train["network_fn"])
-                sampler_loss = self.sampler_loss_weight * self.sampler_loss_fn(density)
-                sampler_loss.backward(retain_graph=True)
-                utils.unfreeze_model(render_kwargs_train["network_fn"])
+        train_sampler_only = i % self.sampler_train_frequency == 0
+        if train_sampler_only:
+            sampler_loss_input = extras["sampler_loss_input"]
+            utils.freeze_model(render_kwargs_train["network_fn"])
+            sampler_loss = self.sampler_loss_weight * self.sampler_loss_fn(
+                sampler_loss_input
+            )
+            sampler_loss.backward(retain_graph=True)
+            utils.unfreeze_model(render_kwargs_train["network_fn"])
+
         loss.backward()
         optimizer.step()
         sampling_optimizer.step()
-
-        return density, loss, sampler_loss, psnr, psnr0
+        logs = {
+            "density": extras["density"],
+            "alphas": extras["alphas"],
+            "weights": extras["weights"],
+        }
+        return logs, loss, sampler_loss, psnr, psnr0
 
     def update_learning_rate(self, optimizer):
         decay_rate = 0.1
@@ -576,7 +587,7 @@ class Trainer:
                 rays_rgb, i_batch, i_train, images, poses, i
             )
 
-            density, loss, sampler_loss, psnr, psnr0 = self.core_optimization_loop(
+            logs, loss, sampler_loss, psnr, psnr0 = self.core_optimization_loop(
                 optimizer,
                 sampling_optimizer,
                 render_kwargs_train,
@@ -601,7 +612,7 @@ class Trainer:
                 render_kwargs_test=render_kwargs_test,
                 optimizer=optimizer,
                 sampling_optimizer=sampling_optimizer,
-                density=density,
+                logs=logs,
             )
 
             self.global_step += 1

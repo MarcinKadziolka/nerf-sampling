@@ -1,6 +1,7 @@
 """Loss functions for sampler network."""
 
 import torch
+
 from enum import Enum
 
 
@@ -24,3 +25,9 @@ def mean_density_loss(density: torch.Tensor) -> torch.Tensor:
     return -torch.mean(density)
 
 
+class SamplerLossInput(Enum):
+    """Store options for sampler loss function input."""
+
+    DENSITY = 0
+    ALPHAS = 1
+    WEIGHTS = 2
