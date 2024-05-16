@@ -19,6 +19,7 @@ class BaselineSampler(nn.Module):
         near: int = 2,
         far: int = 6,
         n_samples: int = 32,
+        multires: int = 10,
     ):
         """Initializes sampling network.
 
@@ -38,10 +39,10 @@ class BaselineSampler(nn.Module):
         self.near = near
 
         self.origin_embedder, self.origin_dims = get_embedder(
-            multires=10, input_dims=origin_channels
+            multires=multires, input_dims=origin_channels
         )
         self.direction_embedder, self.direction_dims = get_embedder(
-            multires=10, input_dims=direction_channels
+            multires=multires, input_dims=direction_channels
         )
 
         origin_layers: list[nn.Linear | nn.ReLU] = [
