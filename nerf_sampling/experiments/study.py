@@ -49,6 +49,8 @@ def objective(trial):
         "sampler_lr": sampler_lr,
         "sampler_loss_weight": sampler_loss_weight,
         "sampler_train_frequency": sampler_train_frequency,
+        "n_layers": n_layers,
+        "layer_width": layer_width,
     }
     override_config(config=config["kwargs"], update=override)
 
