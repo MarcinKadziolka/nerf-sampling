@@ -114,8 +114,17 @@ class TestBaselineSampler:
         hidden_sizes = [16, 32, 64]
         cat_hidden_sizes = [32, 64, 128]
         n_samples = 8
+        multires = 5
+        n_channels = 3
+        # multires * cos/sin * 3 channels + 3 original channels
+        expected_embedding_dim = multires * 2 * 3 + 3
         sampler = baseline_sampler.BaselineSampler(
-            hidden_sizes=hidden_sizes, cat_hidden_sizes=cat_hidden_sizes, n_samples=8
+            hidden_sizes=hidden_sizes,
+            cat_hidden_sizes=cat_hidden_sizes,
+            n_samples=8,
+            multires=multires,
+            origin_channels=n_channels,
+            direction_channels=n_channels,
         )
 
         # Check if all linear layers are followed by relu
@@ -157,8 +166,8 @@ class TestBaselineSampler:
         assert sampler.origin_layers[4].out_features == hidden_sizes[2]
 
         # concatenated_layers
-        assert (
-            sampler.cat_layers[0].in_features == hidden_sizes[-1] * 2
+        assert sampler.cat_layers[0].in_features == hidden_sizes[-1] * 2 + (
+            expected_embedding_dim + expected_embedding_dim
         )  # * 2 because we concatenate origin and direction
         assert sampler.cat_layers[0].out_features == cat_hidden_sizes[0]
 
