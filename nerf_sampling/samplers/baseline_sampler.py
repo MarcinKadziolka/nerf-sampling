@@ -61,7 +61,10 @@ class BaselineSampler(nn.Module):
                 layers.append(nn.ReLU())
 
         cat_layers: list[nn.Linear | nn.ReLU | nn.Sigmoid] = [
-            nn.Linear(hidden_sizes[-1] * 2, cat_hidden_sizes[0]),
+            nn.Linear(
+                hidden_sizes[-1] * 2 + self.origin_dims + self.direction_dims,
+                cat_hidden_sizes[0],
+            ),
             nn.ReLU(),
         ]
 
@@ -103,8 +106,9 @@ class BaselineSampler(nn.Module):
         direction_outputs = self.direction_layers(embedded_direction)
 
         outputs = torch.cat([origin_outputs, direction_outputs], -1)
+        skip_connection = torch.cat([outputs, embedded_origin, embedded_direction], -1)
 
-        concat_outputs = self.cat_layers(outputs)
+        concat_outputs = self.cat_layers(skip_connection)
         n_samples_output = self.to_n_samples(concat_outputs)
         final_outputs = self.sigmoid(n_samples_output)
         return self.scale_to_near_far(final_outputs, rays_o, rays_d)
