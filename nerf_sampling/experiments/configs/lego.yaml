@@ -17,11 +17,10 @@ sampler_lego_params: &sampler_lego_params # & adds anchor (reference) with a giv
 
   # set this parameters explicitly in the code
   N_samples: None
-  density_in_loss: None
   sampler_loss_weight: None
   sampler_train_frequency: None
   sampler_lr: None
-  max_density: None
+  sampler_loss_input: None
 
 sampler_dataset_lego_setup: &sampler_dataset_lego_setup
   expname: "lego_sampler_experiment" 

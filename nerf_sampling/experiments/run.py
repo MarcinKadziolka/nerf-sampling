@@ -5,6 +5,7 @@ import torch
 import wandb
 import yaml
 
+from nerf_sampling.nerf_pytorch.loss_functions import SamplerLossInput
 from nerf_sampling.nerf_pytorch.utils import load_obj_from_config, override_config
 
 
@@ -58,12 +59,11 @@ def main(**click_kwargs):
     EPOCHS = 7000000
 
     override = {
-        "density_in_loss": True,
-        "max_density": False,
         "N_samples": 64,
         "sampler_lr": 1e-4,
         "sampler_loss_weight": 1e-3,
         "sampler_train_frequency": 10,
+        "sampler_loss_input": SamplerLossInput.ALPHAS,
     }
     override_config(config=config["kwargs"], update=override)
 
