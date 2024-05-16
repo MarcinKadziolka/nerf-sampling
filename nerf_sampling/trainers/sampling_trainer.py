@@ -36,6 +36,8 @@ class SamplingTrainer(Blender.BlenderTrainer):
         """
         self.n_layers = n_layers
         self.layer_width = layer_width
+        print(f"{self.n_layers=}")
+        print(f"{self.layer_width=}")
         super().__init__(**kwargs)
         # Fine network is not used in this approach, we aim to train sampling network which points are valuable
 
