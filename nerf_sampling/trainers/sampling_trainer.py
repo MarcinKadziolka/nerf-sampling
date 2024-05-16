@@ -18,13 +18,24 @@ class SamplingTrainer(Blender.BlenderTrainer):
 
     def __init__(
         self,
+        n_layers: int = 6,
+        layer_width: int = 256,
         **kwargs,
     ):
         """Initialize the sampling trainer.
 
         In addition to original nerf_pytorch BlenderTrainer,
         the trainer contains the spheres used in the training process.
+
+        Args:
+            n_layers: number of layers for sampling network.
+                denotes number of layers both individually of origin and direction
+                and number of layers for concatenated embeddings of origin and direction
+            layer_width: number of neurons in each layer.
+            **kwargs: other arguments passed to BlenderTrainer or Trainer.
         """
+        self.n_layers = n_layers
+        self.layer_width = layer_width
         super().__init__(**kwargs)
         # Fine network is not used in this approach, we aim to train sampling network which points are valuable
 
@@ -44,8 +55,12 @@ class SamplingTrainer(Blender.BlenderTrainer):
         render_kwargs_test.update(bds_dict)
 
         # Inject sampler
+        hidden_sizes = [self.layer_width for _ in range(self.n_layers)]
+        cat_hidden_sizes = [self.layer_width for _ in range(self.n_layers)]
         sampling_network = BaselineSampler(
             n_samples=self.N_samples,
+            hidden_sizes=hidden_sizes,
+            cat_hidden_sizes=cat_hidden_sizes,
         )
 
         sampling_params = list(sampling_network.parameters())

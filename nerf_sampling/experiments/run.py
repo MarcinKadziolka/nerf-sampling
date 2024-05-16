@@ -64,6 +64,8 @@ def main(**click_kwargs):
         "sampler_loss_weight": 1e-3,
         "sampler_train_frequency": 10,
         "sampler_loss_input": SamplerLossInput.ALPHAS,
+        "n_layers": 6,
+        "layer_width": 128,
     }
     override_config(config=config["kwargs"], update=override)
 
