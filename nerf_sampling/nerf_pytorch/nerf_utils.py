@@ -186,7 +186,7 @@ def render_path(
     for i, c2w in enumerate(tqdm(render_poses)):
         print(i, time.time() - t)
         t = time.time()
-        rgb, disp, acc, alpha, extras = render(
+        rgb, disp, acc, extras = render(
             H, W, K, chunk=chunk, c2w=c2w[:3, :4], **render_kwargs
         )
         rgbs.append(rgb.cpu().numpy())
@@ -206,7 +206,7 @@ def render_path(
             imageio.imwrite(filename, rgb8)
             if excavator_fig:
                 pts = extras["pts"]  # [H, W, N_samples, 3]
-                density = extras["raw"][..., 3]  # [H, W, N_samples]
+                density = extras["density"]
                 indices = utils.get_dense_indices(
                     density.cpu(), min_density=torch.mean(density).cpu()
                 )
@@ -214,12 +214,10 @@ def render_path(
                 densities.append(density[indices])
                 all_pts.append(dense_points.cpu())
         if wandb_log:
-            density = torch.flatten(
-                extras["raw"][..., 3], end_dim=1
-            )  # [H*W, N_samples]
+            density = torch.flatten(extras["density"], end_dim=1)  # [H*W, N_samples]
             rand_indices = random.sample(range(len(density)), k=400)
             densities.append(torch.flatten(density)[rand_indices].cpu())
-            alphas.append(torch.flatten(alpha)[rand_indices].cpu())
+            alphas.append(torch.flatten(extras["alphas"])[rand_indices].cpu())
             weights.append(torch.flatten(extras["weights"])[rand_indices].cpu())
             pts = torch.flatten(extras["pts"], end_dim=1)  # [H*W, N_samples, 3]
             rays_o = extras["rays_o"]  # [H*W, 3]
