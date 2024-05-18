@@ -24,9 +24,9 @@ def objective(trial):
     if torch.cuda.is_available():
         torch.set_default_device(device="cuda")
 
-    EPOCHS = 200_000
+    EPOCHS = 150_000
 
-    N_samples = trial.suggest_int("N_samples", 2, 64)
+    N_samples = trial.suggest_int("N_samples", 2, 32)
     sampler_train_frequency = trial.suggest_int("sampler_train_frequency", 2, 50)
     sampler_lr = trial.suggest_float("sampler_lr ", 1e-6, 1e-1)
     sampler_loss_weight = trial.suggest_float("sampler_loss_weight", 1e-5, 1)
@@ -35,15 +35,13 @@ def objective(trial):
     sampler_loss_input = trial.suggest_categorical(
         "sampler_loss_input",
         [
-            SamplerLossInput.DENSITY,
-            SamplerLossInput.ALPHAS,
-            SamplerLossInput.WEIGHTS,
+            SamplerLossInput.DENSITY.value,
+            SamplerLossInput.ALPHAS.value,
+            SamplerLossInput.WEIGHTS.value,
         ],
     )
 
     override = {
-        "density_in_loss": True,
-        "max_density": False,
         "N_samples": N_samples,
         "sampler_loss_input": sampler_loss_input,
         "sampler_lr": sampler_lr,
@@ -58,7 +56,7 @@ def objective(trial):
         project="nerf-sampling",
         config=config["kwargs"],
         mode="online",
-        group="optuna_testing",
+        group="sweep",
         reinit=True,
     )
     basedir = wandb.run.dir
@@ -78,7 +76,9 @@ def objective(trial):
 
 study = optuna.create_study(
     direction="maximize",
-    study_name="nerf_sampling",
+    study_name="nerf_sampling_sweep",
     pruner=optuna.pruners.MedianPruner(),
+    storage="sqlite:///sweep.db",
+    load_if_exists=True,
 )
 study.optimize(objective, n_trials=100)

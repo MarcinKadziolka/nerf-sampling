@@ -120,11 +120,11 @@ class Trainer:
         print(f"{self.sampler_train_frequency=}")
         print(f"{self.sampler_lr=}")
         print(f"{self.sampler_loss_input=}")
-        if self.sampler_loss_input == SamplerLossInput.DENSITY:
+        if self.sampler_loss_input == SamplerLossInput.DENSITY.value:
             self.sampler_loss_fn = loss_functions.mean_density_loss
         elif (
-            self.sampler_loss_input == SamplerLossInput.ALPHAS
-            or self.sampler_loss_input == SamplerLossInput.WEIGHTS
+            self.sampler_loss_input == SamplerLossInput.ALPHAS.value
+            or self.sampler_loss_input == SamplerLossInput.WEIGHTS.value
         ):
             self.sampler_loss_fn = loss_functions.alphas_or_weights_loss
         else:

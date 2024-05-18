@@ -508,11 +508,11 @@ def render_rays(
         else:
             ret["raw"] = raw_0
 
-    if trainer.sampler_loss_input == SamplerLossInput.DENSITY:
+    if trainer.sampler_loss_input == SamplerLossInput.DENSITY.value:
         ret["sampler_loss_input"] = density
-    elif trainer.sampler_loss_input == SamplerLossInput.ALPHAS:
+    elif trainer.sampler_loss_input == SamplerLossInput.ALPHAS.value:
         ret["sampler_loss_input"] = alphas
-    elif trainer.sampler_loss_input == SamplerLossInput.WEIGHTS:
+    elif trainer.sampler_loss_input == SamplerLossInput.WEIGHTS.value:
         ret["sampler_loss_input"] = weights
 
     for key in ret:
