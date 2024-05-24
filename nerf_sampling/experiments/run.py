@@ -47,31 +47,25 @@ def main(**click_kwargs):
     with open(click_kwargs["config"], "r") as fin:
         model = click_kwargs["model"]
         config = yaml.safe_load(fin)[model]
+    override = {}
+    override_config(config=config["kwargs"], update=override)
 
     torch.manual_seed(42)  # 0
 
-    # get names of environment variables
-
-    if config["kwargs"]["device"] == "cuda":
+    device = config["kwargs"]["device"]
+    if device == "cuda":
         if torch.cuda.is_available():
             torch.set_default_device(device="cuda")
+    elif device == "cpu":
+        torch.set_default_device(device="cpu")
 
-    EPOCHS = 7000000
-
-    override = {
-        "N_samples": 64,
-        "sampler_lr": 1e-4,
-        "sampler_loss_weight": 1e-3,
-        "sampler_train_frequency": 10,
-        "sampler_loss_input": SamplerLossInput.ALPHAS,
-        "n_layers": 6,
-        "layer_width": 128,
-    }
-    override_config(config=config["kwargs"], update=override)
+    EPOCHS = 100_000_000
 
     print(f"wandb: {click_kwargs['wandb']}")
     wandb.init(
-        project="nerf-sampling", config=config["kwargs"], mode=click_kwargs["wandb"]
+        project="nerf-sampling",
+        config=config["kwargs"],
+        mode=click_kwargs["wandb"],
     )
     basedir = wandb.run.dir
     print(f"{basedir=}")
