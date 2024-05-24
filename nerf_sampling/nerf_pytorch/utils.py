@@ -2,8 +2,7 @@
 
 import importlib
 import random
-from typing import Optional
-
+from typing import Optional, Union, Literal
 import torch
 
 from nerf_sampling.nerf_pytorch.run_nerf_helpers import NeRF
@@ -135,3 +134,12 @@ def override_config(config, update):
             config[key] = value
         else:
             raise KeyError(f"Key {key} does not exist in config")
+
+
+def set_global_device(device: Union[Literal["cuda"], Literal["cpu"]]):
+    """Set all tensors to be created on device."""
+    if device == "cuda":
+        if torch.cuda.is_available():
+            torch.set_default_device(device="cuda")
+    elif device == "cpu":
+        torch.set_default_device(device="cpu")
