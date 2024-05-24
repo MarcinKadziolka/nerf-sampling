@@ -366,17 +366,28 @@ class Trainer:
                 fps=30,
                 quality=8,
             )
+        if i % (self.sampler_train_frequency * 50) == 0:
+            sampler_loss = sampler_loss.item() if sampler_loss is not None else None
+            info = f"Iter: {i} Sampler loss: {sampler_loss}"
+            wandb.log(
+                {
+                    "Sampler loss": sampler_loss,
+                },
+                step=self.global_step,
+            )
+            tqdm.write(info)
+            f = os.path.join(self.basedir, self.expname, "sampler_loss.txt")
+            with open(f, "a") as file:
+                file.write(f"{info}\n")
 
         if i % self.i_print == 0:
             density = logs["density"]
             alphas = logs["alphas"]
             weights = logs["weights"]
-            sampler_loss = sampler_loss.item() if sampler_loss is not None else None
-            info = f"Iter: {i} Loss: {loss.item()}, Sampler loss: {sampler_loss}, Mean/Max density: {torch.mean(density):.2f}/{torch.max(density):.2f}, PSNR: {psnr.item():.5f}"
+            info = f"Iter: {i} Loss: {loss.item()}, Mean/Max density: {torch.mean(density):.2f}/{torch.max(density):.2f}, PSNR: {psnr.item():.5f}"
             wandb.log(
                 {
                     "Loss": loss.item(),
-                    "Sampler loss": sampler_loss,
                     "PSNR": psnr.item(),
                     "Mean density": torch.mean(density),
                     "Max density": torch.max(density),
