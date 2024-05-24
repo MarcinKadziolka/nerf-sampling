@@ -26,7 +26,7 @@ dependencies = [
 
 
 [tool.setuptools.dynamic]
-version = {attr = "nerf-pytorch.VERSION"}
+version = {attr = "nerf_sampling.VERSION"}
 readme = {file = ["README.md"]}
 
 [tool.setuptools.packages]
