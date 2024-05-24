@@ -5,7 +5,11 @@ import torch
 import wandb
 import yaml
 
-from nerf_sampling.nerf_pytorch.utils import load_obj_from_config, override_config
+from nerf_sampling.nerf_pytorch.utils import (
+    load_obj_from_config,
+    override_config,
+    set_global_device,
+)
 from nerf_sampling.nerf_pytorch.loss_functions import SamplerLossInput
 
 optuna.logging.set_verbosity(optuna.logging.DEBUG)
@@ -21,15 +25,13 @@ def objective(trial):
 
     # get names of environment variables
 
-    if torch.cuda.is_available():
-        torch.set_default_device(device="cuda")
-
+    set_global_device(config["kwargs"]["device"])
     EPOCHS = 150_000
 
     N_samples = trial.suggest_int("N_samples", 2, 32)
     sampler_train_frequency = trial.suggest_int("sampler_train_frequency", 2, 50)
-    sampler_lr = trial.suggest_float("sampler_lr ", 1e-6, 1e-1)
-    sampler_loss_weight = trial.suggest_float("sampler_loss_weight", 1e-5, 1)
+    sampler_lr = trial.suggest_float("sampler_lr ", 1e-8, 1e-3)
+    sampler_loss_weight = trial.suggest_float("sampler_loss_weight", 1e-8, 1)
     n_layers = trial.suggest_int("n_layers", 3, 8)
     layer_width = trial.suggest_categorical("layer_width", [128, 256, 512])
     sampler_loss_input = trial.suggest_categorical(
@@ -52,11 +54,12 @@ def objective(trial):
     }
     override_config(config=config["kwargs"], update=override)
 
+    group = ""
     run = wandb.init(
         project="nerf-sampling",
         config=config["kwargs"],
         mode="online",
-        group="sweep",
+        group=group,
         reinit=True,
     )
     basedir = wandb.run.dir
@@ -74,11 +77,13 @@ def objective(trial):
     return psnr
 
 
+study_name = ""
+storage_name = ""
 study = optuna.create_study(
     direction="maximize",
-    study_name="nerf_sampling_sweep",
+    study_name=study_name,
     pruner=optuna.pruners.MedianPruner(),
-    storage="sqlite:///sweep.db",
+    storage=f"sqlite:///{storage_name}.db",
     load_if_exists=True,
 )
-study.optimize(objective, n_trials=100)
+study.optimize(objective, n_trials=500)
