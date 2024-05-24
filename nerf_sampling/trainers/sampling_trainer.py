@@ -74,21 +74,22 @@ class SamplingTrainer(Blender.BlenderTrainer):
         # Load checkpoints
         basedir = self.basedir
         expname = self.expname
-        if self.ft_path is not None and self.ft_path != "None":
-            ckpts = [self.ft_path]
-        else:
-            ckpts = [
-                os.path.join(basedir, expname, f)
-                for f in sorted(os.listdir(os.path.join(basedir, expname)))
-                if "tar" in f
-            ]
-        print("Found ckpts", ckpts)
-        if len(ckpts) > 0 and not self.no_reload:
-            ckpt_path = ckpts[-1]
-            print("Reloading from", ckpt_path)
-            ckpt = torch.load(ckpt_path)
-            # Load model
-            utils.load_sampling_network(sampling_network, sampling_optimizer, ckpt)
+        if render_kwargs_train["network_fine"] is None:
+            if self.ft_path is not None and self.ft_path != "None":
+                ckpts = [self.ft_path]
+            else:
+                ckpts = [
+                    os.path.join(basedir, expname, f)
+                    for f in sorted(os.listdir(os.path.join(basedir, expname)))
+                    if "tar" in f
+                ]
+            print("Found ckpts", ckpts)
+            if len(ckpts) > 0 and not self.no_reload:
+                ckpt_path = ckpts[-1]
+                print("Reloading from", ckpt_path)
+                ckpt = torch.load(ckpt_path)
+                # Load model
+                utils.load_sampling_network(sampling_network, sampling_optimizer, ckpt)
 
         # Add sampler to model dicts
         render_kwargs_train["sampling_network"] = sampling_network
