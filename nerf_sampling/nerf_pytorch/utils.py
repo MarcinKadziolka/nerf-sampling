@@ -99,11 +99,13 @@ def load_nerf(network_fn: NeRF, network_fine: Optional[NeRF], optimizer, ckpt):
       ckpt: Loaded data dict. ckpt = torch.load(path)
     """
     optimizer.load_state_dict(ckpt["optimizer_state_dict"])
-
+    print("Successfully loaded optimizer")
     # Load model
     network_fn.load_state_dict(ckpt["network_fn_state_dict"])
+    print("Successfully loaded network_fn")
     if network_fine is not None:
         network_fine.load_state_dict(ckpt["network_fine_state_dict"])
+    print("Successfully loaded network_fine")
 
 
 def load_sampling_network(sampling_network, sampling_optimizer, ckpt):
@@ -115,7 +117,9 @@ def load_sampling_network(sampling_network, sampling_optimizer, ckpt):
       ckpt: Loaded data dict. ckpt = torch.load(path)
     """
     sampling_optimizer.load_state_dict(ckpt["sampling_optimizer_state_dict"])
+    print("Successfully loaded sampling_optimizer")
     sampling_network.load_state_dict(ckpt["sampling_network"])
+    print("Successfully loaded sampling_network")
 
 
 def override_config(config, update):
