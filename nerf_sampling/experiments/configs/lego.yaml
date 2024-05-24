@@ -2,9 +2,9 @@ sampler_lego_params: &sampler_lego_params # & adds anchor (reference) with a giv
   N_rand: 1024
   white_bkgd: True
   device: 'cuda'
-  i_weights: 50000
-  i_testset: 50000
-  i_video: 50000
+  i_weights: 100000
+  i_testset: 100000
+  i_video: 100000
   i_print: 1000
   lrate_decay: 500
   input_dims_embed: 3
