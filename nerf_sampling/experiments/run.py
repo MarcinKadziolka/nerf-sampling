@@ -6,7 +6,11 @@ import wandb
 import yaml
 
 from nerf_sampling.nerf_pytorch.loss_functions import SamplerLossInput
-from nerf_sampling.nerf_pytorch.utils import load_obj_from_config, override_config
+from nerf_sampling.nerf_pytorch.utils import (
+    load_obj_from_config,
+    override_config,
+    set_global_device,
+)
 
 
 @click.command()
@@ -52,13 +56,7 @@ def main(**click_kwargs):
 
     torch.manual_seed(42)  # 0
 
-    device = config["kwargs"]["device"]
-    if device == "cuda":
-        if torch.cuda.is_available():
-            torch.set_default_device(device="cuda")
-    elif device == "cpu":
-        torch.set_default_device(device="cpu")
-
+    set_global_device(config["kwargs"]["device"])
     EPOCHS = 100_000_000
 
     print(f"wandb: {click_kwargs['wandb']}")
