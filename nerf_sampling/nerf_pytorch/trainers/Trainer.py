@@ -57,6 +57,7 @@ class Trainer:
         sampler_loss_weight: float = 1,
         sampler_train_frequency: int = 1,
         sampler_lr: float = 0.0001,
+        train_sampler_only: bool = False,
         trial: Optional[optuna.trial.Trial] = None,
     ):
         self.start = None
@@ -110,7 +111,7 @@ class Trainer:
         self.sampler_loss_weight = sampler_loss_weight
         self.sampler_train_frequency = sampler_train_frequency
         self.sampler_lr = sampler_lr
-
+        self.train_sampler_only = train_sampler_only
         self.trial = trial
 
         print(f"{self}")
@@ -120,6 +121,7 @@ class Trainer:
         print(f"{self.sampler_train_frequency=}")
         print(f"{self.sampler_lr=}")
         print(f"{self.sampler_loss_input=}")
+        print(f"{self.train_sampler_only=}")
         if self.sampler_loss_input == SamplerLossInput.DENSITY.value:
             self.sampler_loss_fn = loss_functions.mean_density_loss
         elif (
@@ -509,18 +511,15 @@ class Trainer:
             img_loss0 = nerf_utils.run_nerf_helpers.img2mse(extras["rgb0"], target_s)
             loss = loss + img_loss0
             psnr0 = nerf_utils.run_nerf_helpers.mse2psnr(img_loss0)
-
         sampler_loss = None
-        train_sampler_only = i % self.sampler_train_frequency == 0
-        if train_sampler_only:
-            sampler_loss_input = extras["sampler_loss_input"]
+        if self.sampler_train_frequency % i == 0:
             utils.freeze_model(render_kwargs_train["network_fn"])
+            sampler_loss_input = extras["sampler_loss_input"]
             sampler_loss = self.sampler_loss_weight * self.sampler_loss_fn(
                 sampler_loss_input
             )
             sampler_loss.backward(retain_graph=True)
             utils.unfreeze_model(render_kwargs_train["network_fn"])
-
         loss.backward()
         optimizer.step()
         sampling_optimizer.step()
@@ -576,6 +575,11 @@ class Trainer:
         optimizer, sampling_optimizer, render_kwargs_train, render_kwargs_test = (
             self.create_nerf_model()
         )
+        if self.train_sampler_only:
+            if render_kwargs_train["network_fn"] is not None:
+                utils.freeze_model(render_kwargs_train["network_fn"])
+            if render_kwargs_train["network_fine"] is not None:
+                utils.freeze_model(render_kwargs_train["network_fine"])
 
         if self.render_only:
             self.render(
