@@ -440,7 +440,10 @@ def render_rays(
         pts, z_vals = trainer.sample_main_points(
             rays_o=rays_o, rays_d=rays_d, sampling_network=kwargs["sampling_network"]
         )
-        raw = network_query_fn(pts, viewdirs, network_fn)
+        if network_fine is not None:
+            raw = network_query_fn(pts, viewdirs, network_fine)
+        else:
+            raw = network_query_fn(pts, viewdirs, network_fn)
         (
             rgb_map,
             disp_map,
@@ -461,37 +464,6 @@ def render_rays(
             trainer.save_rays_data(rays_o, pts, alphas)
 
     raw_0 = None
-    if N_importance > 0:
-        (
-            rgb_map_0,
-            disp_map_0,
-            acc_map_0,
-            rgb_map,
-            disp_map,
-            acc_map,
-            raw_0,
-            z_samples,
-        ) = trainer.sample_points(
-            z_vals=z_vals,
-            weights=weights,
-            perturb=perturb,
-            pytest=pytest,
-            rays_o=rays_o,
-            rays_d=rays_d,
-            rgb_map=rgb_map,
-            disp_map=disp_map,
-            acc_map=acc_map,
-            network_fn=network_fn,
-            network_fine=network_fine,
-            network_query_fn=network_query_fn,
-            viewdirs=viewdirs,
-            raw_noise_std=raw_noise_std,
-            white_bkgd=white_bkgd,
-        )
-        ret["rgb0"] = rgb_map_0
-        ret["disp0"] = disp_map_0
-        ret["acc0"] = acc_map_0
-        ret["z_std"] = torch.std(z_samples, dim=-1, unbiased=False)  # [N_rays]
 
     ret = {
         "rgb_map": rgb_map,
