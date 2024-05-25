@@ -284,6 +284,7 @@ def create_nerf(args, model):
         embeddirs_fn, input_ch_views = run_nerf_helpers.get_embedder(
             args.multires_views, args.i_embed, args.input_dims_embed
         )
+    # output_ch will equal to 4 either way if view_dirs are used
     output_ch = 5 if args.N_importance > 0 else 4
     skips = [4]
     model_nerf = model(
