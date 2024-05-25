@@ -22,6 +22,7 @@ sampler_lego_params: &sampler_lego_params # & adds anchor (reference) with a giv
   sampler_loss_input: 1
   n_layers: 5
   layer_width: 128
+  train_sampler_only: True
   
 
 sampler_dataset_lego_setup: &sampler_dataset_lego_setup
