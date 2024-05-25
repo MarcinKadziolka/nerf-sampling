@@ -129,6 +129,8 @@ class Trainer:
             or self.sampler_loss_input == SamplerLossInput.WEIGHTS.value
         ):
             self.sampler_loss_fn = loss_functions.alphas_or_weights_loss
+        elif self.sampler_loss_input is None:
+            self.sampler_loss_fn = None
         else:
             raise ValueError(f"Invalid sampler_loss_input: {self.sampler_loss_input}")
         print(f"{self.sampler_loss_fn=}")
