@@ -515,14 +515,18 @@ class Trainer:
             loss = loss + img_loss0
             psnr0 = nerf_utils.run_nerf_helpers.mse2psnr(img_loss0)
         sampler_loss = None
-        if self.sampler_train_frequency % i == 0:
-            utils.freeze_model(render_kwargs_train["network_fn"])
+        if self.sampler_loss_input is not None and i % self.sampler_train_frequency:
             sampler_loss_input = extras["sampler_loss_input"]
             sampler_loss = self.sampler_loss_weight * self.sampler_loss_fn(
                 sampler_loss_input
             )
+            # if train_sampler_only model is already freezed
+            if not self.train_sampler_only:
+                utils.freeze_model(render_kwargs_train["network_fn"])
             sampler_loss.backward(retain_graph=True)
-            utils.unfreeze_model(render_kwargs_train["network_fn"])
+            # if train_sampler_only model we don't want to unfreeze
+            if not self.train_sampler_only:
+                utils.unfreeze_model(render_kwargs_train["network_fn"])
         loss.backward()
         optimizer.step()
         sampling_optimizer.step()
