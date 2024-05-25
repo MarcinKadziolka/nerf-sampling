@@ -370,19 +370,20 @@ class Trainer:
                 fps=30,
                 quality=8,
             )
-        if i % (self.sampler_train_frequency * 50) == 0:
-            sampler_loss = sampler_loss.item() if sampler_loss is not None else None
-            info = f"Iter: {i} Sampler loss: {sampler_loss}"
-            wandb.log(
-                {
-                    "Sampler loss": sampler_loss,
-                },
-                step=self.global_step,
-            )
-            tqdm.write(info)
-            f = os.path.join(self.basedir, self.expname, "sampler_loss.txt")
-            with open(f, "a") as file:
-                file.write(f"{info}\n")
+        if sampler_loss is not None:
+            if i % (self.sampler_train_frequency * 1000) == 0:
+                sampler_loss = sampler_loss.item()
+                info = f"Iter: {i} Sampler loss: {sampler_loss}"
+                wandb.log(
+                    {
+                        "Sampler loss": sampler_loss,
+                    },
+                    step=self.global_step,
+                )
+                tqdm.write(info)
+                f = os.path.join(self.basedir, self.expname, "sampler_loss.txt")
+                with open(f, "a") as file:
+                    file.write(f"{info}\n")
 
         if i % self.i_print == 0:
             density = logs["density"]
