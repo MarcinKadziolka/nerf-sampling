@@ -527,7 +527,8 @@ class Trainer:
             # if train_sampler_only model we don't want to unfreeze
             if not self.train_sampler_only:
                 utils.unfreeze_model(render_kwargs_train["network_fn"])
-        loss.backward()
+        if not self.train_sampler_only:
+            loss.backward()
         optimizer.step()
         sampling_optimizer.step()
         logs = {
