@@ -52,16 +52,18 @@ class BaselineSampler(nn.Module):
             nn.Linear(self.direction_dims + self.direction_dims, hidden_sizes[0]),
         ]
 
+        # no ReLU here, it's added in the forward() method
         for i, size in enumerate(hidden_sizes[:-1]):
             for layers in [origin_layers, direction_layers]:
                 layers.append(
                     nn.Linear(
+                        # account for skip connection (concatenating output of the layer with embedded origins/directions)
                         in_features=size + self.origin_dims,
                         out_features=hidden_sizes[i + 1],
                     )
                 )
 
-        cat_layers: list[nn.Linear | nn.ReLU | nn.Sigmoid] = [
+        cat_layers: list[nn.Linear | nn.ReLU] = [
             nn.Linear(
                 hidden_sizes[-1] * 2 + self.origin_dims + self.direction_dims,
                 cat_hidden_sizes[0],
