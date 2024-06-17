@@ -46,20 +46,20 @@ class BaselineSampler(nn.Module):
         )
 
         origin_layers: list[nn.Linear | nn.ReLU] = [
-            nn.Linear(self.origin_dims, hidden_sizes[0]),
-            nn.ReLU(),
+            nn.Linear(self.origin_dims + self.origin_dims, hidden_sizes[0]),
         ]
         direction_layers: list[nn.Linear | nn.ReLU] = [
-            nn.Linear(self.direction_dims, hidden_sizes[0]),
-            nn.ReLU(),
+            nn.Linear(self.direction_dims + self.direction_dims, hidden_sizes[0]),
         ]
 
         for i, size in enumerate(hidden_sizes[:-1]):
             for layers in [origin_layers, direction_layers]:
                 layers.append(
-                    nn.Linear(in_features=size, out_features=hidden_sizes[i + 1])
+                    nn.Linear(
+                        in_features=size + self.origin_dims,
+                        out_features=hidden_sizes[i + 1],
+                    )
                 )
-                layers.append(nn.ReLU())
 
         cat_layers: list[nn.Linear | nn.ReLU | nn.Sigmoid] = [
             nn.Linear(
@@ -105,8 +105,19 @@ class BaselineSampler(nn.Module):
         embedded_origin = self.origin_embedder(rays_o)
         embedded_direction = self.direction_embedder(rays_d)
 
-        origin_outputs = self.origin_layers(embedded_origin)
-        direction_outputs = self.direction_layers(embedded_direction)
+        origin_outputs = embedded_origin
+        for layer in self.origin_layers:
+            # skip connection in every layer
+            origin_outputs = layer(torch.cat([origin_outputs, embedded_origin], -1))
+            nn.ReLU(origin_outputs)
+
+        direction_outputs = embedded_direction
+        for layer in self.direction_layers:
+            # skip connection in every layer
+            direction_outputs = layer(
+                torch.cat([direction_outputs, embedded_direction], -1)
+            )
+            nn.ReLU(direction_outputs)
 
         outputs = torch.cat([origin_outputs, direction_outputs], -1)
         skip_connection = torch.cat([outputs, embedded_origin, embedded_direction], -1)
