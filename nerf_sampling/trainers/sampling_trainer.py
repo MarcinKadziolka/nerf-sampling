@@ -46,8 +46,8 @@ class SamplingTrainer(Blender.BlenderTrainer):
         render_kwargs_train, render_kwargs_test, start, grad_vars, optimizer = (
             create_nerf(self, NeRF)
         )
-        self.global_step = start
-        self.start = start
+        self.global_step = 0  # start
+        self.start = 0  # start
 
         bds_dict = {
             "near": self.near,
@@ -74,6 +74,9 @@ class SamplingTrainer(Blender.BlenderTrainer):
         # Load checkpoints
         basedir = self.basedir
         expname = self.expname
+        # if network_fine exists then that means we use pretrained model
+        # this checkpoint doesn't have sampler data
+        # might change in the future if we will want to continue training sampler
         if render_kwargs_train["network_fine"] is None:
             if self.ft_path is not None and self.ft_path != "None":
                 ckpts = [self.ft_path]
