@@ -515,7 +515,10 @@ class Trainer:
             loss = loss + img_loss0
             psnr0 = nerf_utils.run_nerf_helpers.mse2psnr(img_loss0)
         sampler_loss = None
-        if self.sampler_loss_input is not None and i % self.sampler_train_frequency:
+        if (
+            self.sampler_loss_input is not None
+            and i % self.sampler_train_frequency == 0
+        ):
             sampler_loss_input = extras["sampler_loss_input"]
             sampler_loss = self.sampler_loss_weight * self.sampler_loss_fn(
                 sampler_loss_input
