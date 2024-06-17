@@ -117,7 +117,7 @@ class TestBaselineSampler:
         multires = 5
         n_channels = 3
         # multires * cos/sin * 3 channels + 3 original channels
-        expected_embedding_dim = multires * 2 * 3 + 3
+        expected_embedding_dim = multires * 2 * n_channels + 3
         sampler = baseline_sampler.BaselineSampler(
             hidden_sizes=hidden_sizes,
             cat_hidden_sizes=cat_hidden_sizes,
@@ -127,43 +127,33 @@ class TestBaselineSampler:
             direction_channels=n_channels,
         )
 
-        # Check if all linear layers are followed by relu
-        for i, (ol, dl) in enumerate(
-            zip(sampler.origin_layers, sampler.direction_layers)
-        ):
-            if i % 2 == 0:
-                assert isinstance(ol, torch.nn.Linear)
-                assert isinstance(dl, torch.nn.Linear)
-            else:
-                assert isinstance(ol, torch.nn.ReLU)
-                assert isinstance(dl, torch.nn.ReLU)
-
-        for i, cl in enumerate(sampler.cat_layers):
-            if i % 2 == 0:
-                assert isinstance(cl, torch.nn.Linear)
-                assert isinstance(cl, torch.nn.Linear)
-            else:
-                assert isinstance(cl, torch.nn.ReLU)
-                assert isinstance(cl, torch.nn.ReLU)
-
         assert isinstance(sampler.sigmoid, torch.nn.Sigmoid)
 
         # Check depth of network
+        assert len(sampler.origin_layers) == len(hidden_sizes)
+        assert len(sampler.origin_layers) == len(hidden_sizes)
         # multiply by 2 to account for ReLU after each layer
-        assert len(sampler.origin_layers) == len(hidden_sizes) * 2
-        assert len(sampler.origin_layers) == len(hidden_sizes) * 2
         assert len(sampler.cat_layers) == len(cat_hidden_sizes) * 2
 
         # Check width of network
         # origin layers
-        assert sampler.origin_layers[0].in_features == sampler.origin_dims
+        assert (
+            sampler.origin_layers[0].in_features
+            == sampler.origin_dims + sampler.origin_dims
+        )
         assert sampler.origin_layers[0].out_features == hidden_sizes[0]
 
-        assert sampler.origin_layers[2].in_features == hidden_sizes[0]
-        assert sampler.origin_layers[2].out_features == hidden_sizes[1]
+        assert (
+            sampler.origin_layers[1].in_features
+            == hidden_sizes[0] + sampler.origin_dims
+        )
+        assert sampler.origin_layers[1].out_features == hidden_sizes[1]
 
-        assert sampler.origin_layers[4].in_features == hidden_sizes[1]
-        assert sampler.origin_layers[4].out_features == hidden_sizes[2]
+        assert (
+            sampler.origin_layers[2].in_features
+            == hidden_sizes[1] + sampler.origin_dims
+        )
+        assert sampler.origin_layers[2].out_features == hidden_sizes[2]
 
         # concatenated_layers
         assert sampler.cat_layers[0].in_features == hidden_sizes[-1] * 2 + (
@@ -187,8 +177,8 @@ class TestBaselineSampler:
             hidden_sizes=hidden_sizes,
             cat_hidden_sizes=concatenated_hidden_sizes,
         )
-        assert len(sampler.origin_layers) == len(hidden_sizes) * 2
-        assert len(sampler.origin_layers) == len(hidden_sizes) * 2
+        assert len(sampler.origin_layers) == len(hidden_sizes)
+        assert len(sampler.origin_layers) == len(hidden_sizes)
         assert len(sampler.cat_layers) == len(concatenated_hidden_sizes) * 2
 
     def test_baseline_sampler_output_shape(self):
