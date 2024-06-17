@@ -526,7 +526,7 @@ class Trainer:
             # if train_sampler_only model is already freezed
             if not self.train_sampler_only:
                 utils.freeze_model(render_kwargs_train["network_fn"])
-            sampler_loss.backward(retain_graph=True)
+            sampler_loss.backward()
             # if train_sampler_only model we don't want to unfreeze
             if not self.train_sampler_only:
                 utils.unfreeze_model(render_kwargs_train["network_fn"])
