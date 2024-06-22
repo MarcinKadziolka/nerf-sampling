@@ -14,6 +14,7 @@ def calculate_densities(pts, target_center, gaussian_width):
 @click.command()
 @click.option("--plot", default=False, is_flag=True, help="Plot every 10 iters.")
 @click.option("--no_final_plot", default=True, is_flag=True, help="Don't plot results.")
+@click.option("--gw", default=0.5, help="Width of the gaussian density")
 def train(**kwargs):
     """Mock train function to test sampler network."""
     plot = kwargs["plot"]
@@ -22,7 +23,7 @@ def train(**kwargs):
     target_centers = [2, 3, 4, 5, 6]
     n_samples = 64
     loss_fn = loss_functions.mean_density_loss
-    gaussian_width = 0.5
+    gaussian_width = kwargs["gw"]
     sampling_network = BaselineSampler(n_samples=n_samples)
     rays_o = torch.zeros(len(target_centers), 3, dtype=torch.float)
     for i, ray in enumerate(rays_o):
