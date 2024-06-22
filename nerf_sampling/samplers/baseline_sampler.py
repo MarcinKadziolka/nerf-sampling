@@ -111,7 +111,7 @@ class BaselineSampler(nn.Module):
         for layer in self.origin_layers:
             # skip connection in every layer
             origin_outputs = layer(torch.cat([origin_outputs, embedded_origin], -1))
-            nn.ReLU(origin_outputs)
+            nn.LeakyReLU(origin_outputs)
 
         direction_outputs = embedded_direction
         for layer in self.direction_layers:
@@ -119,7 +119,7 @@ class BaselineSampler(nn.Module):
             direction_outputs = layer(
                 torch.cat([direction_outputs, embedded_direction], -1)
             )
-            nn.ReLU(direction_outputs)
+            nn.LeakyReLU(direction_outputs)
 
         outputs = torch.cat([origin_outputs, direction_outputs], -1)
         skip_connection = torch.cat([outputs, embedded_origin, embedded_direction], -1)
