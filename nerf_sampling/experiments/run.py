@@ -46,12 +46,42 @@ from nerf_sampling.nerf_pytorch.utils import (
     help="Set the mode for wandb logging.",
     show_default=True,
 )
+@click.option(
+    "-si",
+    "--single_image",
+    is_flag=True,
+    default=False,
+    help="Train sampling network on single image.",
+    show_default=True,
+)
+@click.option(
+    "-sr",
+    "--single_ray",
+    is_flag=True,
+    default=False,
+    help="Train sampling network on single ray.",
+    show_default=True,
+)
 def main(**click_kwargs):
     """Run NeRF and sampling network training with provided configuration."""
     with open(click_kwargs["config"], "r") as fin:
         model = click_kwargs["model"]
         config = yaml.safe_load(fin)[model]
-    override = {}
+    config["kwargs"]["single_image"] = click_kwargs["single_image"]
+    config["kwargs"]["single_ray"] = click_kwargs["single_ray"]
+    override = {
+        "N_samples": 128,
+        "N_importance": 128,
+        "sampler_train_frequency": 1,
+        "sampler_lr": 1e-4,
+        "sampler_loss_input": SamplerLossInput.DENSITY.value,
+        "sampler_loss_weight": 1e-3,
+        "n_layers": 5,
+        "layer_width": 128,
+        "train_sampler_only": True,
+        "i_print": 1,
+    }
+
     override_config(config=config["kwargs"], update=override)
 
     torch.manual_seed(42)  # 0
@@ -70,6 +100,8 @@ def main(**click_kwargs):
     datadir = click_kwargs["dataset"]
     config["kwargs"]["datadir"] = datadir
     config["kwargs"]["basedir"] = basedir
+    ft_path = "/home/mubuntu/Desktop/uni/implicit_representations/nerf-sampling/nerf_sampling/dataset/lego/pretrained_model/200000.tar"
+    config["kwargs"]["ft_path"] = ft_path
 
     trainer = load_obj_from_config(cfg=config)
     trainer.train(N_iters=EPOCHS + 1)

@@ -59,6 +59,8 @@ class Trainer:
         sampler_lr: float = 0.0001,
         train_sampler_only: bool = False,
         trial: Optional[optuna.trial.Trial] = None,
+        single_image=False,
+        single_ray=False,
     ):
         self.start = None
         self.dataset_type = dataset_type
@@ -114,6 +116,8 @@ class Trainer:
         self.train_sampler_only = train_sampler_only
         self.trial = trial
 
+        self.single_image = single_image
+        self.single_ray = single_ray
         print(f"{self}")
         print(f"{self.N_samples=}")
         print(f"{self.N_importance=}")
@@ -371,7 +375,7 @@ class Trainer:
                 quality=8,
             )
         if sampler_loss is not None:
-            if i % (self.sampler_train_frequency * 1000) == 0:
+            if i % (self.sampler_train_frequency * 1) == 0:
                 sampler_loss = sampler_loss.item()
                 info = f"Iter: {i} Sampler loss: {sampler_loss}"
                 wandb.log(
@@ -429,7 +433,11 @@ class Trainer:
 
         else:
             # Random from one image
-            img_i = np.random.choice(i_train)
+            if self.single_image:
+                img_i = 0  # set fixed image
+            else:
+                img_i = np.random.choice(i_train)
+
             target = images[img_i]
             target = torch.tensor(target)
             pose = poses[img_i, :3, :4]
@@ -468,9 +476,12 @@ class Trainer:
                     )  # (H, W, 2)
 
                 coords = torch.reshape(coords, [-1, 2])  # (H * W, 2)
-                select_inds = np.random.choice(
-                    coords.shape[0], size=[self.N_rand], replace=False
-                )  # (N_rand,)
+                if self.single_ray:
+                    select_inds = torch.tensor([20000])
+                else:
+                    select_inds = np.random.choice(
+                        coords.shape[0], size=[self.N_rand], replace=False
+                    )  # (N_rand,)
                 select_coords = coords[select_inds].long()  # (N_rand, 2)
                 rays_o = rays_o[select_coords[:, 0], select_coords[:, 1]]  # (N_rand, 3)
                 rays_d = rays_d[select_coords[:, 0], select_coords[:, 1]]  # (N_rand, 3)
@@ -527,6 +538,8 @@ class Trainer:
             if not self.train_sampler_only:
                 utils.freeze_model(render_kwargs_train["network_fn"])
             sampler_loss.backward()
+            # for param in render_kwargs_train["sampling_network"].parameters():
+            #     print(param.grad)
             # if train_sampler_only model we don't want to unfreeze
             if not self.train_sampler_only:
                 utils.unfreeze_model(render_kwargs_train["network_fn"])
