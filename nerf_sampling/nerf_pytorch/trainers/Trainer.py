@@ -587,6 +587,129 @@ class Trainer:
         )  # [N_rays, N_importance, 3]
         return z_samples, pts
 
+    def sample_coarse_points(
+        self,
+        near,
+        far,
+        perturb,
+        N_rays,
+        N_samples,
+        viewdirs,
+        network_fn,
+        network_query_fn,
+        rays_o,
+        rays_d,
+        raw_noise_std,
+        white_bkgd,
+        pytest,
+        lindisp,
+        **kwargs,
+    ):
+
+        rgb_map, disp_map, acc_map, depth_map, alphas_map = None, None, None, None, None
+        raw = None
+        weights = None
+        z_vals = None
+
+        if N_samples > 0:
+            t_vals = torch.linspace(0.0, 1.0, steps=N_samples)
+            if not lindisp:
+                z_vals = near * (1.0 - t_vals) + far * t_vals
+            else:
+                z_vals = 1.0 / (1.0 / near * (1.0 - t_vals) + 1.0 / far * t_vals)
+
+            z_vals = z_vals.expand([N_rays, N_samples])
+
+            if perturb > 0.0:
+                # get intervals between samples
+                mids = 0.5 * (z_vals[..., 1:] + z_vals[..., :-1])
+                upper = torch.cat([mids, z_vals[..., -1:]], -1)
+                lower = torch.cat([z_vals[..., :1], mids], -1)
+                # stratified samples in those intervals
+                t_rand = torch.rand(z_vals.shape)
+
+                # Pytest, overwrite u with numpy's fixed random numbers
+                if pytest:
+                    np.random.seed(0)
+                    t_rand = np.random.rand(*list(z_vals.shape))
+                    t_rand = torch.tensor(t_rand)
+
+                z_vals = lower + (upper - lower) * t_rand
+
+            pts = (
+                rays_o[..., None, :] + rays_d[..., None, :] * z_vals[..., :, None]
+            )  # [N_rays, N_samples, 3]
+            raw = network_query_fn(pts, viewdirs, network_fn)
+            rgb_map, disp_map, acc_map, weights, depth_map = self.raw2outputs(
+                raw, z_vals, rays_d, raw_noise_std, white_bkgd, pytest=pytest
+            )
+        return (
+            rgb_map,
+            disp_map,
+            acc_map,
+            weights,
+            depth_map,
+            z_vals,
+            weights,
+            raw,
+            alphas_map,
+        )
+
+    def sample_fine_points(
+        self,
+        z_vals,
+        weights,
+        perturb,
+        pytest,
+        rays_d,
+        rays_o,
+        rgb_map,
+        disp_map,
+        acc_map,
+        network_fn,
+        network_fine,
+        network_query_fn,
+        viewdirs,
+        raw_noise_std,
+        white_bkgd,
+    ):
+        rgb_map_0, disp_map_0, acc_map_0, raw = None, None, None, None
+        z_samples = None
+
+        if self.N_importance > 0:
+            rgb_map_0, disp_map_0, acc_map_0 = rgb_map, disp_map, acc_map
+
+            z_vals_mid = 0.5 * (z_vals[..., 1:] + z_vals[..., :-1])
+            z_samples, pts = self._sample_points(
+                z_vals_mid=z_vals_mid,
+                weights=weights,
+                perturb=perturb,
+                pytest=pytest,
+                rays_o=rays_o,
+                rays_d=rays_d,
+            )
+
+            z_vals, _ = torch.sort(torch.cat([z_vals, z_samples], -1), -1)
+            pts = rays_o[..., None, :] + rays_d[..., None, :] * z_vals[..., :, None]
+            run_fn = network_fn if network_fine is None else network_fine
+
+            raw = network_query_fn(pts, viewdirs, run_fn)
+
+            rgb_map, disp_map, acc_map, _, _ = self.raw2outputs(
+                raw, z_vals, rays_d, raw_noise_std, white_bkgd, pytest=pytest
+            )
+
+        return (
+            rgb_map_0,
+            disp_map_0,
+            acc_map_0,
+            rgb_map,
+            disp_map,
+            acc_map,
+            raw,
+            z_samples,
+        )
+
     def train(self, N_iters=200000 + 1):
         hwf, poses, i_test, i_val, i_train, images, render_poses = self.load_data()
 
