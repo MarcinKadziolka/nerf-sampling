@@ -640,9 +640,13 @@ class Trainer:
                 rays_o[..., None, :] + rays_d[..., None, :] * z_vals[..., :, None]
             )  # [N_rays, N_samples, 3]
             raw = network_query_fn(pts, viewdirs, network_fn)
-            rgb_map, disp_map, acc_map, weights, depth_map = self.raw2outputs(
-                raw, z_vals, rays_d, raw_noise_std, white_bkgd, pytest=pytest
+
+            rgb_map, disp_map, acc_map, depth_map, density, alphas, weights = (
+                self.raw2outputs(
+                    raw, z_vals, rays_d, raw_noise_std, white_bkgd, pytest=pytest
+                )
             )
+
         return (
             rgb_map,
             disp_map,
@@ -695,8 +699,10 @@ class Trainer:
 
             raw = network_query_fn(pts, viewdirs, run_fn)
 
-            rgb_map, disp_map, acc_map, _, _ = self.raw2outputs(
-                raw, z_vals, rays_d, raw_noise_std, white_bkgd, pytest=pytest
+            rgb_map, disp_map, acc_map, depth_map, density, alphas, weights = (
+                self.raw2outputs(
+                    raw, z_vals, rays_d, raw_noise_std, white_bkgd, pytest=pytest
+                )
             )
 
         return (
