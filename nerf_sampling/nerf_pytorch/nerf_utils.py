@@ -438,9 +438,7 @@ def render_rays(
     z_vals = None
     pts = None
     if N_samples > 0:
-        pts, z_vals = trainer.sample_main_points(
-            rays_o=rays_o, rays_d=rays_d, sampling_network=kwargs["sampling_network"]
-        )
+        pts, z_vals = kwargs["sampling_network"].forward(rays_o, rays_d)
         if network_fine is not None:
             raw = network_query_fn(pts, viewdirs, network_fine)
         else:
