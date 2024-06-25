@@ -478,7 +478,7 @@ class Trainer:
 
                 coords = torch.reshape(coords, [-1, 2])  # (H * W, 2)
                 if self.single_ray:
-                    select_inds = torch.tensor([20000])
+                    select_inds = torch.tensor([1000])
                 else:
                     select_inds = np.random.choice(
                         coords.shape[0], size=[self.N_rand], replace=False
@@ -514,7 +514,7 @@ class Trainer:
             **render_kwargs_train,
         )
 
-        optimizer.zero_grad()
+        # optimizer.zero_grad()
         sampling_optimizer.zero_grad()
         img_loss = nerf_utils.run_nerf_helpers.img2mse(rgb, target_s)
         loss = img_loss
@@ -526,27 +526,10 @@ class Trainer:
             img_loss0 = nerf_utils.run_nerf_helpers.img2mse(extras["rgb0"], target_s)
             loss = loss + img_loss0
             psnr0 = nerf_utils.run_nerf_helpers.mse2psnr(img_loss0)
-        sampler_loss = None
-        if (
-            self.sampler_loss_input is not None
-            and i % self.sampler_train_frequency == 0
-        ):
-            sampler_loss_input = extras["sampler_loss_input"]
-            sampler_loss = self.sampler_loss_weight * self.sampler_loss_fn(
-                sampler_loss_input
-            )
-            # if train_sampler_only model is already freezed
-            if not self.train_sampler_only:
-                utils.freeze_model(render_kwargs_train["network_fn"])
-            sampler_loss.backward()
-            # for param in render_kwargs_train["sampling_network"].parameters():
-            #     print(param.grad)
-            # if train_sampler_only model we don't want to unfreeze
-            if not self.train_sampler_only:
-                utils.unfreeze_model(render_kwargs_train["network_fn"])
-        if not self.train_sampler_only:
-            loss.backward()
-        optimizer.step()
+        sampler_loss = F.mse_loss(extras["pts"], extras["max_pts"])
+        sampler_loss.backward()
+        # loss.backward()
+        # optimizer.step()
         sampling_optimizer.step()
         logs = {
             "density": extras["density"],
@@ -715,6 +698,8 @@ class Trainer:
             acc_map,
             raw,
             z_samples,
+            pts,
+            density,
         )
 
     def train(self, N_iters=200000 + 1):
