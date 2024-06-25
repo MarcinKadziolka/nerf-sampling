@@ -4,12 +4,13 @@ from typing import Optional
 
 import imageio
 import numpy as np
+import optuna
 import torch
+import torch.nn.functional as F
 import wandb
 from tqdm import tqdm, trange
-import optuna
 
-from nerf_sampling.nerf_pytorch import nerf_utils, utils, loss_functions
+from nerf_sampling.nerf_pytorch import loss_functions, nerf_utils, utils
 from nerf_sampling.nerf_pytorch.loss_functions import SamplerLossInput
 
 
