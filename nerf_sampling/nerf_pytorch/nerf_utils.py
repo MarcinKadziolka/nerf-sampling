@@ -437,6 +437,59 @@ def render_rays(
     density, alphas, weights = None, None, None
     z_vals = None
     pts = None
+
+    rgb_map, disp_map, acc_map, weights, depth_map, z_vals, weights, raw, alphas_map = (
+        trainer.sample_coarse_points(
+            near=near,
+            far=far,
+            perturb=perturb,
+            N_rays=N_rays,
+            N_samples=N_samples,
+            viewdirs=viewdirs,
+            network_fn=network_fn,
+            network_query_fn=network_query_fn,
+            rays_o=rays_o,
+            rays_d=rays_d,
+            raw_noise_std=raw_noise_std,
+            white_bkgd=white_bkgd,
+            pytest=pytest,
+            lindisp=lindisp,
+            kwargs=kwargs,
+        )
+    )
+    (
+        rgb_map_0,
+        disp_map_0,
+        acc_map_0,
+        rgb_map,
+        disp_map,
+        acc_map,
+        raw,
+        z_samples,
+        original_nerf_pts,
+        density,
+    ) = trainer.sample_fine_points(
+        z_vals=z_vals,
+        weights=weights,
+        perturb=perturb,
+        pytest=pytest,
+        rays_d=rays_d,
+        rays_o=rays_o,
+        rgb_map=rgb_map,
+        disp_map=disp_map,
+        acc_map=acc_map,
+        network_fn=network_fn,
+        network_fine=network_fine,
+        network_query_fn=network_query_fn,
+        viewdirs=viewdirs,
+        raw_noise_std=raw_noise_std,
+        white_bkgd=white_bkgd,
+    )
+    raw_0 = None
+    max_indices = torch.argmax(density, dim=1)
+    batch_indices = torch.arange(original_nerf_pts.shape[0]).unsqueeze(1)
+    max_indices = max_indices.unsqueeze(1)
+    max_pts = original_nerf_pts[batch_indices, max_indices].squeeze(1)
     if N_samples > 0:
         pts, z_vals = kwargs["sampling_network"].forward(rays_o, rays_d)
         if network_fine is not None:
@@ -462,8 +515,7 @@ def render_rays(
         if trainer.global_step % trainer.i_testset == 0:
             trainer.save_rays_data(rays_o, pts, alphas)
 
-    raw_0 = None
-
+    max_pts_expanded = max_pts.unsqueeze(1).expand_as(pts)
     ret = {
         "rgb_map": rgb_map,
         "disp_map": disp_map,
@@ -472,19 +524,14 @@ def render_rays(
         "alphas": alphas,
         "weights": weights,
         "pts": pts,
+        "max_pts": max_pts_expanded,
     }
+
     if retraw:
         if raw_0 is None:
             ret["raw"] = raw
         else:
             ret["raw"] = raw_0
-
-    if trainer.sampler_loss_input == SamplerLossInput.DENSITY.value:
-        ret["sampler_loss_input"] = density
-    elif trainer.sampler_loss_input == SamplerLossInput.ALPHAS.value:
-        ret["sampler_loss_input"] = alphas
-    elif trainer.sampler_loss_input == SamplerLossInput.WEIGHTS.value:
-        ret["sampler_loss_input"] = weights
 
     for key in ret:
         if (torch.isnan(ret[key]).any() or torch.isinf(ret[key]).any()) and DEBUG:
