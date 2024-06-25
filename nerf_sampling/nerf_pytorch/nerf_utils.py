@@ -468,6 +468,8 @@ def render_rays(
         z_samples,
         original_nerf_pts,
         density,
+        alphas,
+        weights,
     ) = trainer.sample_fine_points(
         z_vals=z_vals,
         weights=weights,

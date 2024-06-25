@@ -12,6 +12,7 @@ from tqdm import tqdm, trange
 
 from nerf_sampling.nerf_pytorch import loss_functions, nerf_utils, utils
 from nerf_sampling.nerf_pytorch.loss_functions import SamplerLossInput
+from nerf_sampling.nerf_pytorch.visualize import visualize_rays_pts
 
 
 class Trainer:
@@ -700,6 +701,8 @@ class Trainer:
             z_samples,
             pts,
             density,
+            alphas,
+            weights,
         )
 
     def train(self, N_iters=200000 + 1):
