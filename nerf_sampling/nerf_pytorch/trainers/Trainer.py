@@ -478,7 +478,7 @@ class Trainer:
 
                 coords = torch.reshape(coords, [-1, 2])  # (H * W, 2)
                 if self.single_ray:
-                    select_inds = torch.tensor([1000])
+                    select_inds = torch.tensor([0, 10, 100, 1000, 10000, 20000, 30000])
                 else:
                     select_inds = np.random.choice(
                         coords.shape[0], size=[self.N_rand], replace=False
