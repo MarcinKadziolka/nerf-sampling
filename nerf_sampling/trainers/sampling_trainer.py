@@ -143,7 +143,7 @@ class SamplingTrainer(Blender.BlenderTrainer):
         z_vals,
         rays_d,
         raw_noise_std=0,
-        white_bkgd=False,
+        white_bkgd=True,
         pytest=False,
         **kwargs,
     ):
