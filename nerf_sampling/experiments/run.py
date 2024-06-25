@@ -70,16 +70,13 @@ def main(**click_kwargs):
     config["kwargs"]["single_image"] = click_kwargs["single_image"]
     config["kwargs"]["single_ray"] = click_kwargs["single_ray"]
     override = {
-        "N_samples": 128,
+        "N_samples": 64,
         "N_importance": 128,
-        "sampler_train_frequency": 1,
         "sampler_lr": 1e-4,
-        "sampler_loss_input": SamplerLossInput.DENSITY.value,
-        "sampler_loss_weight": 1e-3,
         "n_layers": 5,
         "layer_width": 128,
         "train_sampler_only": True,
-        "i_print": 1,
+        "i_print": 1000,
     }
 
     override_config(config=config["kwargs"], update=override)

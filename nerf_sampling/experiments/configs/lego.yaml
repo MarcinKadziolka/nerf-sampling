@@ -17,10 +17,7 @@ sampler_lego_params: &sampler_lego_params # & adds anchor (reference) with a giv
 
   # set this parameters explicitly in the code
   N_samples: None
-  sampler_loss_weight: None
-  sampler_train_frequency: None
   sampler_lr: None
-  sampler_loss_input: None
   n_layers: None
   layer_width: None
   train_sampler_only: None
