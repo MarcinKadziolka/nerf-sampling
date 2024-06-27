@@ -477,6 +477,7 @@ class Trainer:
         for i in range(500):
             pts, z_vals = sampling_network(rays_o, rays_d)
             print(f"Z vals: {z_vals}")
+            print(f"Target: {mock_tensor}")
 
             sampling_optimizer.zero_grad()
 
