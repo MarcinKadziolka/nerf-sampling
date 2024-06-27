@@ -143,7 +143,7 @@ def render(
         k_sh = list(sh[:-1]) + list(all_returned[key].shape[1:])
         all_returned[key] = torch.reshape(all_returned[key], k_sh)
 
-    key_extract = ["rgb_map", "disp_map", "acc_map"]
+    key_extract = ["sampler_rgb_map", "sampler_disp_map", "sampler_acc_map"]
     ret_list = [all_returned[key] for key in key_extract]
     ret_dict = {
         key: all_returned[key] for key in all_returned if key not in key_extract
@@ -432,54 +432,67 @@ def render_rays(
     bounds = torch.reshape(ray_batch[..., 6:8], [-1, 1, 2])
     near, far = bounds[..., 0], bounds[..., 1]  # [-1,1]
 
-    (rgb_map, disp_map, acc_map, depth_map) = None, None, None, None
-    raw = None
-    density, alphas, weights = None, None, None
-    z_vals = None
-    pts = None
+    (sampler_rgb_map, sampler_disp_map, sampler_acc_map, sampler_depth_map) = (
+        None,
+        None,
+        None,
+        None,
+    )
+    sampler_raw = None
+    sampler_density, sampler_alphas, sampler_weights = None, None, None
+    sampler_z_vals = None
+    sampler_pts = None
 
-    rgb_map, disp_map, acc_map, weights, depth_map, z_vals, weights, raw, alphas_map = (
-        trainer.sample_coarse_points(
-            near=near,
-            far=far,
-            perturb=perturb,
-            N_rays=N_rays,
-            N_samples=N_samples,
-            viewdirs=viewdirs,
-            network_fn=network_fn,
-            network_query_fn=network_query_fn,
-            rays_o=rays_o,
-            rays_d=rays_d,
-            raw_noise_std=raw_noise_std,
-            white_bkgd=white_bkgd,
-            pytest=pytest,
-            lindisp=lindisp,
-            kwargs=kwargs,
-        )
+    (
+        coarse_rgb_map,
+        coarse_disp_map,
+        coarse_acc_map,
+        coarse_weights,
+        coarse_depth_map,
+        coarse_z_vals,
+        coarse_weights,
+        coarse_raw,
+        coarse_alphas_map,
+    ) = trainer.sample_coarse_points(
+        near=near,
+        far=far,
+        perturb=perturb,
+        N_rays=N_rays,
+        N_samples=N_samples,
+        viewdirs=viewdirs,
+        network_fn=network_fn,
+        network_query_fn=network_query_fn,
+        rays_o=rays_o,
+        rays_d=rays_d,
+        raw_noise_std=raw_noise_std,
+        white_bkgd=white_bkgd,
+        pytest=pytest,
+        lindisp=lindisp,
+        kwargs=kwargs,
     )
     (
         rgb_map_0,
         disp_map_0,
         acc_map_0,
-        rgb_map,
-        disp_map,
-        acc_map,
-        raw,
-        z_samples,
-        original_nerf_pts,
-        density,
-        alphas,
-        weights,
+        fine_rgb_map,
+        fine_disp_map,
+        fine_acc_map,
+        fine_raw,
+        fine_z_vals,
+        fine_points,
+        fine_density,
+        fine_alphas,
+        fine_weights,
     ) = trainer.sample_fine_points(
-        z_vals=z_vals,
-        weights=weights,
+        z_vals=coarse_z_vals,
+        weights=coarse_weights,
         perturb=perturb,
         pytest=pytest,
         rays_d=rays_d,
         rays_o=rays_o,
-        rgb_map=rgb_map,
-        disp_map=disp_map,
-        acc_map=acc_map,
+        rgb_map=coarse_rgb_map,
+        disp_map=coarse_disp_map,
+        acc_map=coarse_acc_map,
         network_fn=network_fn,
         network_fine=network_fine,
         network_query_fn=network_query_fn,
@@ -488,50 +501,52 @@ def render_rays(
         white_bkgd=white_bkgd,
     )
     raw_0 = None
-    max_indices = torch.argmax(density, dim=1)
-    batch_indices = torch.arange(original_nerf_pts.shape[0]).unsqueeze(1)
+    max_indices = torch.argmax(fine_density, dim=1)
+    batch_indices = torch.arange(fine_points.shape[0]).unsqueeze(1)
     max_indices = max_indices.unsqueeze(1)
-    max_pts = original_nerf_pts[batch_indices, max_indices].squeeze(1)
+    max_z_vals = fine_z_vals[batch_indices, max_indices].squeeze(1)
     if N_samples > 0:
-        pts, z_vals = kwargs["sampling_network"].forward(rays_o, rays_d)
+        sampler_pts, sampler_z_vals = kwargs["sampling_network"].forward(rays_o, rays_d)
         if network_fine is not None:
-            raw = network_query_fn(pts, viewdirs, network_fine)
+            sampler_raw = network_query_fn(sampler_pts, viewdirs, network_fine)
         else:
-            raw = network_query_fn(pts, viewdirs, network_fn)
+            sampler_raw = network_query_fn(sampler_pts, viewdirs, network_fn)
         (
-            rgb_map,
-            disp_map,
-            acc_map,
-            depth_map,
-            density,
-            alphas,
-            weights,
+            sampler_rgb_map,
+            sampler_disp_map,
+            sampler_acc_map,
+            sampler_depth_map,
+            sampler_density,
+            sampler_alphas,
+            sampler_weights,
         ) = trainer.raw2outputs(
-            raw=raw,
-            z_vals=z_vals,
+            raw=sampler_raw,
+            z_vals=sampler_z_vals,
             rays_d=rays_d,
             raw_noise=raw_noise_std,
             white_bkdg=white_bkgd,
             pytest=pytest,
         )
         if trainer.global_step % trainer.i_testset == 0:
-            trainer.save_rays_data(rays_o, pts, alphas)
+            trainer.save_rays_data(rays_o, sampler_pts, sampler_alphas)
 
-    max_pts_expanded = max_pts.unsqueeze(1).expand_as(pts)
+    max_z_vals = max_z_vals.unsqueeze(1).expand_as(sampler_z_vals)
     ret = {
-        "rgb_map": rgb_map,
-        "disp_map": disp_map,
-        "acc_map": acc_map,
-        "density": density,
-        "alphas": alphas,
-        "weights": weights,
-        "pts": pts,
-        "max_pts": max_pts_expanded,
+        "sampler_rgb_map": sampler_rgb_map,
+        "sampler_disp_map": sampler_disp_map,
+        "sampler_acc_map": sampler_acc_map,
+        "sampler_density": sampler_density,
+        "fine_density": fine_density,
+        "sampler_alphas": sampler_alphas,
+        "sampler_weights": sampler_weights,
+        "sampler_pts": sampler_pts,
+        "sampler_z_vals": sampler_z_vals,
+        "max_z_vals": max_z_vals,
     }
 
     if retraw:
         if raw_0 is None:
-            ret["raw"] = raw
+            ret["raw"] = sampler_raw
         else:
             ret["raw"] = raw_0
 

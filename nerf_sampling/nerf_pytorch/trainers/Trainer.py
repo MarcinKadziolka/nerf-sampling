@@ -357,20 +357,21 @@ class Trainer:
             )
 
         if i % self.i_print == 0:
-            density = logs["density"]
-            alphas = logs["alphas"]
-            weights = logs["weights"]
-            info = f"Iter: {i} Loss: {loss.item()}, Mean/Max density: {torch.mean(density):.2f}/{torch.max(density):.2f}, PSNR: {psnr.item():.5f}"
+            sampler_density = logs["sampler_density"]
+            sampler_alphas = logs["sampler_alphas"]
+            sampler_weights = logs["sampler_weights"]
+            fine_density = torch.max(logs["fine_density"], 1, keepdims=True)[0]
             sampler_loss = sampler_loss.item()
+            info = f"Iter: {i} Loss: {loss.item()}, Sampler Loss: {sampler_loss}, SMean/FMean: {torch.mean(sampler_density):.2f}/{torch.mean(fine_density):.2f}, PSNR: {psnr.item():.5f}"
             wandb.log(
                 {
                     "Loss": loss.item(),
                     "Sampler loss": sampler_loss,
                     "PSNR": psnr.item(),
-                    "Mean density": torch.mean(density),
-                    "Max density": torch.max(density),
-                    "Mean alphas": torch.mean(alphas),
-                    "Mean weights": torch.mean(weights),
+                    "Mean density": torch.mean(sampler_density),
+                    "Max density": torch.max(sampler_density),
+                    "Mean alphas": torch.mean(sampler_alphas),
+                    "Mean weights": torch.mean(sampler_weights),
                 },
                 step=self.global_step,
             )
