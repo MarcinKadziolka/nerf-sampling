@@ -147,3 +147,10 @@ def set_global_device(device: Union[Literal["cuda"], Literal["cpu"]]):
             torch.set_default_device(device="cuda")
     elif device == "cpu":
         torch.set_default_device(device="cpu")
+
+
+def check_grad(model):
+    for param in model.parameters():
+        if any(torch.flatten(param.grad)):
+            return True
+    return False
