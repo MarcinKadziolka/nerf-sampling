@@ -473,7 +473,7 @@ class Trainer:
         target_s,
     ):
         """Runs rendering and backpropagates."""
-        rgb, disp, acc, extras = nerf_utils.render(
+        sampler_rgb, sampler_disp, sampler_acc, extras = nerf_utils.render(
             self.H,
             self.W,
             self.K,
@@ -484,9 +484,8 @@ class Trainer:
             **render_kwargs_train,
         )
 
-        # optimizer.zero_grad()
         sampling_optimizer.zero_grad()
-        img_loss = nerf_utils.run_nerf_helpers.img2mse(rgb, target_s)
+        img_loss = nerf_utils.run_nerf_helpers.img2mse(sampler_rgb, target_s)
         loss = img_loss
 
         psnr = nerf_utils.run_nerf_helpers.mse2psnr(img_loss)
@@ -496,15 +495,14 @@ class Trainer:
             img_loss0 = nerf_utils.run_nerf_helpers.img2mse(extras["rgb0"], target_s)
             loss = loss + img_loss0
             psnr0 = nerf_utils.run_nerf_helpers.mse2psnr(img_loss0)
-        sampler_loss = F.mse_loss(extras["pts"], extras["max_pts"])
+        sampler_loss = F.mse_loss(extras["sampler_z_vals"], extras["max_z_vals"])
         sampler_loss.backward()
-        # loss.backward()
-        # optimizer.step()
         sampling_optimizer.step()
         logs = {
-            "density": extras["density"],
-            "alphas": extras["alphas"],
-            "weights": extras["weights"],
+            "sampler_density": extras["sampler_density"],
+            "sampler_alphas": extras["sampler_alphas"],
+            "sampler_weights": extras["sampler_weights"],
+            "fine_density": extras["fine_density"],
         }
         return logs, loss, sampler_loss, psnr, psnr0
 
@@ -667,7 +665,7 @@ class Trainer:
             disp_map,
             acc_map,
             raw,
-            z_samples,
+            z_vals,
             pts,
             density,
             alphas,
@@ -712,7 +710,6 @@ class Trainer:
             rays_rgb, i_batch, batch_rays, target_s = self.sample_random_ray_batch(
                 rays_rgb, i_batch, i_train, images, poses, i
             )
-
             logs, loss, sampler_loss, psnr, psnr0 = self.core_optimization_loop(
                 optimizer,
                 sampling_optimizer,
