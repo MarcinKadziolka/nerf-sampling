@@ -55,9 +55,6 @@ class Trainer:
         i_print=100,
         input_dims_embed: int = 1,
         save_train_set_render: bool = True,
-        sampler_loss_input: SamplerLossInput = SamplerLossInput.DENSITY,
-        sampler_loss_weight: float = 1,
-        sampler_train_frequency: int = 1,
         sampler_lr: float = 0.0001,
         train_sampler_only: bool = False,
         trial: Optional[optuna.trial.Trial] = None,
@@ -111,9 +108,6 @@ class Trainer:
         self.H = None
         self.c2w = None
 
-        self.sampler_loss_input = sampler_loss_input
-        self.sampler_loss_weight = sampler_loss_weight
-        self.sampler_train_frequency = sampler_train_frequency
         self.sampler_lr = sampler_lr
         self.train_sampler_only = train_sampler_only
         self.trial = trial
@@ -123,23 +117,8 @@ class Trainer:
         print(f"{self}")
         print(f"{self.N_samples=}")
         print(f"{self.N_importance=}")
-        print(f"{self.sampler_loss_weight=}")
-        print(f"{self.sampler_train_frequency=}")
         print(f"{self.sampler_lr=}")
-        print(f"{self.sampler_loss_input=}")
         print(f"{self.train_sampler_only=}")
-        if self.sampler_loss_input == SamplerLossInput.DENSITY.value:
-            self.sampler_loss_fn = loss_functions.mean_density_loss
-        elif (
-            self.sampler_loss_input == SamplerLossInput.ALPHAS.value
-            or self.sampler_loss_input == SamplerLossInput.WEIGHTS.value
-        ):
-            self.sampler_loss_fn = loss_functions.alphas_or_weights_loss
-        elif self.sampler_loss_input is None:
-            self.sampler_loss_fn = None
-        else:
-            raise ValueError(f"Invalid sampler_loss_input: {self.sampler_loss_input}")
-        print(f"{self.sampler_loss_fn=}")
 
     def load_data(self):
         """Load data and prepare poses."""
@@ -376,29 +355,17 @@ class Trainer:
                 fps=30,
                 quality=8,
             )
-        if sampler_loss is not None:
-            if i % (self.sampler_train_frequency * 1) == 0:
-                sampler_loss = sampler_loss.item()
-                info = f"Iter: {i} Sampler loss: {sampler_loss}"
-                wandb.log(
-                    {
-                        "Sampler loss": sampler_loss,
-                    },
-                    step=self.global_step,
-                )
-                tqdm.write(info)
-                f = os.path.join(self.basedir, self.expname, "sampler_loss.txt")
-                with open(f, "a") as file:
-                    file.write(f"{info}\n")
 
         if i % self.i_print == 0:
             density = logs["density"]
             alphas = logs["alphas"]
             weights = logs["weights"]
             info = f"Iter: {i} Loss: {loss.item()}, Mean/Max density: {torch.mean(density):.2f}/{torch.max(density):.2f}, PSNR: {psnr.item():.5f}"
+            sampler_loss = sampler_loss.item()
             wandb.log(
                 {
                     "Loss": loss.item(),
+                    "Sampler loss": sampler_loss,
                     "PSNR": psnr.item(),
                     "Mean density": torch.mean(density),
                     "Max density": torch.max(density),
