@@ -13,6 +13,7 @@ from tqdm import tqdm, trange
 from nerf_sampling.nerf_pytorch import loss_functions, nerf_utils, utils
 from nerf_sampling.nerf_pytorch.loss_functions import SamplerLossInput
 from nerf_sampling.nerf_pytorch.visualize import visualize_rays_pts
+from nerf_sampling.samplers.baseline_sampler import BaselineSampler
 
 
 class Trainer:
@@ -463,6 +464,34 @@ class Trainer:
 
         return rays_rgb, i_batch, batch_rays, target_s
 
+    def sanity_check(self, render_kwargs_train, sampling_optimizer):
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+        sampling_network = render_kwargs_train["sampling_network"]
+        sampling_network.train()
+        rays_o = torch.tensor([[0.0, 0.0, 0.0]], device=device)
+        rays_d = torch.tensor([[1.0, 0.0, 0.0]], device=device)
+
+        mock_tensor = torch.tensor([[[4.234]]], device=device)
+
+        for i in range(500):
+            pts, z_vals = sampling_network(rays_o, rays_d)
+            print(f"Z vals: {z_vals}")
+
+            sampling_optimizer.zero_grad()
+
+            sampler_loss = F.mse_loss(z_vals, mock_tensor)
+            print(f"Loss: {sampler_loss.item()}")
+
+            sampler_loss.backward()
+
+            is_grad = utils.check_grad(sampling_network)
+            print(f"Check Grad: {is_grad}")
+            if not is_grad:
+                raise Exception("Gradient check failed!")
+            sampling_optimizer.step()
+        print("SANITY CHECK DONE")
+
     def core_optimization_loop(
         self,
         optimizer,
@@ -483,8 +512,8 @@ class Trainer:
             retraw=True,
             **render_kwargs_train,
         )
-
         sampling_optimizer.zero_grad()
+
         img_loss = nerf_utils.run_nerf_helpers.img2mse(sampler_rgb, target_s)
         loss = img_loss
 
@@ -713,6 +742,10 @@ class Trainer:
             rays_rgb, i_batch, batch_rays, target_s = self.sample_random_ray_batch(
                 rays_rgb, i_batch, i_train, images, poses, i
             )
+            # self.sanity_check(
+            #     render_kwargs_train=render_kwargs_train,
+            #     sampling_optimizer=sampling_optimizer,
+            # )
             logs, loss, sampler_loss, psnr, psnr0 = self.core_optimization_loop(
                 optimizer,
                 sampling_optimizer,
