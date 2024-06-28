@@ -503,7 +503,7 @@ class Trainer:
         target_s,
     ):
         """Runs rendering and backpropagates."""
-        sampler_rgb, sampler_disp, sampler_acc, extras = nerf_utils.render(
+        sampler_rgb, sampler_disp, extras = nerf_utils.render(
             self.H,
             self.W,
             self.K,

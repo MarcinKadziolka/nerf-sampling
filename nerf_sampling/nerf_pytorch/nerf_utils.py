@@ -143,7 +143,7 @@ def render(
         k_sh = list(sh[:-1]) + list(all_returned[key].shape[1:])
         all_returned[key] = torch.reshape(all_returned[key], k_sh)
 
-    key_extract = ["sampler_rgb_map", "sampler_disp_map", "sampler_acc_map"]
+    key_extract = ["sampler_rgb_map", "sampler_disp_map"]
     ret_list = [all_returned[key] for key in key_extract]
     ret_dict = {
         key: all_returned[key] for key in all_returned if key not in key_extract
@@ -186,13 +186,13 @@ def render_path(
     for i, c2w in enumerate(tqdm(render_poses)):
         print(i, time.time() - t)
         t = time.time()
-        rgb, disp, acc, extras = render(
+        sampler_rgb, sampler_disp, sampler_extras = render(
             H, W, K, chunk=chunk, c2w=c2w[:3, :4], **render_kwargs
         )
-        rgbs.append(rgb.cpu().numpy())
-        disps.append(disp.cpu().numpy())
+        rgbs.append(sampler_rgb.cpu().numpy())
+        disps.append(sampler_disp.cpu().numpy())
         if i == 0:
-            print(rgb.shape, disp.shape)
+            print(sampler_rgb.shape, sampler_disp.shape)
 
         """
         if gt_imgs is not None and render_factor==0:
@@ -205,8 +205,8 @@ def render_path(
             filename = os.path.join(savedir, "{:03d}.png".format(i))
             imageio.imwrite(filename, rgb8)
             if excavator_fig:
-                pts = extras["pts"]  # [H, W, N_samples, 3]
-                density = extras["density"]
+                pts = sampler_extras["sampler_pts"]  # [H, W, N_samples, 3]
+                density = sampler_extras["sampler_density"]
                 indices = utils.get_dense_indices(
                     density.cpu(), min_density=torch.mean(density).cpu()
                 )
@@ -214,14 +214,22 @@ def render_path(
                 densities.append(density[indices])
                 all_pts.append(dense_points.cpu())
         if wandb_log:
-            density = torch.flatten(extras["density"], end_dim=1)  # [H*W, N_samples]
+            density = torch.flatten(
+                sampler_extras["sampler_density"], end_dim=1
+            )  # [H*W, N_samples]
             rand_indices = random.sample(range(len(density)), k=400)
             densities.append(torch.flatten(density)[rand_indices].cpu())
-            alphas.append(torch.flatten(extras["alphas"])[rand_indices].cpu())
-            weights.append(torch.flatten(extras["weights"])[rand_indices].cpu())
-            pts = torch.flatten(extras["pts"], end_dim=1)  # [H*W, N_samples, 3]
-            rays_o = extras["rays_o"]  # [H*W, 3]
-            rays_d = extras["rays_d"]  # [H*W, 3]
+            alphas.append(
+                torch.flatten(sampler_extras["sampler_alphas"])[rand_indices].cpu()
+            )
+            weights.append(
+                torch.flatten(sampler_extras["sampler_weights"])[rand_indices].cpu()
+            )
+            pts = torch.flatten(
+                sampler_extras["sampler_pts"], end_dim=1
+            )  # [H*W, N_samples, 3]
+            rays_o = sampler_extras["rays_o"]  # [H*W, 3]
+            rays_d = sampler_extras["rays_d"]  # [H*W, 3]
             indices = random.sample(range(len(rays_o)), k=3)
             rays_fig, _ = visualize.visualize_rays_pts(
                 rays_o=rays_o[indices].cpu(),
@@ -530,17 +538,15 @@ def render_rays(
         if trainer.global_step % trainer.i_testset == 0:
             trainer.save_rays_data(rays_o, sampler_pts, sampler_alphas)
 
-    max_z_vals = max_z_vals.unsqueeze(1).expand_as(sampler_z_vals)
     ret = {
         "sampler_rgb_map": sampler_rgb_map,
         "sampler_disp_map": sampler_disp_map,
-        "sampler_acc_map": sampler_acc_map,
         "sampler_density": sampler_density,
-        "fine_density": fine_density,
         "sampler_alphas": sampler_alphas,
         "sampler_weights": sampler_weights,
-        "sampler_pts": sampler_pts,
         "sampler_z_vals": sampler_z_vals,
+        "sampler_pts": sampler_pts,
+        "fine_density": fine_density,
         "max_z_vals": max_z_vals,
     }
 
