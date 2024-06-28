@@ -384,24 +384,21 @@ def create_nerf(args, model):
     return (render_kwargs_train, render_kwargs_test, start, grad_vars, optimizer)
 
 
-def render_rays(
+def sample_as_in_NeRF(
     ray_batch,
     network_fn,
+    network_fine,
     network_query_fn,
     N_samples,
     trainer,
-    retraw=True,
-    lindisp=False,
-    perturb=0.0,
-    N_importance=0,
-    network_fine=None,
-    white_bkgd=False,
-    raw_noise_std=0.0,
-    verbose=False,
-    pytest=False,
-    **kwargs,
+    perturb,
+    raw_noise_std,
+    lindisp,
+    white_bkgd,
+    kwargs,
+    pytest,
 ):
-    """Volumetric rendering.
+    """Samples points along rays as in Neural Radiance Fields (NeRF).
 
     Args:
       ray_batch: array of shape [batch_size, ...]. All information necessary
@@ -423,34 +420,14 @@ def render_rays(
       verbose: bool. If True, print more debugging info.
 
     Returns:
-      rgb_map: [num_rays, 3]. Estimated RGB color of a ray. Comes from fine model.
-      disp_map: [num_rays]. Disparity map. 1 / depth.
-      acc_map: [num_rays]. Accumulated opacity along each ray. Comes from fine model.
-      raw: [num_rays, num_samples, 4]. Raw predictions from model.
-      rgb0: See rgb_map. Output for coarse model.
-      disp0: See disp_map. Output for coarse model.
-      acc0: See acc_map. Output for coarse model.
-      z_std: [num_rays]. Standard deviation of distances along ray for each
-        sample.
+      fine_density: torch.Tensor. Density values for all points (coarse + fine)
+      fine_z_vals: torch.Tensor. Z values for all points (coarse + fine)
     """
-    ret = {}
     N_rays = ray_batch.shape[0]
     rays_o, rays_d = ray_batch[:, 0:3], ray_batch[:, 3:6]  # [N_rays, 3] each
     viewdirs = ray_batch[:, -3:] if ray_batch.shape[-1] > 8 else None
     bounds = torch.reshape(ray_batch[..., 6:8], [-1, 1, 2])
     near, far = bounds[..., 0], bounds[..., 1]  # [-1,1]
-
-    (sampler_rgb_map, sampler_disp_map, sampler_acc_map, sampler_depth_map) = (
-        None,
-        None,
-        None,
-        None,
-    )
-    sampler_raw = None
-    sampler_density, sampler_alphas, sampler_weights = None, None, None
-    sampler_z_vals = None
-    sampler_pts = None
-
     (
         coarse_rgb_map,
         coarse_disp_map,
@@ -508,53 +485,119 @@ def render_rays(
         raw_noise_std=raw_noise_std,
         white_bkgd=white_bkgd,
     )
-    raw_0 = None
+    return fine_density, fine_z_vals
+
+
+def render_rays(
+    ray_batch,
+    network_fn,
+    network_query_fn,
+    N_samples,
+    trainer,
+    retraw=True,
+    lindisp=False,
+    perturb=0.0,
+    N_importance=0,
+    network_fine=None,
+    white_bkgd=False,
+    raw_noise_std=0.0,
+    verbose=False,
+    pytest=False,
+    **kwargs,
+):
+    """Volumetric rendering.
+
+    Args:
+      ray_batch: array of shape [batch_size, ...]. All information necessary
+        for sampling along a ray, including: ray origin, ray direction, min
+        dist, max dist, and unit-magnitude viewing direction.
+      network_fn: function. Model for predicting RGB and density at each point
+        in space.
+      network_query_fn: function used for passing queries to network_fn.
+      N_samples: int. Number of different times to sample along each ray.
+      retraw: bool. If True, include model's raw, unprocessed predictions.
+      lindisp: bool. If True, sample linearly in inverse depth rather than in depth.
+      perturb: float, 0 or 1. If non-zero, each ray is sampled at stratified
+        random points in time.
+      N_importance: int. Number of additional times to sample along each ray.
+        These samples are only passed to network_fine.
+      network_fine: "fine" network with same spec as network_fn.
+      white_bkgd: bool. If True, assume a white background.
+      raw_noise_std: ...
+      verbose: bool. If True, print more debugging info.
+
+    Returns:
+      rgb_map: [num_rays, 3]. Estimated RGB color of a ray. Comes from fine model.
+      disp_map: [num_rays]. Disparity map. 1 / depth.
+      acc_map: [num_rays]. Accumulated opacity along each ray. Comes from fine model.
+      raw: [num_rays, num_samples, 4]. Raw predictions from model.
+      rgb0: See rgb_map. Output for coarse model.
+      disp0: See disp_map. Output for coarse model.
+      acc0: See acc_map. Output for coarse model.
+      z_std: [num_rays]. Standard deviation of distances along ray for each
+        sample.
+    """
+    rays_o, rays_d = ray_batch[:, 0:3], ray_batch[:, 3:6]  # [N_rays, 3] each
+    viewdirs = ray_batch[:, -3:] if ray_batch.shape[-1] > 8 else None
+
+    fine_density, fine_z_vals = sample_as_in_NeRF(
+        ray_batch=ray_batch,
+        N_samples=N_samples,
+        network_fn=network_fn,
+        network_fine=network_fine,
+        network_query_fn=network_query_fn,
+        trainer=trainer,
+        perturb=perturb,
+        raw_noise_std=raw_noise_std,
+        lindisp=lindisp,
+        white_bkgd=white_bkgd,
+        pytest=pytest,
+        kwargs=kwargs,
+    )
     max_indices = torch.argmax(fine_density, dim=1)
-    batch_indices = torch.arange(fine_points.shape[0]).unsqueeze(1)
+    batch_indices = torch.arange(fine_density.shape[0]).unsqueeze(1)
     max_indices = max_indices.unsqueeze(1)
     max_z_vals = fine_z_vals[batch_indices, max_indices].squeeze(1)
-    if N_samples > 0:
-        sampler_pts, sampler_z_vals = kwargs["sampling_network"].forward(rays_o, rays_d)
-        if network_fine is not None:
-            sampler_raw = network_query_fn(sampler_pts, viewdirs, network_fine)
-        else:
-            sampler_raw = network_query_fn(sampler_pts, viewdirs, network_fn)
-        (
-            sampler_rgb_map,
-            sampler_disp_map,
-            sampler_acc_map,
-            sampler_depth_map,
-            sampler_density,
-            sampler_alphas,
-            sampler_weights,
-        ) = trainer.raw2outputs(
-            raw=sampler_raw,
-            z_vals=sampler_z_vals,
-            rays_d=rays_d,
-            raw_noise=raw_noise_std,
-            white_bkdg=white_bkgd,
-            pytest=pytest,
-        )
-        if trainer.global_step % trainer.i_testset == 0:
-            trainer.save_rays_data(rays_o, sampler_pts, sampler_alphas)
+
+    sampler_pts, sampler_z_vals = kwargs["sampling_network"].forward(rays_o, rays_d)
+    if network_fine is not None:
+        sampler_raw = network_query_fn(sampler_pts, viewdirs, network_fine)
+    else:
+        sampler_raw = network_query_fn(sampler_pts, viewdirs, network_fn)
+
+    (
+        sampler_rgb_map,
+        sampler_disp_map,
+        sampler_acc_map,
+        sampler_depth_map,
+        sampler_density,
+        sampler_alphas,
+        sampler_weights,
+    ) = trainer.raw2outputs(
+        raw=sampler_raw,
+        z_vals=sampler_z_vals,
+        rays_d=rays_d,
+        raw_noise=raw_noise_std,
+        white_bkdg=white_bkgd,
+        pytest=pytest,
+    )
+    if trainer.global_step % trainer.i_testset == 0:
+        trainer.save_rays_data(rays_o, sampler_pts, sampler_alphas)
 
     ret = {
         "sampler_rgb_map": sampler_rgb_map,
         "sampler_disp_map": sampler_disp_map,
-        "sampler_density": sampler_density,
-        "sampler_alphas": sampler_alphas,
-        "sampler_weights": sampler_weights,
-        "sampler_z_vals": sampler_z_vals,
-        "sampler_pts": sampler_pts,
-        "fine_density": fine_density,
-        "max_z_vals": max_z_vals,
+        "sampler_density": sampler_density.cpu(),
+        "sampler_alphas": sampler_alphas.cpu(),
+        "sampler_weights": sampler_weights.cpu(),
+        "sampler_z_vals": sampler_z_vals.cpu(),
+        "sampler_pts": sampler_pts.cpu(),
+        "fine_density": fine_density.cpu(),
+        "max_z_vals": max_z_vals.cpu(),
     }
 
     if retraw:
-        if raw_0 is None:
-            ret["raw"] = sampler_raw
-        else:
-            ret["raw"] = raw_0
+        ret["raw"] = sampler_raw.cpu()
 
     for key in ret:
         if (torch.isnan(ret[key]).any() or torch.isinf(ret[key]).any()) and DEBUG:
