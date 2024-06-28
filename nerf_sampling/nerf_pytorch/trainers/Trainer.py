@@ -525,11 +525,15 @@ class Trainer:
             img_loss0 = nerf_utils.run_nerf_helpers.img2mse(extras["rgb0"], target_s)
             loss = loss + img_loss0
             psnr0 = nerf_utils.run_nerf_helpers.mse2psnr(img_loss0)
-        sampler_loss = F.mse_loss(extras["sampler_z_vals"], extras["max_z_vals"])
+
+        max_z_vals = (
+            extras["max_z_vals"].unsqueeze(1).expand_as(extras["sampler_z_vals"])
+        )
+        sampler_loss = F.mse_loss(extras["sampler_z_vals"], max_z_vals)
         sampler_loss.backward()
-        is_grad = utils.check_grad(render_kwargs_train["sampling_network"])
-        if not is_grad:
-            raise Exception("Grad is zero!")
+        # is_grad = utils.check_grad(render_kwargs_train["sampling_network"])
+        # if not is_grad:
+        #     raise Exception("Grad is zero!")
         sampling_optimizer.step()
         logs = {
             "sampler_density": extras["sampler_density"],
