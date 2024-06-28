@@ -37,6 +37,8 @@ class BaselineSampler(nn.Module):
         self.n_samples = n_samples
         self.far = far
         self.near = near
+        self.std = 0.1
+        self.N_additional = 128
 
         self.origin_embedder, self.origin_dims = get_embedder(
             multires=multires, input_dims=origin_channels
@@ -98,6 +100,14 @@ class BaselineSampler(nn.Module):
 
         return scale_points_with_weights(z_vals, rays_o, rays_d), z_vals
 
+    def add_noised_z_vals(self, outputs):
+        additional_points = torch.clip(
+            torch.normal(outputs.expand(-1, self.N_additional), self.std),
+            torch.tensor(0),
+            torch.tensor(1),
+        )
+        return torch.cat([additional_points, outputs], -1)
+
     def forward(self, rays_o: torch.Tensor, rays_d: torch.Tensor):
         """For given ray origins and directions returns points sampled along ray.
 
@@ -126,5 +136,6 @@ class BaselineSampler(nn.Module):
 
         concat_outputs = self.cat_layers(skip_connection)
         n_samples_output = self.to_n_samples(concat_outputs)
-        final_outputs = self.sigmoid(n_samples_output)
+        sigmoid_outputs = self.sigmoid(n_samples_output)
+        final_outputs = self.add_noised_z_vals(sigmoid_outputs)
         return self.scale_to_near_far(final_outputs, rays_o, rays_d)
