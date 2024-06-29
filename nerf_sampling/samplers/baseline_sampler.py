@@ -37,7 +37,7 @@ class BaselineSampler(nn.Module):
         self.n_samples = n_samples
         self.far = far
         self.near = near
-        self.std = 0.1
+        self.std = 0.02
         self.N_additional = 128
 
         self.origin_embedder, self.origin_dims = get_embedder(
