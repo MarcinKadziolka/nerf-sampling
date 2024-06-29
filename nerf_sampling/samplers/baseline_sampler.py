@@ -18,7 +18,9 @@ class BaselineSampler(nn.Module):
         direction_channels: int = 3,
         near: int = 2,
         far: int = 6,
-        n_samples: int = 32,
+        n_main_samples: int = 1,
+        n_noise_samples: int = 128,
+        std: float = 0.02,
         multires: int = 10,
     ):
         """Initializes sampling network.
@@ -34,11 +36,11 @@ class BaselineSampler(nn.Module):
             n_samples: Number of samples to output along a ray.
         """
         super(BaselineSampler, self).__init__()
-        self.n_samples = n_samples
+        self.n_samples = n_main_samples
         self.far = far
         self.near = near
-        self.std = 0.02
-        self.N_additional = 128
+        self.std = std
+        self.n_noise_samples = n_noise_samples
 
         self.origin_embedder, self.origin_dims = get_embedder(
             multires=multires, input_dims=origin_channels
@@ -102,7 +104,7 @@ class BaselineSampler(nn.Module):
 
     def add_noised_z_vals(self, outputs):
         additional_points = torch.clip(
-            torch.normal(outputs.expand(-1, self.N_additional), self.std),
+            torch.normal(outputs.expand(-1, self.n_noise_samples), self.std),
             torch.tensor(0),
             torch.tensor(1),
         )
