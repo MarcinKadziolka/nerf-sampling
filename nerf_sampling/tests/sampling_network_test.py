@@ -24,7 +24,7 @@ def train(**kwargs):
     n_samples = 64
     loss_fn = loss_functions.mean_density_loss
     gaussian_width = kwargs["gw"]
-    sampling_network = BaselineSampler(n_samples=n_samples)
+    sampling_network = BaselineSampler(n_main_samples=n_samples)
     rays_o = torch.zeros(len(target_centers), 3, dtype=torch.float)
     for i, ray in enumerate(rays_o):
         ray[2] += i

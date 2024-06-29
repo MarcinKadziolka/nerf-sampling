@@ -121,7 +121,7 @@ class TestBaselineSampler:
         sampler = baseline_sampler.BaselineSampler(
             hidden_sizes=hidden_sizes,
             cat_hidden_sizes=cat_hidden_sizes,
-            n_samples=8,
+            n_main_samples=8,
             multires=multires,
             origin_channels=n_channels,
             direction_channels=n_channels,
@@ -186,6 +186,6 @@ class TestBaselineSampler:
         n_rays = 4
         n_samples = 5
         rays_o = rays_d = torch.zeros(batch_size, n_rays, 3)
-        sampler = baseline_sampler.BaselineSampler(n_samples=n_samples)
+        sampler = baseline_sampler.BaselineSampler(n_main_samples=n_samples)
         pts, _ = sampler(rays_o, rays_d)
         assert pts.shape == (batch_size, n_rays, n_samples, 3)
