@@ -19,7 +19,7 @@ class BaselineSampler(nn.Module):
         near: int = 2,
         far: int = 6,
         n_main_samples: int = 1,
-        n_noise_samples: int = 128,
+        n_noise_samples: int = 32,
         std: float = 0.02,
         multires: int = 10,
     ):
