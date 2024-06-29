@@ -60,7 +60,7 @@ class SamplingTrainer(Blender.BlenderTrainer):
         hidden_sizes = [self.layer_width for _ in range(self.n_layers)]
         cat_hidden_sizes = [self.layer_width for _ in range(self.n_layers)]
         sampling_network = BaselineSampler(
-            n_samples=1,
+            n_main_samples=1,
             hidden_sizes=hidden_sizes,
             cat_hidden_sizes=cat_hidden_sizes,
         )
