@@ -208,22 +208,20 @@ def render_path(
                 pts = sampler_extras["sampler_pts"]  # [H, W, N_samples, 3]
                 density = sampler_extras["sampler_density"]
                 indices = utils.get_dense_indices(
-                    density.cpu(), min_density=torch.mean(density).cpu()
+                    density, min_density=torch.mean(density)
                 )
                 dense_points = pts[indices]
                 densities.append(density[indices])
-                all_pts.append(dense_points.cpu())
+                all_pts.append(dense_points)
         if wandb_log:
             density = torch.flatten(
                 sampler_extras["sampler_density"], end_dim=1
             )  # [H*W, N_samples]
             rand_indices = random.sample(range(len(density)), k=400)
-            densities.append(torch.flatten(density)[rand_indices].cpu())
-            alphas.append(
-                torch.flatten(sampler_extras["sampler_alphas"])[rand_indices].cpu()
-            )
+            densities.append(torch.flatten(density)[rand_indices])
+            alphas.append(torch.flatten(sampler_extras["sampler_alphas"])[rand_indices])
             weights.append(
-                torch.flatten(sampler_extras["sampler_weights"])[rand_indices].cpu()
+                torch.flatten(sampler_extras["sampler_weights"])[rand_indices]
             )
             pts = torch.flatten(
                 sampler_extras["sampler_pts"], end_dim=1
@@ -234,9 +232,9 @@ def render_path(
             rays_fig, _ = visualize.visualize_rays_pts(
                 rays_o=rays_o[indices].cpu(),
                 rays_d=rays_d[indices].cpu(),
-                pts=pts[indices].cpu(),
+                pts=pts[indices],
                 title="{:03d}.png".format(i),
-                c=density[indices].cpu(),
+                c=density[indices],
             )
             wandb.log(
                 {
