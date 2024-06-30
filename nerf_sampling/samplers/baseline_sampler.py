@@ -19,8 +19,8 @@ class BaselineSampler(nn.Module):
         near: int = 2,
         far: int = 6,
         n_main_samples: int = 1,
-        n_noise_samples: int = 32,
-        std: float = 0.02,
+        n_noise_samples: int = 0,
+        std: float = 0.05,
         multires: int = 10,
     ):
         """Initializes sampling network.
@@ -102,13 +102,13 @@ class BaselineSampler(nn.Module):
 
         return scale_points_with_weights(z_vals, rays_o, rays_d), z_vals
 
-    def add_noised_z_vals(self, outputs):
-        additional_points = torch.clip(
+    def get_noise_z_vals(self, outputs):
+        noise_z_vals = torch.clip(
             torch.normal(outputs.expand(-1, self.n_noise_samples), self.std),
             torch.tensor(0),
             torch.tensor(1),
         )
-        return torch.cat([additional_points, outputs], -1)
+        return noise_z_vals
 
     def forward(self, rays_o: torch.Tensor, rays_d: torch.Tensor):
         """For given ray origins and directions returns points sampled along ray.
@@ -139,5 +139,14 @@ class BaselineSampler(nn.Module):
         concat_outputs = self.cat_layers(skip_connection)
         n_samples_output = self.to_n_samples(concat_outputs)
         sigmoid_outputs = self.sigmoid(n_samples_output)
-        final_outputs = self.add_noised_z_vals(sigmoid_outputs)
-        return self.scale_to_near_far(final_outputs, rays_o, rays_d)
+        if self.n_noise_samples > 0:
+            noise_z_vals = self.get_noise_z_vals(sigmoid_outputs)
+            noise_pts, noise_z_vals = self.scale_to_near_far(
+                noise_z_vals, rays_o, rays_d
+            )
+            main_pts, main_z_vals = self.scale_to_near_far(
+                sigmoid_outputs, rays_o, rays_d
+            )
+            return main_pts, main_z_vals, noise_pts, noise_z_vals
+        else:
+            return self.scale_to_near_far(sigmoid_outputs, rays_o, rays_d), None, None
