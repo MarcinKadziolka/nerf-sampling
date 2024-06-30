@@ -1,7 +1,8 @@
 """Provides functions for visualization of outputs of NeRF model and sampler."""
 
+from typing_extensions import Union
 import torch
-from typing import Optional
+from typing import Optional, Tuple
 import matplotlib.pyplot as plt
 import matplotlib.figure
 import matplotlib.axes
@@ -37,7 +38,7 @@ def visualize_rays_pts(
     far: float = 6.0,
     title: str = "Points sampled on rays",
     s: int = 20,
-    c: Optional[torch.Tensor] = None,
+    c: Optional[Union[torch.Tensor, Tuple]] = None,
 ) -> tuple[matplotlib.figure.Figure, matplotlib.axes.Axes]:
     """Plot randomly selected rays and sampled points (if they are provided).
 
@@ -154,7 +155,9 @@ def _plot_rays(
     return ax
 
 
-def plot_points(ray_pts: torch.Tensor, s: int = 20, c: Optional[torch.Tensor] = None):
+def plot_points(
+    ray_pts: torch.Tensor, s: int = 20, c: Optional[Union[torch.Tensor, Tuple]] = None
+):
     """Plot points per rays.
 
     Args:
@@ -168,7 +171,10 @@ def plot_points(ray_pts: torch.Tensor, s: int = 20, c: Optional[torch.Tensor] = 
 
 
 def _plot_points(
-    ax, ray_pts: torch.Tensor, s: int = 20, c: Optional[torch.Tensor] = None
+    ax,
+    ray_pts: torch.Tensor,
+    s: int = 20,
+    c: Optional[Union[torch.Tensor, Tuple]] = None,
 ) -> matplotlib.axes.Axes:
     """Plot points per rays on axes.
 
