@@ -224,17 +224,25 @@ def render_path(
                 torch.flatten(sampler_extras["sampler_weights"])[rand_indices]
             )
             pts = torch.flatten(
-                sampler_extras["sampler_pts"], end_dim=1
+                sampler_extras["sampler_main_pts"], end_dim=1
+            )  # [H*W, N_samples, 3]
+            max_pts = torch.flatten(sampler_extras["max_pts"], end_dim=1).unsqueeze(
+                1
             )  # [H*W, N_samples, 3]
             rays_o = sampler_extras["rays_o"]  # [H*W, 3]
             rays_d = sampler_extras["rays_d"]  # [H*W, 3]
-            indices = random.sample(range(len(rays_o)), k=3)
-            rays_fig, _ = visualize.visualize_rays_pts(
+            indices = random.sample(range(len(rays_o)), k=10)
+            rays_fig, rays_ax = visualize.visualize_rays_pts(
                 rays_o=rays_o[indices].cpu(),
                 rays_d=rays_d[indices].cpu(),
                 pts=pts[indices],
+                c=[[(0.0, 0.0, 0.0)]],
                 title="{:03d}.png".format(i),
-                c=density[indices],
+            )
+            visualize._plot_points(
+                rays_ax,
+                max_pts[indices],
+                c=[[(1.0, 0.0, 0.0)]],
             )
             wandb.log(
                 {
@@ -483,7 +491,7 @@ def sample_as_in_NeRF(
         raw_noise_std=raw_noise_std,
         white_bkgd=white_bkgd,
     )
-    return fine_density, fine_z_vals, fine_pts
+    return fine_density, fine_z_vals, fine_pts, fine_rgb_map
 
 
 def render_rays(
@@ -538,7 +546,7 @@ def render_rays(
     rays_o, rays_d = ray_batch[:, 0:3], ray_batch[:, 3:6]  # [N_rays, 3] each
     viewdirs = ray_batch[:, -3:] if ray_batch.shape[-1] > 8 else None
 
-    fine_density, fine_z_vals, fine_pts = sample_as_in_NeRF(
+    fine_density, fine_z_vals, fine_pts, fine_rgb_map = sample_as_in_NeRF(
         ray_batch=ray_batch,
         N_samples=N_samples,
         network_fn=network_fn,
@@ -558,11 +566,21 @@ def render_rays(
     max_z_vals = fine_z_vals[batch_indices, max_indices].squeeze(1)
     max_pts = fine_pts[batch_indices, max_indices].squeeze(1)
 
-    sampler_pts, sampler_z_vals = kwargs["sampling_network"].forward(rays_o, rays_d)
-    if network_fine is not None:
-        sampler_raw = network_query_fn(sampler_pts, viewdirs, network_fine)
+    sampler_main_pts, sampler_main_z_vals, sampler_noise_pts, sampler_noise_z_vals = (
+        kwargs["sampling_network"].forward(rays_o, rays_d)
+    )
+    if sampler_noise_pts is not None:
+        sampler_all_pts = (
+            sampler_noise_pts  # torch.cat([sampler_main_pts, sampler_noise_pts], 1)
+        )
+        sampler_all_z_vals = sampler_noise_z_vals  # torch.cat([sampler_main_z_vals, sampler_noise_z_vals], -1)
     else:
-        sampler_raw = network_query_fn(sampler_pts, viewdirs, network_fn)
+        sampler_all_pts = sampler_main_pts
+        sampler_all_z_vals = sampler_main_z_vals
+    if network_fine is not None:
+        sampler_raw = network_query_fn(sampler_all_pts, viewdirs, network_fine)
+    else:
+        sampler_raw = network_query_fn(sampler_all_pts, viewdirs, network_fn)
 
     (
         sampler_rgb_map,
@@ -574,14 +592,14 @@ def render_rays(
         sampler_weights,
     ) = trainer.raw2outputs(
         raw=sampler_raw,
-        z_vals=sampler_z_vals,
+        z_vals=sampler_all_z_vals,
         rays_d=rays_d,
         raw_noise=raw_noise_std,
         white_bkdg=white_bkgd,
         pytest=pytest,
     )
     if trainer.global_step % trainer.i_testset == 0:
-        trainer.save_rays_data(rays_o, sampler_pts, sampler_alphas)
+        trainer.save_rays_data(rays_o, sampler_main_pts, sampler_alphas)
 
     ret = {
         "sampler_rgb_map": sampler_rgb_map,
@@ -589,8 +607,8 @@ def render_rays(
         "sampler_density": sampler_density.cpu(),
         "sampler_alphas": sampler_alphas.cpu(),
         "sampler_weights": sampler_weights.cpu(),
-        "sampler_z_vals": sampler_z_vals.cpu(),
-        "sampler_pts": sampler_pts.cpu(),
+        "sampler_main_z_vals": sampler_main_z_vals.cpu(),
+        "sampler_main_pts": sampler_main_pts.cpu(),
         "max_pts": max_pts.cpu(),
         "fine_density": fine_density.cpu(),
         "max_z_vals": max_z_vals.cpu(),
