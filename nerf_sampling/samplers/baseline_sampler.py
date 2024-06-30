@@ -147,6 +147,6 @@ class BaselineSampler(nn.Module):
             main_pts, main_z_vals = self.scale_to_near_far(
                 sigmoid_outputs, rays_o, rays_d
             )
-            return main_pts, main_z_vals, noise_pts, noise_z_vals
+            return (main_pts, main_z_vals), (noise_pts, noise_z_vals)
         else:
-            return self.scale_to_near_far(sigmoid_outputs, rays_o, rays_d), None, None
+            return self.scale_to_near_far(sigmoid_outputs, rays_o, rays_d), (None, None)

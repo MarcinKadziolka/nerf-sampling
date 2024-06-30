@@ -566,9 +566,10 @@ def render_rays(
     max_z_vals = fine_z_vals[batch_indices, max_indices].squeeze(1)
     max_pts = fine_pts[batch_indices, max_indices].squeeze(1)
 
-    sampler_main_pts, sampler_main_z_vals, sampler_noise_pts, sampler_noise_z_vals = (
-        kwargs["sampling_network"].forward(rays_o, rays_d)
-    )
+    (sampler_main_pts, sampler_main_z_vals), (
+        sampler_noise_pts,
+        sampler_noise_z_vals,
+    ) = kwargs["sampling_network"].forward(rays_o, rays_d)
     if sampler_noise_pts is not None:
         sampler_all_pts = (
             sampler_noise_pts  # torch.cat([sampler_main_pts, sampler_noise_pts], 1)
