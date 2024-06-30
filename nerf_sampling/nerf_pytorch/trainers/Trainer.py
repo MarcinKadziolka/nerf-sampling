@@ -360,9 +360,10 @@ class Trainer:
             sampler_density = logs["sampler_density"]
             sampler_alphas = logs["sampler_alphas"]
             sampler_weights = logs["sampler_weights"]
-            fine_density = torch.max(logs["fine_density"], 1, keepdims=True)[0]
+            max_fine_density = torch.max(logs["fine_density"], 1, keepdims=True)[0]
+            max_sampler_density = torch.max(sampler_density, 1, keepdims=True)[0]
             sampler_loss = sampler_loss.item()
-            info = f"Iter: {i} Loss: {loss.item()}, Sampler Loss: {sampler_loss}, SMean/FMean: {torch.mean(sampler_density):.2f}/{torch.mean(fine_density):.2f}, PSNR: {psnr.item():.5f}"
+            info = f"Iter: {i} Loss: {loss.item()}, Sampler Loss: {sampler_loss}, SMean/FMean: {torch.mean(max_sampler_density):.2f}/{torch.mean(max_fine_density):.2f}, PSNR: {psnr.item():.5f}"
             wandb.log(
                 {
                     "Loss": loss.item(),
