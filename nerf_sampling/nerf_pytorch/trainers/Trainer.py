@@ -2,6 +2,7 @@ import os
 from pathlib import Path
 from typing import Optional
 
+import matplotlib.pyplot as plt
 import imageio
 import numpy as np
 import optuna
@@ -10,10 +11,8 @@ import torch.nn.functional as F
 import wandb
 from tqdm import tqdm, trange
 
-from nerf_sampling.nerf_pytorch import loss_functions, nerf_utils, utils
-from nerf_sampling.nerf_pytorch.loss_functions import SamplerLossInput
+from nerf_sampling.nerf_pytorch import nerf_utils, utils
 from nerf_sampling.nerf_pytorch.visualize import visualize_rays_pts
-from nerf_sampling.samplers.baseline_sampler import BaselineSampler
 
 
 class Trainer:
