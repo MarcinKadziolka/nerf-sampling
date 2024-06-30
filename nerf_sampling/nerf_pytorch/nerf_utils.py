@@ -483,7 +483,7 @@ def sample_as_in_NeRF(
         raw_noise_std=raw_noise_std,
         white_bkgd=white_bkgd,
     )
-    return fine_density, fine_z_vals
+    return fine_density, fine_z_vals, fine_points
 
 
 def render_rays(
@@ -538,7 +538,7 @@ def render_rays(
     rays_o, rays_d = ray_batch[:, 0:3], ray_batch[:, 3:6]  # [N_rays, 3] each
     viewdirs = ray_batch[:, -3:] if ray_batch.shape[-1] > 8 else None
 
-    fine_density, fine_z_vals = sample_as_in_NeRF(
+    fine_density, fine_z_vals, fine_points = sample_as_in_NeRF(
         ray_batch=ray_batch,
         N_samples=N_samples,
         network_fn=network_fn,
@@ -590,6 +590,7 @@ def render_rays(
         "sampler_weights": sampler_weights.cpu(),
         "sampler_z_vals": sampler_z_vals.cpu(),
         "sampler_pts": sampler_pts.cpu(),
+        "fine_points": fine_points.cpu(),
         "fine_density": fine_density.cpu(),
         "max_z_vals": max_z_vals.cpu(),
     }
