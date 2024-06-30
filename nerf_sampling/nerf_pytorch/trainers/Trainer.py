@@ -1,7 +1,6 @@
 import os
 from pathlib import Path
 from typing import Optional
-
 import matplotlib.pyplot as plt
 import imageio
 import numpy as np
@@ -405,7 +404,7 @@ class Trainer:
         else:
             # Random from one image
             if self.single_image:
-                img_i = 0  # set fixed image
+                img_i = 42  # set fixed image
             else:
                 img_i = np.random.choice(i_train)
 
@@ -448,6 +447,7 @@ class Trainer:
 
                 coords = torch.reshape(coords, [-1, 2])  # (H * W, 2)
                 if self.single_ray:
+                    select_inds = torch.tensor([91, 120, 149, 256, 312, 512, 1024])
                     select_inds = torch.tensor([91])
                     # (N_rand,)
                 else:
@@ -527,9 +527,9 @@ class Trainer:
             psnr0 = nerf_utils.run_nerf_helpers.mse2psnr(img_loss0)
 
         max_z_vals = (
-            extras["max_z_vals"].unsqueeze(1).expand_as(extras["sampler_z_vals"])
+            extras["max_z_vals"].unsqueeze(1).expand_as(extras["sampler_main_z_vals"])
         )
-        sampler_loss = F.mse_loss(extras["sampler_z_vals"], max_z_vals)
+        sampler_loss = F.mse_loss(extras["sampler_main_z_vals"], max_z_vals)
         sampler_loss.backward()
         # is_grad = utils.check_grad(render_kwargs_train["sampling_network"])
         # if not is_grad:
