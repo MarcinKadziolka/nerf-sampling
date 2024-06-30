@@ -6,8 +6,8 @@ from nerf_sampling.nerf_pytorch import visualize
 import click
 
 # Define constants for image dimensions
-IMAGE_WIDTH = 400
-IMAGE_HEIGHT = 400
+IMAGE_WIDTH = 100
+IMAGE_HEIGHT = 100
 
 
 @click.command()
@@ -47,9 +47,11 @@ def train(**kwargs):
     optim = torch.optim.Adam(sampling_network.parameters())
 
     for step in range(1000):
-        pts, sampled_z_vals = sampling_network(rays_o, rays_d)
-        expanded_target_z_vals = z_vals.unsqueeze(1).expand(-1, sampled_z_vals.shape[1])
-        loss = F.mse_loss(expanded_target_z_vals, sampled_z_vals)
+        (main_pts, main_z_vals), (noise_pts, noise_z_vals) = sampling_network(
+            rays_o, rays_d
+        )
+        expanded_target_z_vals = z_vals.unsqueeze(1).expand(-1, main_z_vals.shape[1])
+        loss = F.mse_loss(expanded_target_z_vals, main_z_vals)
 
         optim.zero_grad()
         loss.backward()
@@ -58,12 +60,15 @@ def train(**kwargs):
         if step % 10 == 0:
             print(f"Step {step}, Loss: {loss.item()}")
             if plot:
-                visualize.visualize_rays_pts(rays_o, rays_d, pts)
+                visualize.visualize_rays_pts(rays_o, rays_d, main_pts)
 
     if final_plot:
-        pts, _ = sampling_network(rays_o, rays_d)
+        main_pts, _ = sampling_network(rays_o, rays_d)
         visualize.visualize_rays_pts(
-            rays_o, rays_d, pts.cpu().detach(), title=f"Final visualization {z_vals=}"
+            rays_o,
+            rays_d,
+            main_pts.cpu().detach(),
+            title=f"Final visualization {z_vals=}",
         )
         plt.show()
 
