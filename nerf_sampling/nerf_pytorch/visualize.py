@@ -179,7 +179,7 @@ def _plot_points(
       c: [N_rays, N_samples]. Array-like or list of colors or color, optional
     """
     pts = torch.flatten(ray_pts, end_dim=1)  # [N_rays*N_samples, 3]
-    if c is not None:
+    if c is not None and torch.is_tensor(c):
         c = torch.flatten(c)  # [N_rays * N_samples]
     ax.scatter(
         pts[:, 0],  # x = [N_rays * N_samples]
