@@ -570,18 +570,10 @@ def render_rays(
         sampler_noise_pts,
         sampler_noise_z_vals,
     ) = kwargs["sampling_network"].forward(rays_o, rays_d)
-    if sampler_noise_pts is not None:
-        sampler_all_pts = (
-            sampler_noise_pts  # torch.cat([sampler_main_pts, sampler_noise_pts], 1)
-        )
-        sampler_all_z_vals = sampler_noise_z_vals  # torch.cat([sampler_main_z_vals, sampler_noise_z_vals], -1)
-    else:
-        sampler_all_pts = sampler_main_pts
-        sampler_all_z_vals = sampler_main_z_vals
     if network_fine is not None:
-        sampler_raw = network_query_fn(sampler_all_pts, viewdirs, network_fine)
+        sampler_raw = network_query_fn(sampler_noise_pts, viewdirs, network_fine)
     else:
-        sampler_raw = network_query_fn(sampler_all_pts, viewdirs, network_fn)
+        sampler_raw = network_query_fn(sampler_noise_pts, viewdirs, network_fn)
 
     (
         sampler_rgb_map,
@@ -593,7 +585,7 @@ def render_rays(
         sampler_weights,
     ) = trainer.raw2outputs(
         raw=sampler_raw,
-        z_vals=sampler_all_z_vals,
+        z_vals=sampler_noise_z_vals,
         rays_d=rays_d,
         raw_noise=raw_noise_std,
         white_bkdg=white_bkgd,
