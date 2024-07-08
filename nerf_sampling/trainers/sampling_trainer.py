@@ -1,12 +1,12 @@
 import os
+from typing import Optional
 
 import numpy as np
 import torch
 import torch.nn.functional as F
 from safetensors.torch import save_file
 
-from nerf_sampling.nerf_pytorch import nerf_utils
-from nerf_sampling.nerf_pytorch import utils
+from nerf_sampling.nerf_pytorch import nerf_utils, utils
 from nerf_sampling.nerf_pytorch.nerf_utils import create_nerf
 from nerf_sampling.nerf_pytorch.run_nerf_helpers import NeRF
 from nerf_sampling.nerf_pytorch.trainers import Blender
@@ -18,6 +18,7 @@ class SamplingTrainer(Blender.BlenderTrainer):
 
     def __init__(
         self,
+        sampler_path: Optional[str] = None,
         n_layers: int = 6,
         layer_width: int = 256,
         **kwargs,
@@ -36,6 +37,7 @@ class SamplingTrainer(Blender.BlenderTrainer):
         """
         self.n_layers = n_layers
         self.layer_width = layer_width
+        self.sampler_path = sampler_path
         print(f"{self.n_layers=}")
         print(f"{self.layer_width=}")
         super().__init__(**kwargs)
@@ -61,7 +63,8 @@ class SamplingTrainer(Blender.BlenderTrainer):
         cat_hidden_sizes = [self.layer_width for _ in range(self.n_layers)]
         sampling_network = BaselineSampler(
             n_main_samples=1,
-            n_noise_samples=32,
+            n_noise_samples=128,
+            distance=0.1,
             hidden_sizes=hidden_sizes,
             cat_hidden_sizes=cat_hidden_sizes,
         )
@@ -75,25 +78,21 @@ class SamplingTrainer(Blender.BlenderTrainer):
         # Load checkpoints
         basedir = self.basedir
         expname = self.expname
-        # if network_fine exists then that means we use pretrained model
-        # this checkpoint doesn't have sampler data
-        # might change in the future if we will want to continue training sampler
-        if render_kwargs_train["network_fine"] is None:
-            if self.ft_path is not None and self.ft_path != "None":
-                ckpts = [self.ft_path]
-            else:
-                ckpts = [
-                    os.path.join(basedir, expname, f)
-                    for f in sorted(os.listdir(os.path.join(basedir, expname)))
-                    if "tar" in f
-                ]
-            print("Found ckpts", ckpts)
-            if len(ckpts) > 0 and not self.no_reload:
-                ckpt_path = ckpts[-1]
-                print("Reloading from", ckpt_path)
-                ckpt = torch.load(ckpt_path)
-                # Load model
-                utils.load_sampling_network(sampling_network, sampling_optimizer, ckpt)
+        if self.sampler_path is not None and self.sampler_path != "None":
+            ckpts = [self.sampler_path]
+        else:
+            ckpts = [
+                os.path.join(basedir, expname, f)
+                for f in sorted(os.listdir(os.path.join(basedir, expname)))
+                if "tar" in f
+            ]
+        print("Found ckpts", ckpts)
+        if len(ckpts) > 0 and not self.no_reload:
+            ckpt_path = ckpts[-1]
+            print("Reloading from", ckpt_path)
+            ckpt = torch.load(ckpt_path)
+            # Load model
+            utils.load_sampling_network(sampling_network, sampling_optimizer, ckpt)
 
         # Add sampler to model dicts
         render_kwargs_train["sampling_network"] = sampling_network
