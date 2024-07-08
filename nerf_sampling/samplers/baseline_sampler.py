@@ -20,7 +20,7 @@ class BaselineSampler(nn.Module):
         far: int = 6,
         n_main_samples: int = 1,
         n_noise_samples: int = 0,
-        std: float = 0.05,
+        distance: float = 0.05,
         multires: int = 10,
     ):
         """Initializes sampling network.
@@ -39,7 +39,7 @@ class BaselineSampler(nn.Module):
         self.n_samples = n_main_samples
         self.far = far
         self.near = near
-        self.std = std
+        self.distance = distance
         self.n_noise_samples = n_noise_samples
 
         self.origin_embedder, self.origin_dims = get_embedder(
@@ -103,11 +103,16 @@ class BaselineSampler(nn.Module):
         return scale_points_with_weights(z_vals, rays_o, rays_d), z_vals
 
     def get_noise_z_vals(self, outputs):
-        noise_z_vals = torch.clip(
-            torch.normal(outputs.expand(-1, self.n_noise_samples), self.std),
-            torch.tensor(0),
-            torch.tensor(1),
-        )
+        grid = torch.linspace(-self.distance, self.distance, steps=self.n_noise_samples)
+
+        # Expand the grid to match the shape of outputs
+        expanded_grid = grid.view(1, -1).expand(outputs.size(0), -1)
+
+        # Add the grid to the outputs to center the samples around outputs
+        noise_z_vals = outputs + expanded_grid
+
+        # Clip the values between 0 and 1
+        noise_z_vals = torch.clip(noise_z_vals, 0, 1)
         return noise_z_vals
 
     def forward(self, rays_o: torch.Tensor, rays_d: torch.Tensor):
