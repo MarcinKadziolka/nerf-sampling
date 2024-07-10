@@ -6,8 +6,8 @@ from nerf_sampling.nerf_pytorch import visualize
 import click
 
 # Define constants for image dimensions
-IMAGE_WIDTH = 100
-IMAGE_HEIGHT = 100
+IMAGE_WIDTH = 400
+IMAGE_HEIGHT = 400
 
 
 @click.command()
@@ -46,7 +46,7 @@ def train(**kwargs):
     # Optimizer
     optim = torch.optim.Adam(sampling_network.parameters())
 
-    for step in range(1000):
+    for step in range(100000):
         (main_pts, main_z_vals), (noise_pts, noise_z_vals) = sampling_network(
             rays_o, rays_d
         )
