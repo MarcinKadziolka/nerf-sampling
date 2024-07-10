@@ -19,6 +19,8 @@ class SamplingTrainer(Blender.BlenderTrainer):
     def __init__(
         self,
         sampler_path: Optional[str] = None,
+        N_noise_samples: int = 128,
+        distance: float = 0.1,
         n_layers: int = 6,
         layer_width: int = 256,
         **kwargs,
@@ -36,6 +38,8 @@ class SamplingTrainer(Blender.BlenderTrainer):
             **kwargs: other arguments passed to BlenderTrainer or Trainer.
         """
         self.n_layers = n_layers
+        self.N_noise_samples = N_noise_samples
+        self.distance = distance
         self.layer_width = layer_width
         self.sampler_path = sampler_path
         print(f"{self.n_layers=}")
@@ -45,11 +49,9 @@ class SamplingTrainer(Blender.BlenderTrainer):
 
     def create_nerf_model(self):
         """Custom create_nerf_model function that adds sampler to the model."""
-        render_kwargs_train, render_kwargs_test, start, grad_vars, optimizer = (
+        render_kwargs_train, render_kwargs_test, _start, grad_vars, optimizer = (
             create_nerf(self, NeRF)
         )
-        self.global_step = 0  # start
-        self.start = 0  # start
 
         bds_dict = {
             "near": self.near,
@@ -63,8 +65,8 @@ class SamplingTrainer(Blender.BlenderTrainer):
         cat_hidden_sizes = [self.layer_width for _ in range(self.n_layers)]
         sampling_network = BaselineSampler(
             n_main_samples=1,
-            n_noise_samples=128,
-            distance=0.1,
+            n_noise_samples=self.N_noise_samples,
+            distance=self.distance,
             hidden_sizes=hidden_sizes,
             cat_hidden_sizes=cat_hidden_sizes,
         )
@@ -87,12 +89,21 @@ class SamplingTrainer(Blender.BlenderTrainer):
                 if "tar" in f
             ]
         print("Found ckpts", ckpts)
+        start = None
         if len(ckpts) > 0 and not self.no_reload:
             ckpt_path = ckpts[-1]
             print("Reloading from", ckpt_path)
             ckpt = torch.load(ckpt_path)
+            start = ckpt["global_step"]
             # Load model
             utils.load_sampling_network(sampling_network, sampling_optimizer, ckpt)
+
+        if start is not None:
+            self.global_step = start  # start
+            self.start = start  # start
+        else:
+            self.global_step = 0
+            self.start = 0
 
         # Add sampler to model dicts
         render_kwargs_train["sampling_network"] = sampling_network
