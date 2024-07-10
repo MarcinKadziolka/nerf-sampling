@@ -21,6 +21,8 @@ sampler_lego_params: &sampler_lego_params # & adds anchor (reference) with a giv
   n_layers: None
   layer_width: None
   train_sampler_only: None
+  distance: None
+  N_noise_samples: None
 
 sampler_dataset_lego_setup: &sampler_dataset_lego_setup
   expname: "lego_sampler_experiment" 
