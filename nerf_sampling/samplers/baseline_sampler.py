@@ -89,6 +89,8 @@ class BaselineSampler(nn.Module):
         self.sigmoid = nn.Sigmoid()
 
         print(self)
+        print(f"{self.n_noise_samples=}")
+        print(f"{self.distance=}")
 
     def scale_to_near_far(self, outputs, rays_o, rays_d):
         """Directly scales points from NN output to the range [NEAR, FAR]."""
