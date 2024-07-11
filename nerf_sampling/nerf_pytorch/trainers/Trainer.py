@@ -11,6 +11,7 @@ import wandb
 from tqdm import tqdm, trange
 
 from nerf_sampling.nerf_pytorch import nerf_utils, utils
+from nerf_sampling.nerf_pytorch.loss_functions import gaussian_log_likelihood
 from nerf_sampling.nerf_pytorch.visualize import visualize_rays_pts
 
 
@@ -525,11 +526,12 @@ class Trainer:
             img_loss0 = nerf_utils.run_nerf_helpers.img2mse(extras["rgb0"], target_s)
             loss = loss + img_loss0
             psnr0 = nerf_utils.run_nerf_helpers.mse2psnr(img_loss0)
-
-        max_z_vals = (
-            extras["max_z_vals"].unsqueeze(1).expand_as(extras["sampler_main_z_vals"])
+        sampler_loss = gaussian_log_likelihood(
+            extras["max_z_vals"],
+            extras["sampler_mean"],
+            render_kwargs_train["sampling_network"].distance,
         )
-        sampler_loss = F.mse_loss(extras["sampler_main_z_vals"], max_z_vals)
+
         sampler_loss.backward()
         # is_grad = utils.check_grad(render_kwargs_train["sampling_network"])
         # if not is_grad:
