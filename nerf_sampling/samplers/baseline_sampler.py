@@ -18,8 +18,7 @@ class BaselineSampler(nn.Module):
         direction_channels: int = 3,
         near: int = 2,
         far: int = 6,
-        n_main_samples: int = 1,
-        n_noise_samples: int = 0,
+        n_samples: int = 0,
         distance: float = 0.05,
         multires: int = 10,
     ):
@@ -36,11 +35,10 @@ class BaselineSampler(nn.Module):
             n_samples: Number of samples to output along a ray.
         """
         super(BaselineSampler, self).__init__()
-        self.n_samples = n_main_samples
         self.far = far
         self.near = near
         self.distance = distance
-        self.n_noise_samples = n_noise_samples
+        self.n_samples = n_samples
 
         self.origin_embedder, self.origin_dims = get_embedder(
             multires=multires, input_dims=origin_channels
@@ -85,11 +83,11 @@ class BaselineSampler(nn.Module):
         self.direction_layers = nn.Sequential(*direction_layers)
         self.cat_layers = nn.Sequential(*cat_layers)
 
-        self.to_n_samples = nn.Linear(cat_hidden_sizes[-1], self.n_samples)
+        self.to_mean = nn.Linear(cat_hidden_sizes[-1], 1)
         self.sigmoid = nn.Sigmoid()
 
         print(self)
-        print(f"{self.n_noise_samples=}")
+        print(f"{self.n_samples=}")
         print(f"{self.distance=}")
 
     def scale_to_near_far(self, outputs, rays_o, rays_d):
@@ -104,14 +102,14 @@ class BaselineSampler(nn.Module):
 
         return scale_points_with_weights(z_vals, rays_o, rays_d), z_vals
 
-    def get_noise_z_vals(self, outputs):
-        grid = torch.linspace(-self.distance, self.distance, steps=self.n_noise_samples)
+    def get_z_vals(self, mean):
+        grid = torch.linspace(-self.distance, self.distance, steps=self.n_samples)
 
         # Expand the grid to match the shape of outputs
-        expanded_grid = grid.view(1, -1).expand(outputs.size(0), -1)
+        expanded_grid = grid.view(1, -1).expand(mean.size(0), -1)
 
         # Add the grid to the outputs to center the samples around outputs
-        noise_z_vals = outputs + expanded_grid
+        noise_z_vals = mean + expanded_grid
 
         # Clip the values between 0 and 1
         noise_z_vals = torch.clip(noise_z_vals, 0, 1)
@@ -144,16 +142,11 @@ class BaselineSampler(nn.Module):
         skip_connection = torch.cat([outputs, embedded_origin, embedded_direction], -1)
 
         concat_outputs = self.cat_layers(skip_connection)
-        n_samples_output = self.to_n_samples(concat_outputs)
-        sigmoid_outputs = self.sigmoid(n_samples_output)
-        if self.n_noise_samples > 0:
-            noise_z_vals = self.get_noise_z_vals(sigmoid_outputs)
-            noise_pts, noise_z_vals = self.scale_to_near_far(
-                noise_z_vals, rays_o, rays_d
-            )
-            main_pts, main_z_vals = self.scale_to_near_far(
-                sigmoid_outputs, rays_o, rays_d
-            )
-            return (main_pts, main_z_vals), (noise_pts, noise_z_vals)
-        else:
-            return self.scale_to_near_far(sigmoid_outputs, rays_o, rays_d), (None, None)
+        predicted_mean = self.to_mean(concat_outputs)
+        sigmoid_predicted_mean = self.sigmoid(predicted_mean)
+
+        z_vals = self.get_z_vals(sigmoid_predicted_mean)
+        mean = (
+            self.near * (1 - sigmoid_predicted_mean) + self.far * sigmoid_predicted_mean
+        )
+        return self.scale_to_near_far(z_vals, rays_o, rays_d), mean
