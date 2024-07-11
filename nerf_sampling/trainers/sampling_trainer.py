@@ -19,7 +19,7 @@ class SamplingTrainer(Blender.BlenderTrainer):
     def __init__(
         self,
         sampler_path: Optional[str] = None,
-        N_noise_samples: int = 128,
+        N_sampler_samples: int = 128,
         distance: float = 0.1,
         n_layers: int = 6,
         layer_width: int = 256,
@@ -38,7 +38,7 @@ class SamplingTrainer(Blender.BlenderTrainer):
             **kwargs: other arguments passed to BlenderTrainer or Trainer.
         """
         self.n_layers = n_layers
-        self.N_noise_samples = N_noise_samples
+        self.N_sampler_samples = N_sampler_samples
         self.distance = distance
         self.layer_width = layer_width
         self.sampler_path = sampler_path
@@ -64,8 +64,7 @@ class SamplingTrainer(Blender.BlenderTrainer):
         hidden_sizes = [self.layer_width for _ in range(self.n_layers)]
         cat_hidden_sizes = [self.layer_width for _ in range(self.n_layers)]
         sampling_network = BaselineSampler(
-            n_main_samples=1,
-            n_noise_samples=self.N_noise_samples,
+            n_samples=self.N_sampler_samples,
             distance=self.distance,
             hidden_sizes=hidden_sizes,
             cat_hidden_sizes=cat_hidden_sizes,
