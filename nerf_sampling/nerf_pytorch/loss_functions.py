@@ -25,6 +25,12 @@ def mean_density_loss(density: torch.Tensor) -> torch.Tensor:
     return -torch.mean(density)
 
 
+def gaussian_log_likelihood(x, u, s):
+    term1 = torch.log(torch.tensor(2, device=torch.device("cpu")) * torch.pi * s**2)
+    term2 = ((x - u) ** 2) / (s**2)
+    return torch.sum(0.5 * (term1 + term2))
+
+
 class SamplerLossInput(Enum):
     """Store options for sampler loss function input."""
 
