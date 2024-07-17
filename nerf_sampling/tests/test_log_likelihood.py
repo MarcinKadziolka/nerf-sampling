@@ -9,7 +9,13 @@ class NN(nn.Module):
     def __init__(self):
         super(NN, self).__init__()
         self.basic_network = nn.Sequential(
-            nn.Linear(1, 32), nn.ReLU(), nn.Linear(32, 32), nn.ReLU(), nn.Linear(32, 1)
+            nn.Linear(1, 32),
+            nn.ReLU(),
+            nn.Linear(32, 32),
+            nn.ReLU(),
+            nn.Linear(32, 32),
+            nn.ReLU(),
+            nn.Linear(32, 1),
         )
 
     def forward(self, input_tensor):
@@ -19,11 +25,11 @@ class NN(nn.Module):
 torch.manual_seed(42)
 
 # Mean and standard deviation of the true Gaussian
-mu_true = torch.tensor(-2.0)
+mu_true = torch.tensor(-10.0)
 s = torch.tensor(0.4)
 
 # Generate samples from the true Gaussian
-samples = torch.normal(mu_true, s, size=(100, 1))
+samples = torch.normal(mu_true, s, size=(1000, 1))
 
 # Initialize the neural network
 basic_network = NN()
