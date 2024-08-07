@@ -1,13 +1,17 @@
 import torch
+import random
 import torch.nn.functional as F
 import matplotlib.pyplot as plt
+from nerf_sampling.nerf_pytorch.loss_functions import gaussian_log_likelihood
 from nerf_sampling.samplers.baseline_sampler import BaselineSampler
 from nerf_sampling.nerf_pytorch import visualize
 import click
 
+from nerf_sampling.samplers.utils import scale_points_with_weights
+
 # Define constants for image dimensions
-IMAGE_WIDTH = 400
-IMAGE_HEIGHT = 400
+IMAGE_WIDTH = 100
+IMAGE_HEIGHT = 100
 
 
 @click.command()
@@ -35,23 +39,20 @@ def train(**kwargs):
 
     # Initialize z-values with random values between 2.0 and 6.0
     z_vals = 2.0 + 4.0 * torch.rand(IMAGE_WIDTH * IMAGE_HEIGHT)
-
+    target_pts = scale_points_with_weights(z_vals.unsqueeze(1), rays_o, rays_d)
     # Initialize the sampling network
-    n_main_samples = 1
-    n_noise_samples = 0
-    sampling_network = BaselineSampler(
-        n_main_samples=n_main_samples, n_noise_samples=n_noise_samples
-    )
+    n_noise_samples = 1
+    sampling_network = BaselineSampler(n_samples=n_noise_samples)
 
     # Optimizer
     optim = torch.optim.Adam(sampling_network.parameters())
 
-    for step in range(100000):
-        (main_pts, main_z_vals), (noise_pts, noise_z_vals) = sampling_network(
-            rays_o, rays_d
-        )
+    for step in range(100):
+        (main_pts, main_z_vals), mean = sampling_network(rays_o, rays_d)
         expanded_target_z_vals = z_vals.unsqueeze(1).expand(-1, main_z_vals.shape[1])
-        loss = F.mse_loss(expanded_target_z_vals, main_z_vals)
+        loss = gaussian_log_likelihood(
+            expanded_target_z_vals, mean, sampling_network.distance
+        )
 
         optim.zero_grad()
         loss.backward()
@@ -60,16 +61,23 @@ def train(**kwargs):
         if step % 10 == 0:
             print(f"Step {step}, Loss: {loss.item()}")
             if plot:
-                visualize.visualize_rays_pts(rays_o, rays_d, main_pts)
+                fig, ax = visualize.visualize_rays_pts(
+                    rays_o, rays_d, main_pts.detach()
+                )
+                visualize._plot_points(ax, target_pts)
+                plt.show()
+                plt.close()
 
     if final_plot:
-        main_pts, _ = sampling_network(rays_o, rays_d)
-        visualize.visualize_rays_pts(
-            rays_o,
-            rays_d,
-            main_pts.cpu().detach(),
-            title=f"Final visualization {z_vals=}",
+        (main_pts, main_z_vals), _ = sampling_network(rays_o, rays_d)
+        rand_indices = random.sample(range(len(main_pts)), k=50)
+        fig, ax = visualize.visualize_rays_pts(
+            rays_o[rand_indices],
+            rays_d[rand_indices],
+            main_pts[rand_indices].cpu().detach(),
+            title=f"Final visualization",
         )
+        visualize._plot_points(ax, target_pts[rand_indices])
         plt.show()
 
 
