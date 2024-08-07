@@ -121,7 +121,6 @@ class TestBaselineSampler:
         sampler = baseline_sampler.BaselineSampler(
             hidden_sizes=hidden_sizes,
             cat_hidden_sizes=cat_hidden_sizes,
-            n_main_samples=8,
             multires=multires,
             origin_channels=n_channels,
             direction_channels=n_channels,
@@ -167,8 +166,8 @@ class TestBaselineSampler:
         assert sampler.cat_layers[4].in_features == cat_hidden_sizes[1]
         assert sampler.cat_layers[4].out_features == cat_hidden_sizes[2]
 
-        assert sampler.to_n_samples.in_features == cat_hidden_sizes[-1]
-        assert sampler.to_n_samples.out_features == n_samples
+        assert sampler.to_mean.in_features == cat_hidden_sizes[-1]
+        assert sampler.to_mean.out_features == 1
 
     def test_baseline_sampler_one_layer(self):
         hidden_sizes = [16]
@@ -182,10 +181,9 @@ class TestBaselineSampler:
         assert len(sampler.cat_layers) == len(concatenated_hidden_sizes) * 2
 
     def test_baseline_sampler_output_shape(self):
-        batch_size = 2
         n_rays = 4
         n_samples = 5
-        rays_o = rays_d = torch.zeros(batch_size, n_rays, 3)
-        sampler = baseline_sampler.BaselineSampler(n_main_samples=n_samples)
-        pts, _ = sampler(rays_o, rays_d)
-        assert pts.shape == (batch_size, n_rays, n_samples, 3)
+        rays_o = rays_d = torch.zeros(n_rays, 3)
+        sampler = baseline_sampler.BaselineSampler(n_samples=n_samples)
+        (pts, z_vals), mean = sampler(rays_o, rays_d)
+        assert pts.shape == (n_rays, n_samples, 3)
