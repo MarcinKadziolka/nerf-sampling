@@ -29,7 +29,7 @@ mu_true = torch.tensor(-10.0)
 s = torch.tensor(0.4)
 
 # Generate samples from the true Gaussian
-samples = torch.normal(mu_true, s, size=(1000, 1))
+samples = torch.normal(mu_true, s, size=(1, 1000))
 
 # Initialize the neural network
 basic_network = NN()
