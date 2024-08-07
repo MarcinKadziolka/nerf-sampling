@@ -32,8 +32,8 @@ def gaussian_distribution(x, m, s):
 
 
 def gaussian_log_likelihood(x, m, s):
-    N = x.shape[0]
-    tensor2 = torch.tensor(2, device=torch.device("cpu"))
+    N = x.shape[1]
+    tensor2 = torch.tensor(2)
     term1 = (-N / tensor2) * torch.log(tensor2 * torch.pi * s**tensor2)
     subterm1 = 1 / (tensor2 * s**tensor2)
     subterm2 = torch.sum((x - m) ** tensor2)
