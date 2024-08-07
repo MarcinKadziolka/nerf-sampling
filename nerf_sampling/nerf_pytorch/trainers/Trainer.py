@@ -531,12 +531,7 @@ class Trainer:
             img_loss0 = nerf_utils.run_nerf_helpers.img2mse(extras["rgb0"], target_s)
             loss = loss + img_loss0
             psnr0 = nerf_utils.run_nerf_helpers.mse2psnr(img_loss0)
-        sampler_loss = gaussian_log_likelihood(
-            extras["max_z_vals"],
-            extras["sampler_mean"],
-            render_kwargs_train["sampling_network"].distance,
-        )
-
+        sampler_loss = extras["sampler_loss"]
         sampler_loss.backward()
         # is_grad = utils.check_grad(render_kwargs_train["sampling_network"])
         # if not is_grad:
@@ -546,7 +541,7 @@ class Trainer:
             "sampler_density": extras["sampler_density"],
             "sampler_alphas": extras["sampler_alphas"],
             "sampler_weights": extras["sampler_weights"],
-            "fine_density": extras["fine_density"],
+            "fine_weights": extras["fine_weights"],
         }
         return logs, loss, sampler_loss, psnr, psnr0
 

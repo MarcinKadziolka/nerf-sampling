@@ -15,7 +15,7 @@ import wandb
 from tqdm import tqdm
 
 from nerf_sampling.nerf_pytorch import run_nerf_helpers, utils, visualize
-from nerf_sampling.nerf_pytorch.loss_functions import SamplerLossInput
+from nerf_sampling.nerf_pytorch.loss_functions import gaussian_log_likelihood
 
 np.random.seed(0)
 DEBUG = False
@@ -55,16 +55,18 @@ def batchify(fn, chunk):
 def batchify_rays(rays_flat, chunk=1024 * 32, **kwargs):
     """Render rays in smaller minibatches to avoid OOM."""
     all_returned = {}
+    total_sampler_loss = 0
     for i in range(0, rays_flat.shape[0], chunk):
         torch.cuda.empty_cache()
-        returned = render_rays(rays_flat[i : i + chunk], **kwargs)
+        returned, sampler_loss = render_rays(rays_flat[i : i + chunk], **kwargs)
+        total_sampler_loss += sampler_loss
         for key in returned:
             if key not in all_returned:
                 all_returned[key] = []
             all_returned[key].append(returned[key])
 
     all_returned = {key: torch.cat(all_returned[key], 0) for key in all_returned}
-    return all_returned
+    return all_returned, sampler_loss
 
 
 def render(
@@ -139,7 +141,7 @@ def render(
         rays = torch.cat([rays, viewdirs], -1)
 
     # Render and reshape
-    all_returned = batchify_rays(rays, chunk, **kwargs)
+    all_returned, sampler_loss = batchify_rays(rays, chunk, **kwargs)
     for key in all_returned:
         k_sh = list(sh[:-1]) + list(all_returned[key].shape[1:])
         all_returned[key] = torch.reshape(all_returned[key], k_sh)
@@ -151,6 +153,7 @@ def render(
     }
     ret_dict["rays_o"] = rays_o
     ret_dict["rays_d"] = rays_d
+    ret_dict["sampler_loss"] = sampler_loss
     return ret_list + [ret_dict]
 
 
@@ -597,14 +600,19 @@ def render_rays(
     if trainer.global_step % trainer.i_testset == 0:
         trainer.save_rays_data(rays_o, sampler_pts, sampler_alphas)
 
+    sampler_loss = gaussian_log_likelihood(
+        max_z_vals,
+        sampler_mean,
+        kwargs["sampling_network"].distance,
+    )
+
     ret = {
         "sampler_rgb_map": sampler_rgb_map,
         "sampler_disp_map": sampler_disp_map,
-        "sampler_mean": sampler_mean.cpu(),
-        "max_z_vals": max_z_vals.cpu(),
         "sampler_density": sampler_density.cpu(),
         "sampler_alphas": sampler_alphas.cpu(),
         "sampler_weights": sampler_weights.cpu(),
+        "fine_weights": fine_weights.cpu(),
         "sampler_pts": sampler_pts.cpu(),
         "max_pts": max_pts.cpu(),
         "fine_density": fine_density.cpu(),
@@ -617,7 +625,7 @@ def render_rays(
         if (torch.isnan(ret[key]).any() or torch.isinf(ret[key]).any()) and DEBUG:
             print(f"! [Numerical Error] {key} contains nan or inf.")
 
-    return ret
+    return ret, sampler_loss
 
 
 def config_parser():
