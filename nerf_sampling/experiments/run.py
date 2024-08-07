@@ -70,15 +70,14 @@ def main(**click_kwargs):
     config["kwargs"]["single_image"] = click_kwargs["single_image"]
     config["kwargs"]["single_ray"] = click_kwargs["single_ray"]
     override = {
-        "N_noise_samples": 128,
-        "distance": 0.45,
+        "N_sampler_samples": 2,
+        "distance": 0.1,
         "N_samples": 64,
         "N_importance": 128,
         "sampler_lr": 1e-3,
         "n_layers": 5,
         "layer_width": 128,
         "train_sampler_only": True,
-        "i_print": 1,
     }
 
     override_config(config=config["kwargs"], update=override)
@@ -93,8 +92,13 @@ def main(**click_kwargs):
         project="nerf-sampling",
         config=config["kwargs"],
         mode=click_kwargs["wandb"],
-        # tags=["bug_fix"],
-        tags=["sampler_only", "pretrained_model", "z_vals", "uniform_grid_test"],
+        tags=[
+            "sampler_only",
+            "pretrained_model",
+            "z_vals",
+            "uniform_grid",
+            "LL_gaussian_log_likelihood",
+        ],
     )
     basedir = wandb.run.dir
     print(f"{basedir=}")
@@ -102,7 +106,7 @@ def main(**click_kwargs):
     config["kwargs"]["datadir"] = datadir
     config["kwargs"]["basedir"] = basedir
     ft_path = "/home/mubuntu/Desktop/uni/implicit_representations/nerf-sampling/nerf_sampling/dataset/lego/pretrained_model/200000.tar"
-    sampler_path = "/home/mubuntu/Desktop/uni/implicit_representations/nerf-sampling/nerf_sampling/wandb/run-20240702_202332-bq4uji6a/files/lego_sampler_experiment/100000.tar"
+    sampler_path = None
     config["kwargs"]["ft_path"] = ft_path
     config["kwargs"]["sampler_path"] = sampler_path
 
