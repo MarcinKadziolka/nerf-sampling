@@ -168,9 +168,9 @@ def solve_quadratic_equation(a: torch.Tensor, b: torch.Tensor, c: torch.Tensor):
     For the equation specified by arguments' value at [x1, ..., xn],
     its' solutions are at returned tensor's [0, x1, ..., xn], [1, x1, ..., xn].
     """
-    delta = b**2 - 4 * a * c  # [n_lines, m_sphere]
+    delta = b**2 - 4 * a * c  # [n_lines]
 
-    # To compute minus/plus [2 solutions, n_lines, m_sphere]
+    # To compute minus/plus [2 solutions, n_lines]
     pm = torch.stack([torch.ones_like(delta), -torch.ones_like(delta)])
 
     sqrt_delta = torch.sqrt(delta)
@@ -198,25 +198,20 @@ def find_intersection_points_with_sphere(
 
     intersection_points = None
     sphere_center = torch.tensor([0, 0, 0])
-    # [n_lines, m_spheres, 3D]
-    origin_to_sphere_center_vector = torch.unsqueeze(origin, 1) - sphere_center
+    # [n_lines, 3D]
+    origin_to_sphere_center_vector = origin - sphere_center
 
-    # [n_lines, m_spheres]
-    b = 2 * (torch.unsqueeze(direction, 1) * origin_to_sphere_center_vector).sum(dim=2)
+    # [n_lines]
+    b = 2 * (direction * origin_to_sphere_center_vector).sum(dim=1)
 
-    # [n_lines, m_spheres]
-    c = torch.norm(origin_to_sphere_center_vector, dim=2) ** 2 - sphere_radius.T**2
+    # [n_lines]
+    c = torch.norm(origin_to_sphere_center_vector, dim=1) ** 2 - sphere_radius.T**2
 
-    a = torch.unsqueeze((direction * direction).sum(dim=1), dim=1)
+    a = (direction * direction).sum(dim=1)
 
-    equation_solutions = solve_quadratic_equation(
-        a, b, c
-    )  # [2_points, n_lines, m_spheres]
+    equation_solutions = solve_quadratic_equation(a, b, c)  # [2_points, n_lines]
 
-    t = equation_solutions.T  # [n_lines, m_spheres, 2]
+    t = equation_solutions.T  # [n_lines, 2]
 
-    intersection_points = (
-        torch.unsqueeze(origin, 2)
-        + torch.unsqueeze(t, 2) * torch.unsqueeze(direction, 2)
-    ).transpose(3, 2)
-    return t, intersection_points.squeeze()  # [n_lines, 2 points, 3D]
+    intersection_points = origin.unsqueeze(1) + t.unsqueeze(2) * direction.unsqueeze(1)
+    return t, intersection_points  # [n_lines, 2 points, 3D]
