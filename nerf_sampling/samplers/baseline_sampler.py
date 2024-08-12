@@ -1,6 +1,7 @@
 """Implements baseline sampling network torch module."""
 
 from nerf_sampling.nerf_pytorch.run_nerf_helpers import get_embedder
+from nerf_sampling.nerf_pytorch.utils import find_intersection_points_with_sphere
 from .utils import scale_points_with_weights
 from torch import nn
 import torch.nn.functional as F
@@ -21,6 +22,7 @@ class BaselineSampler(nn.Module):
         n_samples: int = 0,
         distance: float = 0.05,
         multires: int = 10,
+        sphere_radius: float = 2.0,
     ):
         """Initializes sampling network.
 
@@ -37,6 +39,7 @@ class BaselineSampler(nn.Module):
         super(BaselineSampler, self).__init__()
         self.far = far
         self.near = near
+        self.sphere_radius = torch.tensor([sphere_radius])
         self.distance = distance
         self.n_samples = n_samples
 
@@ -139,11 +142,16 @@ class BaselineSampler(nn.Module):
         noise_z_vals = torch.clip(noise_z_vals, 0, 1)
         return noise_z_vals
 
+    def calculate_intersection_points(self, rays_o, rays_d):
+        t, intersection_points = find_intersection_points_with_sphere(
+            rays_o, rays_d, self.sphere_radius
+        )
+        return intersection_points
+
     def forward(
         self,
         rays_o: torch.Tensor,
         rays_d: torch.Tensor,
-        intersection_points: torch.Tensor,
     ):
         """For given ray origins and directions returns points sampled along ray.
 
@@ -152,6 +160,9 @@ class BaselineSampler(nn.Module):
         """
         embedded_origin = self.origin_embedder(rays_o)
         embedded_direction = self.direction_embedder(rays_d)
+        intersection_points = self.calculate_intersection_points(
+            rays_o=rays_o, rays_d=rays_d
+        )
         embedded_intersection = self.intersection_points_embedder(
             torch.flatten(intersection_points, start_dim=1)
         )
