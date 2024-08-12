@@ -6,6 +6,7 @@ import torch
 from nerf_sampling.nerf_pytorch import utils
 from nerf_sampling.nerf_pytorch.run_nerf_helpers import NeRF
 from nerf_sampling.samplers import baseline_sampler
+from nerf_sampling.nerf_pytorch.utils import solve_quadratic_equation
 
 
 def test_freeze_unfreeze_model():
@@ -187,3 +188,46 @@ class TestBaselineSampler:
         sampler = baseline_sampler.BaselineSampler(n_samples=n_samples)
         (pts, z_vals), mean = sampler(rays_o, rays_d)
         assert pts.shape == (n_rays, n_samples, 3)
+
+
+"""Tests for all utils module functions."""
+import torch
+
+
+def test_solve_quadratic_equation():
+    """Test solving quadratic equation."""
+    assert torch.isclose(
+        solve_quadratic_equation(
+            torch.Tensor([1]), torch.Tensor([2]), torch.Tensor([1])
+        ),
+        torch.Tensor([[-1], [-1]]),
+        equal_nan=True,
+    ).all()
+    assert torch.isclose(
+        solve_quadratic_equation(
+            torch.Tensor([[1, 4, 5], [1, 4, 5]]),
+            torch.Tensor([[1, 4, 6], [1, 4, 6]]),
+            torch.Tensor([[1, 1, 1], [1, 1, 1]]),
+        ),
+        torch.Tensor(
+            [
+                [[torch.nan, -0.5, -1], [torch.nan, -0.5, -1]],
+                [[torch.nan, -0.5, -0.2], [torch.nan, -0.5, -0.2]],
+            ]
+        ),
+        equal_nan=True,
+    ).all()
+    assert torch.isclose(
+        solve_quadratic_equation(
+            torch.Tensor([1, 4, 5, 1, 4, 5]),
+            torch.Tensor([1, 4, 6, 1, 4, 6]),
+            torch.Tensor([1, 1, 1, 1, 1, 1]),
+        ),
+        torch.Tensor(
+            [
+                [torch.nan, -0.5, -1, torch.nan, -0.5, -1],
+                [torch.nan, -0.5, -0.2, torch.nan, -0.5, -0.2],
+            ]
+        ),
+        equal_nan=True,
+    ).all()
