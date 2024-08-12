@@ -105,7 +105,7 @@ def main(**click_kwargs):
     datadir = click_kwargs["dataset"]
     config["kwargs"]["datadir"] = datadir
     config["kwargs"]["basedir"] = basedir
-    ft_path = "/home/mubuntu/Desktop/uni/implicit_representations/nerf-sampling/nerf_sampling/dataset/lego/pretrained_model/200000.tar"
+    ft_path = "/home/mubuntu/Desktop/nerf-sampling/nerf_sampling/dataset/lego/pretrained_model/200000.tar"
     sampler_path = None
     config["kwargs"]["ft_path"] = ft_path
     config["kwargs"]["sampler_path"] = sampler_path
