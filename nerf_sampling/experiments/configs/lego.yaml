@@ -23,6 +23,7 @@ sampler_lego_params: &sampler_lego_params # & adds anchor (reference) with a giv
   train_sampler_only: None
   distance: None
   N_sampler_samples: None
+  sphere_radius: None
 
 sampler_dataset_lego_setup: &sampler_dataset_lego_setup
   expname: "lego_sampler_experiment" 
