@@ -219,4 +219,4 @@ def find_intersection_points_with_sphere(
         torch.unsqueeze(origin, 2)
         + torch.unsqueeze(t, 2) * torch.unsqueeze(direction, 2)
     ).transpose(3, 2)
-    return t, intersection_points  # [m_spheres, n_lines, 2 points, 3D]
+    return t, intersection_points.squeeze()  # [n_lines, 2 points, 3D]
