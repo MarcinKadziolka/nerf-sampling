@@ -177,3 +177,46 @@ def solve_quadratic_equation(a: torch.Tensor, b: torch.Tensor, c: torch.Tensor):
     solutions = (-b - (pm * sqrt_delta)) / (2 * a)
 
     return solutions
+
+
+def find_intersection_points_with_sphere(
+    origin,
+    direction,
+) -> tuple[torch.Tensor, torch.Tensor]:
+    """Find intersection points with spheres.
+
+    Finds intersection points of the lines with the given spheres.
+    Returns nan values if a given line and sphere do not intersect.
+    Args:
+        calc_intersection_points_cartesian: bool if return pts in cartesian.
+    Return:
+        torch.Tensor containing the intersection points and with shape
+        [m_spheres, n_lines, 2 points, 3D].
+        t: torch.Tensor, z_vals
+    """
+
+    intersection_points = None
+    sphere_center = torch.tensor([0, 0, 0])
+    sphere_radius = torch.tensor([2])
+    # [n_lines, m_spheres, 3D]
+    origin_to_sphere_center_vector = torch.unsqueeze(origin, 1) - sphere_center
+
+    # [n_lines, m_spheres]
+    b = 2 * (torch.unsqueeze(direction, 1) * origin_to_sphere_center_vector).sum(dim=2)
+
+    # [n_lines, m_spheres]
+    c = torch.norm(origin_to_sphere_center_vector, dim=2) ** 2 - sphere_radius.T**2
+
+    a = torch.unsqueeze((direction * direction).sum(dim=1), dim=1)
+
+    equation_solutions = solve_quadratic_equation(
+        a, b, c
+    )  # [2_points, n_lines, m_spheres]
+
+    t = equation_solutions.T  # [n_lines, m_spheres, 2]
+
+    intersection_points = (
+        torch.unsqueeze(origin, 2)
+        + torch.unsqueeze(t, 2) * torch.unsqueeze(direction, 2)
+    ).transpose(3, 2)
+    return t, intersection_points  # [m_spheres, n_lines, 2 points, 3D]
