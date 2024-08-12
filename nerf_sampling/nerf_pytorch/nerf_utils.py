@@ -564,7 +564,6 @@ def render_rays(
         pytest=pytest,
         kwargs=kwargs,
     )
-
     top_k = int(fine_weights.shape[1] * 0.1)
     top_k_values, top_k_indices = torch.topk(fine_weights, top_k, dim=1)
 
@@ -572,9 +571,9 @@ def render_rays(
     max_z_vals = torch.gather(fine_z_vals, 1, top_k_indices)
     batch_indices = torch.arange(fine_density.shape[0]).unsqueeze(1)
     max_pts = fine_pts[batch_indices, top_k_indices[:, :top_k]]
-
+    t, intersection_points = utils.find_intersection_points_with_sphere(rays_o, rays_d)
     (sampler_pts, sampler_z_vals), sampler_mean = kwargs["sampling_network"].forward(
-        rays_o, rays_d
+        rays_o, rays_d, intersection_points
     )
     if network_fine is not None:
         sampler_raw = network_query_fn(sampler_pts, viewdirs, network_fine)
