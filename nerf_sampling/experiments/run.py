@@ -78,6 +78,7 @@ def main(**click_kwargs):
         "n_layers": 5,
         "layer_width": 128,
         "train_sampler_only": True,
+        "sphere_radius": 2,
     }
 
     override_config(config=config["kwargs"], update=override)
@@ -98,6 +99,7 @@ def main(**click_kwargs):
             "z_vals",
             "uniform_grid",
             "LL_gaussian_log_likelihood",
+            "sphere_intersection",
         ],
     )
     basedir = wandb.run.dir
