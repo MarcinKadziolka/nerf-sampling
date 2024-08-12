@@ -47,11 +47,22 @@ class BaselineSampler(nn.Module):
             multires=multires, input_dims=direction_channels
         )
 
+        self.intersection_points_embedder, self.intersection_points_dim = get_embedder(
+            multires=multires, input_dims=6
+        )
+
         origin_layers: list[nn.Linear | nn.ReLU] = [
             nn.Linear(self.origin_dims + self.origin_dims, hidden_sizes[0]),
         ]
         direction_layers: list[nn.Linear | nn.ReLU] = [
             nn.Linear(self.direction_dims + self.direction_dims, hidden_sizes[0]),
+        ]
+
+        intersection_layers: list[nn.Linear | nn.ReLU] = [
+            nn.Linear(
+                self.intersection_points_dim + self.intersection_points_dim,
+                hidden_sizes[0],
+            ),
         ]
 
         # no ReLU here, it's added in the forward() method
@@ -65,9 +76,21 @@ class BaselineSampler(nn.Module):
                     )
                 )
 
+        for i, size in enumerate(hidden_sizes[:-1]):
+            intersection_layers.append(
+                nn.Linear(
+                    # account for skip connection (concatenating output of the layer with embedded intersection_points)
+                    in_features=size + self.intersection_points_dim,
+                    out_features=hidden_sizes[i + 1],
+                )
+            )
+
         cat_layers: list[nn.Linear | nn.ReLU] = [
             nn.Linear(
-                hidden_sizes[-1] * 2 + self.origin_dims + self.direction_dims,
+                hidden_sizes[-1] * 3
+                + self.origin_dims
+                + self.direction_dims
+                + self.intersection_points_dim,
                 cat_hidden_sizes[0],
             ),
             nn.ReLU(),
@@ -81,6 +104,7 @@ class BaselineSampler(nn.Module):
 
         self.origin_layers = nn.Sequential(*origin_layers)
         self.direction_layers = nn.Sequential(*direction_layers)
+        self.intersection_layers = nn.Sequential(*intersection_layers)
         self.cat_layers = nn.Sequential(*cat_layers)
 
         self.to_mean = nn.Linear(cat_hidden_sizes[-1], 1)
@@ -115,7 +139,12 @@ class BaselineSampler(nn.Module):
         noise_z_vals = torch.clip(noise_z_vals, 0, 1)
         return noise_z_vals
 
-    def forward(self, rays_o: torch.Tensor, rays_d: torch.Tensor):
+    def forward(
+        self,
+        rays_o: torch.Tensor,
+        rays_d: torch.Tensor,
+        intersection_points: torch.Tensor,
+    ):
         """For given ray origins and directions returns points sampled along ray.
 
         self.n_samples points per ray.
@@ -123,6 +152,9 @@ class BaselineSampler(nn.Module):
         """
         embedded_origin = self.origin_embedder(rays_o)
         embedded_direction = self.direction_embedder(rays_d)
+        embedded_intersection = self.intersection_points_embedder(
+            torch.flatten(intersection_points, start_dim=1)
+        )
 
         origin_outputs = embedded_origin
         for layer in self.origin_layers:
@@ -138,8 +170,20 @@ class BaselineSampler(nn.Module):
             )
             nn.LeakyReLU(direction_outputs)
 
-        outputs = torch.cat([origin_outputs, direction_outputs], -1)
-        skip_connection = torch.cat([outputs, embedded_origin, embedded_direction], -1)
+        intersection_outputs = embedded_intersection
+        for layer in self.intersection_layers:
+            # skip connection in every layer
+            intersection_outputs = layer(
+                torch.cat([intersection_outputs, embedded_intersection], -1)
+            )
+            nn.LeakyReLU(intersection_outputs)
+
+        outputs = torch.cat(
+            [origin_outputs, direction_outputs, intersection_outputs], -1
+        )
+        skip_connection = torch.cat(
+            [outputs, embedded_origin, embedded_direction, embedded_intersection], -1
+        )
 
         concat_outputs = self.cat_layers(skip_connection)
         predicted_mean = self.to_mean(concat_outputs)
