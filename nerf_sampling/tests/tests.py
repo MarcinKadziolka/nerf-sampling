@@ -118,7 +118,11 @@ class TestBaselineSampler:
         multires = 5
         n_channels = 3
         # multires * cos/sin * 3 channels + 3 original channels
-        expected_embedding_dim = multires * 2 * n_channels + 3
+        expected_embedding_dim = multires * 2 * n_channels + n_channels
+        intersection_channels = 6
+        intersection_embedding = (
+            multires * 2 * intersection_channels + intersection_channels
+        )
         sampler = baseline_sampler.BaselineSampler(
             hidden_sizes=hidden_sizes,
             cat_hidden_sizes=cat_hidden_sizes,
@@ -156,8 +160,8 @@ class TestBaselineSampler:
         assert sampler.origin_layers[2].out_features == hidden_sizes[2]
 
         # concatenated_layers
-        assert sampler.cat_layers[0].in_features == hidden_sizes[-1] * 2 + (
-            expected_embedding_dim + expected_embedding_dim
+        assert sampler.cat_layers[0].in_features == hidden_sizes[-1] * 3 + (
+            expected_embedding_dim + expected_embedding_dim + intersection_embedding
         )  # * 2 because we concatenate origin and direction
         assert sampler.cat_layers[0].out_features == cat_hidden_sizes[0]
 
@@ -185,13 +189,10 @@ class TestBaselineSampler:
         n_rays = 4
         n_samples = 5
         rays_o = rays_d = torch.zeros(n_rays, 3)
+        intersection_points = torch.zeros(n_rays, 6)
         sampler = baseline_sampler.BaselineSampler(n_samples=n_samples)
-        (pts, z_vals), mean = sampler(rays_o, rays_d)
+        (pts, z_vals), mean = sampler(rays_o, rays_d, intersection_points)
         assert pts.shape == (n_rays, n_samples, 3)
-
-
-"""Tests for all utils module functions."""
-import torch
 
 
 def test_solve_quadratic_equation():
@@ -231,3 +232,7 @@ def test_solve_quadratic_equation():
         ),
         equal_nan=True,
     ).all()
+
+
+def test_find_intersection_points_with_sphere():
+    pass
