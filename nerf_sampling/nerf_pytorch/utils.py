@@ -182,6 +182,7 @@ def solve_quadratic_equation(a: torch.Tensor, b: torch.Tensor, c: torch.Tensor):
 def find_intersection_points_with_sphere(
     origin,
     direction,
+    sphere_radius,
 ) -> tuple[torch.Tensor, torch.Tensor]:
     """Find intersection points with spheres.
 
@@ -197,7 +198,6 @@ def find_intersection_points_with_sphere(
 
     intersection_points = None
     sphere_center = torch.tensor([0, 0, 0])
-    sphere_radius = torch.tensor([2])
     # [n_lines, m_spheres, 3D]
     origin_to_sphere_center_vector = torch.unsqueeze(origin, 1) - sphere_center
 
