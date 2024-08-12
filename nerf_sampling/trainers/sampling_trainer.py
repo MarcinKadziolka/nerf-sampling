@@ -23,6 +23,7 @@ class SamplingTrainer(Blender.BlenderTrainer):
         distance: float = 0.1,
         n_layers: int = 6,
         layer_width: int = 256,
+        sphere_radius: float = 2.0,
         **kwargs,
     ):
         """Initialize the sampling trainer.
@@ -42,6 +43,7 @@ class SamplingTrainer(Blender.BlenderTrainer):
         self.distance = distance
         self.layer_width = layer_width
         self.sampler_path = sampler_path
+        self.sphere_radius = sphere_radius
         print(f"{self.n_layers=}")
         print(f"{self.layer_width=}")
         super().__init__(**kwargs)
@@ -68,6 +70,7 @@ class SamplingTrainer(Blender.BlenderTrainer):
             distance=self.distance,
             hidden_sizes=hidden_sizes,
             cat_hidden_sizes=cat_hidden_sizes,
+            sphere_radius=self.sphere_radius,
         )
 
         sampling_params = list(sampling_network.parameters())
