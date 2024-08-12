@@ -6,7 +6,10 @@ import torch
 from nerf_sampling.nerf_pytorch import utils
 from nerf_sampling.nerf_pytorch.run_nerf_helpers import NeRF
 from nerf_sampling.samplers import baseline_sampler
-from nerf_sampling.nerf_pytorch.utils import solve_quadratic_equation
+from nerf_sampling.nerf_pytorch.utils import (
+    find_intersection_points_with_sphere,
+    solve_quadratic_equation,
+)
 
 
 def test_freeze_unfreeze_model():
@@ -189,9 +192,8 @@ class TestBaselineSampler:
         n_rays = 4
         n_samples = 5
         rays_o = rays_d = torch.zeros(n_rays, 3)
-        intersection_points = torch.zeros(n_rays, 6)
         sampler = baseline_sampler.BaselineSampler(n_samples=n_samples)
-        (pts, z_vals), mean = sampler(rays_o, rays_d, intersection_points)
+        (pts, z_vals), mean = sampler(rays_o, rays_d)
         assert pts.shape == (n_rays, n_samples, 3)
 
 
@@ -234,5 +236,117 @@ def test_solve_quadratic_equation():
     ).all()
 
 
-def test_find_intersection_points_with_sphere():
-    pass
+def test_find_intersection_points_with_sphere_output_shape():
+    rays_o = rays_d = torch.zeros(4, 3)
+    sphere_radius = torch.tensor([2])
+    t, intersection_points = find_intersection_points_with_sphere(
+        rays_o, rays_d, sphere_radius
+    )
+    assert intersection_points.shape == (rays_o.shape[0], 2, 3)
+
+
+def nan_equal(a, b):
+    return torch.allclose(a[~torch.isnan(a)], b[~torch.isnan(b)], equal_nan=True)
+
+
+def test_intersection_ray_directed_towards_sphere():
+    rays_o = torch.tensor([[-3.0, 0.0, 0.0]])
+    rays_d = torch.tensor([[1.0, 0.0, 0.0]])
+    sphere_radius = torch.tensor([1.0])
+    t, intersection_points = find_intersection_points_with_sphere(
+        rays_o, rays_d, sphere_radius
+    )
+    expected = torch.tensor([[-1.0, 0.0, 0.0], [1.0, 0.0, 0.0]])
+    assert nan_equal(intersection_points[0], expected)
+
+
+def test_no_intersection_ray_parallel_to_sphere():
+    rays_o = torch.tensor([[-3.0, 0.0, 0.0]])
+    rays_d = torch.tensor([[0.0, 2.0, 0.0]])
+    sphere_radius = torch.tensor([1.0])
+    t, intersection_points = find_intersection_points_with_sphere(
+        rays_o, rays_d, sphere_radius
+    )
+    expected = torch.tensor(
+        [[torch.nan, torch.nan, torch.nan], [torch.nan, torch.nan, torch.nan]]
+    )
+    assert nan_equal(intersection_points[0], expected)
+
+
+def test_intersection_ray_directed_away_from_sphere():
+    rays_o = torch.tensor([[-3.0, 0.0, 0.0]])
+    rays_d = torch.tensor([[-1.0, 0.0, 0.0]])
+    sphere_radius = torch.tensor([1.0])
+    t, intersection_points = find_intersection_points_with_sphere(
+        rays_o, rays_d, sphere_radius
+    )
+    expected = torch.tensor([[1.0, 0.0, 0.0], [-1.0, 0.0, 0.0]])
+    assert nan_equal(intersection_points[0], expected)
+
+
+def test_tangential_ray_intersects_at_one_point():
+    rays_o = torch.tensor([[-3.0, 1.0, 0.0]])
+    rays_d = torch.tensor([[1.0, 0.0, 0.0]])
+    sphere_radius = torch.tensor([1.0])
+    t, intersection_points = find_intersection_points_with_sphere(
+        rays_o, rays_d, sphere_radius
+    )
+    expected = torch.tensor([[0.0, 1.0, 0.0], [0.0, 1.0, 0.0]])
+    assert nan_equal(intersection_points[0], expected)
+
+
+def test_origin_on_sphere():
+    rays_o = torch.tensor([[1.0, 0.0, 0.0]])  # On the sphere surface
+    rays_d = torch.tensor([[0.0, 1.0, 0.0]])
+    sphere_radius = torch.tensor([1.0])
+    t, intersection_points = find_intersection_points_with_sphere(
+        rays_o, rays_d, sphere_radius
+    )
+    expected = torch.tensor(
+        [[1.0, 0.0, 0.0], [1.0, 0.0, 0.0]]
+    )  # Should return the same point twice
+    assert nan_equal(intersection_points[0], expected)
+
+
+def test_origin_inside_sphere():
+    rays_o = torch.tensor([[0.0, 0.0, 0.0]])
+    rays_d = torch.tensor([[-1.0, 0.0, 0.0]])
+    sphere_radius = torch.tensor([1.0])
+    t, intersection_points = find_intersection_points_with_sphere(
+        rays_o, rays_d, sphere_radius
+    )
+    expected = torch.tensor(
+        [[1.0, 0.0, 0.0], [-1.0, 0.0, 0.0]]
+    )  # Origin inside, two points
+    assert nan_equal(intersection_points[0], expected)
+
+
+def test_origin_on_sphere_moving_inward():
+    rays_o = torch.tensor([[1.0, 0.0, 0.0]])
+    rays_d = torch.tensor([[-1.0, 0.0, 0.0]])
+    sphere_radius = torch.tensor([1.0])
+    t, intersection_points = find_intersection_points_with_sphere(
+        rays_o, rays_d, sphere_radius
+    )
+    expected = torch.tensor(
+        [[1.0, 0.0, 0.0], [-1.0, 0.0, 0.0]]
+    )  # Should intersect at the opposite point
+    assert nan_equal(intersection_points[0], expected)
+
+
+# some hit
+# some don't
+# expected points
+# expected nans
+# in the real life there come [n_rays, 3]
+# sphere center is 0, 0, 0
+# sphere radius is 2
+# probably needs some approximation
+# what happens if everything is correct?
+# what should be the shape of the output?
+# what happens in origin is inside the sphere?
+# what happens if line is tangent to the sphere?
+# what happens if line misses the sphere completly?
+# what happens if origin begins on the sphere?
+# what happens if origin begins on the end of the sphere?
+test_origin_on_sphere()
