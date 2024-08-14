@@ -598,12 +598,7 @@ def render_rays(
     if trainer.global_step % trainer.i_testset == 0:
         trainer.save_rays_data(rays_o, sampler_pts, sampler_alphas)
 
-    sampler_loss = gaussian_log_likelihood(
-        max_z_vals,
-        sampler_mean,
-        kwargs["sampling_network"].distance,
-    )
-
+    sampler_loss = F.mse_loss(sampler_mean, torch.mean(max_z_vals, dim=1))
     ret = {
         "sampler_rgb_map": sampler_rgb_map,
         "sampler_disp_map": sampler_disp_map,
