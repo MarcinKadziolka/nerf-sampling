@@ -495,7 +495,7 @@ def sample_as_in_NeRF(
         raw_noise_std=raw_noise_std,
         white_bkgd=white_bkgd,
     )
-    return fine_density, fine_z_vals, fine_pts, fine_rgb_map, fine_weights
+    return fine_density, fine_z_vals, fine_pts, fine_rgb_map, fine_weights, fine_alphas
 
 
 def render_rays(
@@ -550,19 +550,21 @@ def render_rays(
     rays_o, rays_d = ray_batch[:, 0:3], ray_batch[:, 3:6]  # [N_rays, 3] each
     viewdirs = ray_batch[:, -3:] if ray_batch.shape[-1] > 8 else None
 
-    fine_density, fine_z_vals, fine_pts, fine_rgb_map, fine_weights = sample_as_in_NeRF(
-        ray_batch=ray_batch,
-        N_samples=N_samples,
-        network_fn=network_fn,
-        network_fine=network_fine,
-        network_query_fn=network_query_fn,
-        trainer=trainer,
-        perturb=perturb,
-        raw_noise_std=raw_noise_std,
-        lindisp=lindisp,
-        white_bkgd=white_bkgd,
-        pytest=pytest,
-        kwargs=kwargs,
+    fine_density, fine_z_vals, fine_pts, fine_rgb_map, fine_weights, fine_alphas = (
+        sample_as_in_NeRF(
+            ray_batch=ray_batch,
+            N_samples=N_samples,
+            network_fn=network_fn,
+            network_fine=network_fine,
+            network_query_fn=network_query_fn,
+            trainer=trainer,
+            perturb=perturb,
+            raw_noise_std=raw_noise_std,
+            lindisp=lindisp,
+            white_bkgd=white_bkgd,
+            pytest=pytest,
+            kwargs=kwargs,
+        )
     )
     top_k = int(fine_weights.shape[1] * 0.1)
     top_k_values, top_k_indices = torch.topk(fine_weights, top_k, dim=1)
