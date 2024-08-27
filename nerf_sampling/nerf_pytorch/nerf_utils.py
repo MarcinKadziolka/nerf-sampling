@@ -202,7 +202,7 @@ def render_path(
             psnr = -10.0 * np.log10(
                 np.mean(np.square(sampler_rgb.cpu().numpy() - gt_imgs[i]))
             )
-            print(psnr)
+            print(f"{i:03d}.png, PSNR: {psnr}")
 
         if savedir is not None:
             rgb8 = run_nerf_helpers.to8b(rgbs[-1])
