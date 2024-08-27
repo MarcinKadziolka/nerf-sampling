@@ -132,6 +132,7 @@ dmypy.json
 .idea/
 
 # Custom files
+wandb
 dataset
 metrics
 logs
