@@ -5,7 +5,6 @@ import torch
 import wandb
 import yaml
 
-from nerf_sampling.nerf_pytorch.loss_functions import SamplerLossInput
 from nerf_sampling.nerf_pytorch.utils import (
     load_obj_from_config,
     override_config,
@@ -62,6 +61,21 @@ from nerf_sampling.nerf_pytorch.utils import (
     help="Train sampling network on single ray.",
     show_default=True,
 )
+@click.option(
+    "-rt",
+    "--render_test",
+    is_flag=True,
+    default=False,
+    help="Perform render test",
+    show_default=True,
+)
+@click.option(
+    "-ip",
+    "--i_print",
+    default=1000,
+    help="Frequency of log printing.",
+    show_default=True,
+)
 def main(**click_kwargs):
     """Run NeRF and sampling network training with provided configuration."""
     with open(click_kwargs["config"], "r") as fin:
@@ -69,12 +83,14 @@ def main(**click_kwargs):
         config = yaml.safe_load(fin)[model]
     config["kwargs"]["single_image"] = click_kwargs["single_image"]
     config["kwargs"]["single_ray"] = click_kwargs["single_ray"]
+    config["kwargs"]["render_only"] = click_kwargs["render_test"]
+    config["kwargs"]["render_test"] = click_kwargs["render_test"]
+    config["kwargs"]["i_print"] = click_kwargs["i_print"]
+
     override = {
         "N_sampler_samples": 2,
-        "distance": 0.1,
-        "N_samples": 64,
-        "N_importance": 128,
-        "sampler_lr": 1e-3,
+        "distance": 0.005,
+        "sampler_lr": 1e-4,
         "n_layers": 5,
         "layer_width": 128,
         "train_sampler_only": True,
