@@ -10,6 +10,7 @@ from nerf_sampling.nerf_pytorch.utils import (
     override_config,
     set_global_device,
 )
+from nerf_sampling.definitions import ROOT_DIR
 
 
 @click.command()
@@ -18,7 +19,7 @@ from nerf_sampling.nerf_pytorch.utils import (
     "--config",
     help="Path to configuration file.",
     type=str,
-    default="experiments/configs/lego.yaml",
+    default=f"{ROOT_DIR}/experiments/configs/lego.yaml",
     show_default=True,
 )
 @click.option(
@@ -26,7 +27,7 @@ from nerf_sampling.nerf_pytorch.utils import (
     "--dataset",
     help="Path to dataset folder.",
     type=str,
-    default="./dataset/lego",
+    default=f"{ROOT_DIR}/dataset/lego",
     show_default=True,
 )
 @click.option(
@@ -123,7 +124,7 @@ def main(**click_kwargs):
     datadir = click_kwargs["dataset"]
     config["kwargs"]["datadir"] = datadir
     config["kwargs"]["basedir"] = basedir
-    ft_path = "/home/mubuntu/Desktop/nerf-sampling/nerf_sampling/dataset/lego/pretrained_model/200000.tar"
+    ft_path = f"{ROOT_DIR}/dataset/lego/pretrained_model/200000.tar"
     sampler_path = None
     config["kwargs"]["ft_path"] = ft_path
     config["kwargs"]["sampler_path"] = sampler_path
