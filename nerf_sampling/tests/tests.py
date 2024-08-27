@@ -332,21 +332,3 @@ def test_origin_on_sphere_moving_inward():
         [[1.0, 0.0, 0.0], [-1.0, 0.0, 0.0]]
     )  # Should intersect at the opposite point
     assert nan_equal(intersection_points[0], expected)
-
-
-# some hit
-# some don't
-# expected points
-# expected nans
-# in the real life there come [n_rays, 3]
-# sphere center is 0, 0, 0
-# sphere radius is 2
-# probably needs some approximation
-# what happens if everything is correct?
-# what should be the shape of the output?
-# what happens in origin is inside the sphere?
-# what happens if line is tangent to the sphere?
-# what happens if line misses the sphere completly?
-# what happens if origin begins on the sphere?
-# what happens if origin begins on the end of the sphere?
-test_origin_on_sphere()
