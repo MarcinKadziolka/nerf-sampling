@@ -514,7 +514,7 @@ def render_rays(
     verbose=False,
     pytest=False,
     **kwargs,
-):
+) -> tuple[dict[str, torch.FloatTensor], torch.FloatTensor]:
     """Volumetric rendering.
 
     Args:
