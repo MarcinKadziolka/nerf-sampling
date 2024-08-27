@@ -198,11 +198,11 @@ def render_path(
         if i == 0:
             print(sampler_rgb.shape, sampler_disp.shape)
 
-        """
-        if gt_imgs is not None and render_factor==0:
-            p = -10. * np.log10(np.mean(np.square(rgb.cpu().numpy() - gt_imgs[i])))
-            print(p)
-        """
+        if gt_imgs is not None and render_factor == 0:
+            psnr = -10.0 * np.log10(
+                np.mean(np.square(sampler_rgb.cpu().numpy() - gt_imgs[i]))
+            )
+            print(psnr)
 
         if savedir is not None:
             rgb8 = run_nerf_helpers.to8b(rgbs[-1])
@@ -568,7 +568,6 @@ def render_rays(
     )
     top_k = int(fine_weights.shape[1] * 0.1)
     top_k_values, top_k_indices = torch.topk(fine_weights, top_k, dim=1)
-
     top_k_indices = top_k_indices.sort(dim=1).values
     max_z_vals = torch.gather(fine_z_vals, 1, top_k_indices)
     batch_indices = torch.arange(fine_density.shape[0]).unsqueeze(1)
