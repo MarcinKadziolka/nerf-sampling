@@ -187,6 +187,9 @@ def render_path(
     densities = []
     alphas = []
     weights = []
+    psnr_info = None
+    total_psnr = 0
+    n_render_poses = render_poses.shape[0]
     for i, c2w in enumerate(tqdm(render_poses)):
         print(i, time.time() - t)
         t = time.time()
@@ -202,12 +205,25 @@ def render_path(
             psnr = -10.0 * np.log10(
                 np.mean(np.square(sampler_rgb.cpu().numpy() - gt_imgs[i]))
             )
-            print(f"{i:03d}.png, PSNR: {psnr}")
+            psnr_info = f"{i:03d}.png, PSNR: {psnr}"
+            total_psnr += psnr
+            print(psnr_info)
 
         if savedir is not None:
             rgb8 = run_nerf_helpers.to8b(rgbs[-1])
             filename = os.path.join(savedir, "{:03d}.png".format(i))
             imageio.imwrite(filename, rgb8)
+
+            if psnr_info is not None:
+                f = os.path.join(savedir, "psnr.txt")
+                with open(f, "a") as file:
+                    file.write(f"{psnr_info}\n")
+                if i == n_render_poses - 1:
+                    with open(f, "a") as file:
+                        file.write(
+                            f"Avg psnr of {n_render_poses} images: {total_psnr/n_render_poses}\n"
+                        )
+
             if excavator_fig:
                 pts = sampler_extras["sampler_pts"]  # [H, W, N_samples, 3]
                 density = sampler_extras["sampler_density"]
@@ -601,7 +617,9 @@ def render_rays(
 
     sampler_loss = torch.tensor([-1])
     if not trainer.render_test:
-        sampler_loss = F.mse_loss(sampler_mean, torch.mean(max_z_vals, dim=1))
+        sampler_loss = F.mse_loss(
+            sampler_mean, torch.mean(max_z_vals, dim=1, keepdim=True)
+        )
 
     ret = {
         "sampler_rgb_map": sampler_rgb_map,
