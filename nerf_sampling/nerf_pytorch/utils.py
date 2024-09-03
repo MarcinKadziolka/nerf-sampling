@@ -4,6 +4,7 @@ import importlib
 import random
 from typing import Optional, Union, Literal
 import torch
+from torch.nn import functional as F
 
 from nerf_sampling.nerf_pytorch.run_nerf_helpers import NeRF
 
@@ -33,13 +34,13 @@ def unfreeze_model(model):
 
 
 def get_dense_indices(densities: torch.Tensor, min_density: torch.Tensor):
-    """Obtains indices of points that have density > min_density.
+    """Obtains indices of points that have density >= min_density.
 
     Args:
       densities: [H, W, N_samples].
       min_density: Minimum density required to get index.
     """
-    return densities > min_density
+    return densities >= min_density
 
 
 def get_random_points(pts: torch.Tensor, k: int):
@@ -215,3 +216,14 @@ def find_intersection_points_with_sphere(
 
     intersection_points = origin.unsqueeze(1) + t.unsqueeze(2) * direction.unsqueeze(1)
     return t, intersection_points  # [n_lines, 2 points, 3D]
+
+
+def sample_points_around_mean(rays_o, rays_d, mean):
+    std = 0.1
+    num_samples = 32
+    z_vals, _ = (mean + std * torch.randn(mean.shape[0], num_samples)).sort(dim=-1)
+    # normalized_rays_d = F.normalize(rays_d)
+    return (
+        rays_o[..., None, :] + rays_d[..., None, :] * z_vals[..., :, None],
+        z_vals,
+    )

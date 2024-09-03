@@ -16,6 +16,7 @@ from tqdm import tqdm
 
 from nerf_sampling.nerf_pytorch import run_nerf_helpers, utils, visualize
 from nerf_sampling.nerf_pytorch.loss_functions import gaussian_log_likelihood
+from nerf_sampling.nerf_pytorch.utils import sample_points_around_mean
 
 np.random.seed(0)
 DEBUG = False
@@ -165,7 +166,7 @@ def render_path(
     render_kwargs,
     step,
     wandb_log=False,
-    excavator_fig=False,
+    plot_object=False,
     gt_imgs=None,
     savedir=None,
     render_factor=0,
@@ -224,7 +225,7 @@ def render_path(
                             f"Avg psnr of {n_render_poses} images: {total_psnr/n_render_poses}\n"
                         )
 
-            if excavator_fig:
+            if plot_object:
                 pts = sampler_extras["sampler_pts"]  # [H, W, N_samples, 3]
                 density = sampler_extras["sampler_density"]
                 indices = utils.get_dense_indices(
@@ -293,12 +294,15 @@ def render_path(
                 f"Alphas histogram {step}": wandb.Image(alphas_fig),
             }
         )
-    if excavator_fig and savedir is not None:
+    if plot_object and savedir is not None:
         all_pts = torch.cat(all_pts)  # [n, 3]
         densities = torch.cat(densities)  # [n, 1]
-        points_to_plot = utils.get_random_points(all_pts, k=5000)  # [k, 3]
-        fig, _ = visualize.plot_points(points_to_plot.unsqueeze(0), s=10)
-        pickle.dump(fig, open(os.path.join(savedir, "excavator.fig.pickle"), "wb"))
+        for k in [1e4, 2e4, 3e4, 5e4, 6e4]:
+            points_to_plot = utils.get_random_points(all_pts, k=int(k))  # [k, 3]
+            fig, _ = visualize.plot_points(points_to_plot.unsqueeze(0), s=10)
+            pickle.dump(
+                fig, open(os.path.join(savedir, f"excavator{k}.fig.pickle"), "wb")
+            )
 
     rgbs = np.stack(rgbs, 0)
     disps = np.stack(disps, 0)
@@ -583,19 +587,34 @@ def render_rays(
         )
     )
     top_k = int(fine_weights.shape[1] * 0.1)
+    top_k = 1
     top_k_values, top_k_indices = torch.topk(fine_weights, top_k, dim=1)
     top_k_indices = top_k_indices.sort(dim=1).values
-    max_z_vals = torch.gather(fine_z_vals, 1, top_k_indices)
+    max_z_vals = torch.mean(
+        torch.gather(fine_z_vals, 1, top_k_indices), dim=-1, keepdim=True
+    )
     batch_indices = torch.arange(fine_density.shape[0]).unsqueeze(1)
     max_pts = fine_pts[batch_indices, top_k_indices[:, :top_k]]
     (sampler_pts, sampler_z_vals), sampler_mean = kwargs["sampling_network"].forward(
         rays_o, rays_d
     )
+    # sampler_pts, sampler_z_vals = sample_points_around_mean(rays_o, rays_d, max_z_vals)
+    sampler_pts, sampler_z_vals = max_pts, max_z_vals
     if network_fine is not None:
         sampler_raw = network_query_fn(sampler_pts, viewdirs, network_fine)
     else:
         sampler_raw = network_query_fn(sampler_pts, viewdirs, network_fn)
 
+    # indices = random.sample(range(len(rays_o)), k=3)
+    # rays_fig, rays_ax = visualize.visualize_rays_pts(
+    #     rays_o=rays_o[indices].cpu(),
+    #     rays_d=rays_d[indices].cpu(),
+    #     pts=max_pts[indices].cpu(),
+    #     c=[[(0.0, 0.0, 0.0)]],
+    # )
+    # visualize._plot_points(rays_ax, max_pts[indices].cpu(), s=100)
+    # plt.show()
+    # plt.close()
     (
         sampler_rgb_map,
         sampler_disp_map,

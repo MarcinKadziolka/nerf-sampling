@@ -71,6 +71,14 @@ from nerf_sampling.definitions import ROOT_DIR
     show_default=True,
 )
 @click.option(
+    "-po",
+    "--plot_object",
+    is_flag=True,
+    default=False,
+    help="Save plot of object during rendering test. This option only applies when --render_test is enabled.",
+    show_default=True,
+)
+@click.option(
     "-ip",
     "--i_print",
     default=1000,
@@ -86,6 +94,7 @@ def main(**click_kwargs):
     config["kwargs"]["single_ray"] = click_kwargs["single_ray"]
     config["kwargs"]["render_only"] = click_kwargs["render_test"]
     config["kwargs"]["render_test"] = click_kwargs["render_test"]
+    config["kwargs"]["plot_object"] = click_kwargs["plot_object"]
     config["kwargs"]["i_print"] = click_kwargs["i_print"]
 
     override = {

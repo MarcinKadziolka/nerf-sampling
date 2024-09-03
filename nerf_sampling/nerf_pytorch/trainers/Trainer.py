@@ -60,6 +60,7 @@ class Trainer:
         trial: Optional[optuna.trial.Trial] = None,
         single_image=False,
         single_ray=False,
+        plot_object=False,
     ):
         self.start = None
         self.dataset_type = dataset_type
@@ -107,6 +108,7 @@ class Trainer:
         self.W = None
         self.H = None
         self.c2w = None
+        self.plot_object = plot_object
 
         self.sampler_lr = sampler_lr
         self.train_sampler_only = train_sampler_only
@@ -170,7 +172,14 @@ class Trainer:
         return optimizer, render_kwargs_train, render_kwargs_test
 
     def render(
-        self, render_test, images, i_test, render_poses, hwf, render_kwargs_test
+        self,
+        render_test,
+        plot_object,
+        images,
+        i_test,
+        render_poses,
+        hwf,
+        render_kwargs_test,
     ):
         with torch.no_grad():
             if render_test:
@@ -198,6 +207,7 @@ class Trainer:
                 self.chunk,
                 render_kwargs_test,
                 step=self.global_step,
+                plot_object=plot_object,
                 gt_imgs=images,
                 savedir=testsavedir,
                 render_factor=self.render_factor,
@@ -731,7 +741,13 @@ class Trainer:
 
         if self.render_only:
             self.render(
-                self.render_test, images, i_test, render_poses, hwf, render_kwargs_test
+                self.render_test,
+                self.plot_object,
+                images,
+                i_test,
+                render_poses,
+                hwf,
+                render_kwargs_test,
             )
             return self.render_only
 
