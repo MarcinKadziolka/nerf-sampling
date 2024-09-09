@@ -35,7 +35,7 @@ from nerf_sampling.definitions import ROOT_DIR
     "--model",
     help="Model type.",
     type=str,
-    default="lego_sampler_module",
+    default="lego_depth_net_module",
     show_default=True,
 )
 @click.option(
@@ -98,12 +98,10 @@ def main(**click_kwargs):
     config["kwargs"]["i_print"] = click_kwargs["i_print"]
 
     override = {
-        "N_sampler_samples": 2,
-        "distance": 0.005,
-        "sampler_lr": 1e-4,
-        "n_layers": 5,
-        "layer_width": 128,
-        "train_sampler_only": True,
+        "depth_net_lr": 1e-4,
+        "n_layers": 10,
+        "layer_width": 256,
+        "train_depth_net_only": True,
         "sphere_radius": 2,
     }
 
@@ -120,11 +118,11 @@ def main(**click_kwargs):
         config=config["kwargs"],
         mode=click_kwargs["wandb"],
         tags=[
-            "sampler_only",
+            "train_depth_net_only",
+            "bigger_network",
             "pretrained_model",
-            "z_vals",
-            "uniform_grid",
-            "LL_gaussian_log_likelihood",
+            "depth_z_vals_prediction",
+            "single_point",
             "sphere_intersection",
         ],
     )
@@ -134,12 +132,22 @@ def main(**click_kwargs):
     config["kwargs"]["datadir"] = datadir
     config["kwargs"]["basedir"] = basedir
     ft_path = f"{ROOT_DIR}/dataset/lego/pretrained_model/200000.tar"
-    sampler_path = None
+    # below path for both depth and fine trained
+    # depth_net_path = "/home/mubuntu/Desktop/nerf-sampling/nerf_sampling/wandb/run-20240907_120041-sfygctky/files/lego_sampler_experiment/200000.tar"
+    # below path for only depth trained
+    # depth_net_path = "/home/mubuntu/Desktop/nerf-sampling/nerf_sampling/wandb/run-20240904_163625-zu8182wd/files/lego_sampler_experiment/400000.tar"
+    # below path for only depth trained big net
+    # depth_net_path = "/home/mubuntu/Desktop/nerf-sampling/nerf_sampling/wandb/run-20240907_180512-fp0vslxm/files/lego_sampler_experiment/350000.tar"
+    depth_net_path = None
+
+    # ft_path = depth_net_path
     config["kwargs"]["ft_path"] = ft_path
-    config["kwargs"]["sampler_path"] = sampler_path
+    config["kwargs"]["depth_net_path"] = depth_net_path
 
     trainer = load_obj_from_config(cfg=config)
-    trainer.train(N_iters=EPOCHS + 1)
+    psnr = trainer.train(N_iters=EPOCHS + 1)
+
+    print(f"Final psnr: {psnr}")
 
     return
 

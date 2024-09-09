@@ -48,7 +48,9 @@ for i in range(200):
     loss.backward()
     optimizer.step()
     if i % 10 == 0:
-        print(f"Epoch {i}, Loss: {loss.item()}, Predicted mu: {mu_pred.item()}")
+        print(
+            f"Epoch {i}, Loss: {loss.item()}, Predicted mu: {mu_pred.item()}, Target mu: {mu_true.item()}"
+        )
 
 # Final predicted mean
 mu_final = basic_network(input_tensor).item()

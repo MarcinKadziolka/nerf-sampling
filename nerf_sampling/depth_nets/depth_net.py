@@ -2,13 +2,12 @@
 
 from nerf_sampling.nerf_pytorch.run_nerf_helpers import get_embedder
 from nerf_sampling.nerf_pytorch.utils import find_intersection_points_with_sphere
-from .utils import scale_points_with_weights
 from torch import nn
 import torch.nn.functional as F
 import torch
 
 
-class BaselineSampler(nn.Module):
+class DepthNet(nn.Module):
     """Baseline sampling network."""
 
     def __init__(
@@ -17,12 +16,10 @@ class BaselineSampler(nn.Module):
         cat_hidden_sizes: list[int] = [128, 128, 128, 128, 256],
         origin_channels: int = 3,
         direction_channels: int = 3,
-        near: int = 2,
-        far: int = 6,
-        n_samples: int = 0,
-        distance: float = 0.05,
         multires: int = 10,
         sphere_radius: float = 2.0,
+        near: int = 2,
+        far: int = 6,
     ):
         """Initializes sampling network.
 
@@ -36,12 +33,10 @@ class BaselineSampler(nn.Module):
             far: Farthest distance for a ray.
             n_samples: Number of samples to output along a ray.
         """
-        super(BaselineSampler, self).__init__()
-        self.far = far
-        self.near = near
+        super(DepthNet, self).__init__()
         self.sphere_radius = torch.tensor([sphere_radius])
-        self.distance = distance
-        self.n_samples = n_samples
+        self.near = near
+        self.far = far
 
         self.origin_embedder, self.origin_dims = get_embedder(
             multires=multires, input_dims=origin_channels
@@ -88,7 +83,7 @@ class BaselineSampler(nn.Module):
                 )
             )
 
-        cat_layers: list[nn.Linear | nn.ReLU] = [
+        cat_layers: list[nn.Linear | nn.LeakyReLU] = [
             nn.Linear(
                 hidden_sizes[-1] * 3
                 + self.origin_dims
@@ -96,51 +91,22 @@ class BaselineSampler(nn.Module):
                 + self.intersection_points_dim,
                 cat_hidden_sizes[0],
             ),
-            nn.ReLU(),
+            nn.LeakyReLU(),
         ]
 
         for i, size in enumerate(cat_hidden_sizes[:-1]):
             cat_layers.append(
                 nn.Linear(in_features=size, out_features=cat_hidden_sizes[i + 1])
             )
-            cat_layers.append(nn.ReLU())
+            cat_layers.append(nn.LeakyReLU())
 
         self.origin_layers = nn.Sequential(*origin_layers)
         self.direction_layers = nn.Sequential(*direction_layers)
         self.intersection_layers = nn.Sequential(*intersection_layers)
         self.cat_layers = nn.Sequential(*cat_layers)
-
-        self.to_mean = nn.Linear(cat_hidden_sizes[-1], 1)
-        self.sigmoid = nn.Sigmoid()
+        self.to_depth = nn.Sequential(nn.Linear(cat_hidden_sizes[-1], 1), nn.Sigmoid())
 
         print(self)
-        print(f"{self.n_samples=}")
-        print(f"{self.distance=}")
-
-    def scale_to_near_far(self, outputs, rays_o, rays_d):
-        """Directly scales points from NN output to the range [NEAR, FAR]."""
-        # [N_rays, N_samples]
-        z_vals = self.near * (1 - outputs) + self.far * outputs
-        z_vals, _ = z_vals.sort(dim=-1)
-        # [N_rays, N_samples, 3] and [N_rays, N_samples]
-        # Scaled points in visualizer have to be associated with ray origin
-        # From origin to points x such that d(origin, x) = 2 line is blue
-        # From x to point y such that d(origin, y) = 6 line is red
-
-        return scale_points_with_weights(z_vals, rays_o, rays_d), z_vals
-
-    def get_z_vals(self, mean):
-        grid = torch.linspace(-self.distance, self.distance, steps=self.n_samples)
-
-        # Expand the grid to match the shape of outputs
-        expanded_grid = grid.view(1, -1).expand(mean.size(0), -1)
-
-        # Add the grid to the outputs to center the samples around outputs
-        noise_z_vals = mean + expanded_grid
-
-        # Clip the values between 0 and 1
-        noise_z_vals = torch.clip(noise_z_vals, 0, 1)
-        return noise_z_vals
 
     def calculate_intersection_points(self, rays_o, rays_d):
         t, intersection_points = find_intersection_points_with_sphere(
@@ -197,11 +163,7 @@ class BaselineSampler(nn.Module):
         )
 
         concat_outputs = self.cat_layers(skip_connection)
-        predicted_mean = self.to_mean(concat_outputs)
-        sigmoid_predicted_mean = self.sigmoid(predicted_mean)
+        depth = self.to_depth(concat_outputs)
 
-        z_vals = self.get_z_vals(sigmoid_predicted_mean)
-        mean = (
-            self.near * (1 - sigmoid_predicted_mean) + self.far * sigmoid_predicted_mean
-        )
-        return self.scale_to_near_far(z_vals, rays_o, rays_d), mean
+        scaled_depth = self.near * (1 - depth) + self.far * depth
+        return scaled_depth

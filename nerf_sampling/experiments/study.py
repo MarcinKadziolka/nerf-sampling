@@ -18,7 +18,7 @@ optuna.logging.set_verbosity(optuna.logging.DEBUG)
 def objective(trial):
     """Run NeRF and sampling network training with provided configuration."""
     with open("./configs/lego.yaml", "r") as fin:
-        model = "lego_sampler_module"
+        model = "lego_depth_net_module"
         config = yaml.safe_load(fin)[model]
 
     torch.manual_seed(42)  # 0
@@ -29,13 +29,13 @@ def objective(trial):
     EPOCHS = 150_000
 
     # N_samples = trial.suggest_int("N_samples", 2, 32)
-    # sampler_train_frequency = trial.suggest_int("sampler_train_frequency", 2, 50)
-    sampler_lr = trial.suggest_float("sampler_lr ", 1e-8, 1)
-    # sampler_loss_weight = trial.suggest_float("sampler_loss_weight", 1e-8, 1)
+    # depth_net_train_frequency = trial.suggest_int("depth_net_train_frequency", 2, 50)
+    depth_net_lr = trial.suggest_float("depth_net_lr ", 1e-8, 1)
+    # depth_net_loss_weight = trial.suggest_float("depth_net_loss_weight", 1e-8, 1)
     # n_layers = trial.suggest_int("n_layers", 3, 8)
     # layer_width = trial.suggest_categorical("layer_width", [128, 256, 512])
-    # sampler_loss_input = trial.suggest_categorical(
-    #     "sampler_loss_input",
+    # depth_net_loss_input = trial.suggest_categorical(
+    #     "depth_net_loss_input",
     #     [
     #         SamplerLossInput.DENSITY.value,
     #         SamplerLossInput.ALPHAS.value,
@@ -46,17 +46,17 @@ def objective(trial):
     override = {
         "N_importance": 128,
         "N_samples": 32,
-        "sampler_loss_input": None,
-        "sampler_lr": sampler_lr,
-        "sampler_loss_weight": None,
-        "sampler_train_frequency": None,
+        "depth_net_loss_input": None,
+        "depth_net_lr": depth_net_lr,
+        "depth_net_loss_weight": None,
+        "depth_net_train_frequency": None,
         "n_layers": 5,
         "layer_width": 128,
-        "train_sampler_only": True,
+        "train_depth_net_only": True,
     }
     override_config(config=config["kwargs"], update=override)
 
-    group = "train_sampler_only_experiment"
+    group = "train_depth_net_only_experiment"
     run = wandb.init(
         project="nerf-sampling",
         config=config["kwargs"],
@@ -82,7 +82,7 @@ def objective(trial):
     return psnr
 
 
-study_name = "train_sampler_only"
+study_name = "train_depth_net_only"
 storage_name = study_name
 study = optuna.create_study(
     direction="maximize",

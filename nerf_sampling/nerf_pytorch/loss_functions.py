@@ -1,4 +1,4 @@
-"""Loss functions for sampler network."""
+"""Loss functions for depth_net network."""
 
 import torch
 
@@ -42,7 +42,7 @@ def gaussian_log_likelihood(x, m, s):
 
 
 class SamplerLossInput(Enum):
-    """Store options for sampler loss function input."""
+    """Store options for depth_net loss function input."""
 
     DENSITY = 0
     ALPHAS = 1

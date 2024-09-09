@@ -55,8 +55,8 @@ class Trainer:
         i_print=100,
         input_dims_embed: int = 1,
         save_train_set_render: bool = True,
-        sampler_lr: float = 0.0001,
-        train_sampler_only: bool = False,
+        depth_net_lr: float = 0.0001,
+        train_depth_net_only: bool = False,
         trial: Optional[optuna.trial.Trial] = None,
         single_image=False,
         single_ray=False,
@@ -110,8 +110,8 @@ class Trainer:
         self.c2w = None
         self.plot_object = plot_object
 
-        self.sampler_lr = sampler_lr
-        self.train_sampler_only = train_sampler_only
+        self.depth_net_lr = depth_net_lr
+        self.train_depth_net_only = train_depth_net_only
         self.trial = trial
 
         self.single_image = single_image
@@ -119,8 +119,8 @@ class Trainer:
         print(f"{self}")
         print(f"{self.N_samples=}")
         print(f"{self.N_importance=}")
-        print(f"{self.sampler_lr=}")
-        print(f"{self.train_sampler_only=}")
+        print(f"{self.depth_net_lr=}")
+        print(f"{self.train_depth_net_only=}")
 
     def load_data(self):
         """Load data and prepare poses."""
@@ -200,7 +200,7 @@ class Trainer:
             os.makedirs(testsavedir, exist_ok=True)
             print("test poses shape", render_poses.shape)
 
-            rgbs, _ = nerf_utils.render_path(
+            rgbs, _, avg_test_psnr = nerf_utils.render_path(
                 render_poses,
                 hwf,
                 self.K,
@@ -219,6 +219,8 @@ class Trainer:
                 fps=30,
                 quality=8,
             )
+
+        return avg_test_psnr
 
     def prepare_raybatch_tensor_if_batching_random_rays(self, poses, images, i_train):
         i_batch = None
@@ -269,13 +271,12 @@ class Trainer:
         i_train,
         images,
         loss,
-        sampler_loss,
+        depth_net_loss,
         psnr,
         render_kwargs_train,
         render_kwargs_test,
         optimizer,
         sampling_optimizer,
-        logs,
     ):
         """Handle logging and saving logic."""
         if i % self.i_testset == 0 and i > 0:
@@ -286,7 +287,7 @@ class Trainer:
             print("test poses shape", poses[i_test].shape)
             with torch.no_grad():
                 target_s = images[i_test]
-                rgbs, _ = nerf_utils.render_path(
+                rgbs, _, avg_test_psnr = nerf_utils.render_path(
                     torch.tensor(poses[i_test]).to(self.device),
                     hwf,
                     self.K,
@@ -314,7 +315,7 @@ class Trainer:
             print("test poses shape", poses[i_train[:10]].shape)
             with torch.no_grad():
                 target_s = images[i_test]
-                rgbs, _ = nerf_utils.render_path(
+                rgbs, _, avg_test_psnr = nerf_utils.render_path(
                     torch.tensor(poses[i_train[:10]]).to(self.device),
                     hwf,
                     self.K,
@@ -334,14 +335,14 @@ class Trainer:
                 network_fn=render_kwargs_train["network_fn"],
                 network_fine=render_kwargs_train["network_fine"],
                 optimizer=optimizer,
-                sampling_network=render_kwargs_train["sampling_network"],
+                depth_network=render_kwargs_train["depth_network"],
                 sampling_optimizer=sampling_optimizer,
                 path=path,
             )
         if i % self.i_video == 0 and i > 0:
             # Turn on testing mode
             with torch.no_grad():
-                rgbs, disps = nerf_utils.render_path(
+                rgbs, disps, avg_test_psnr = nerf_utils.render_path(
                     render_poses,
                     hwf,
                     self.K,
@@ -367,27 +368,12 @@ class Trainer:
             )
 
         if i % self.i_print == 0:
-            max_sampler_density = torch.max(logs["sampler_density"], 1, keepdims=True)[
-                0
-            ]
-            sampler_alphas = logs["sampler_alphas"]
-            sampler_weights = logs["sampler_weights"]
-            max_fine_weights = torch.max(logs["fine_weights"], 1, keepdims=True)[0]
-            max_sampler_weights = torch.max(sampler_weights, 1, keepdims=True)[0]
-            sampler_loss = sampler_loss.item()
-            info = f"Iter: {i} Loss: {loss.item()}, Sampler Loss: {sampler_loss}, SWMean/FWMean: {torch.mean(max_sampler_weights):.2f}/{torch.mean(max_fine_weights):.2f}, PSNR: {psnr.item():.5f}"
+            info = f"Iter: {i} Loss: {loss.item()}, Depth Net Loss: {depth_net_loss.item()}, PSNR: {psnr.item():.5f}"
             wandb.log(
                 {
                     "Loss": loss.item(),
-                    "Sampler loss": sampler_loss,
-                    "PSNR": psnr.item(),
-                    "Mean of max density per ray": torch.mean(max_sampler_density),
-                    "Mean of sampler max weights per ray": torch.mean(
-                        max_sampler_weights
-                    ),
-                    "Mean of fine max weights per ray": torch.mean(max_fine_weights),
-                    "Mean alphas": torch.mean(sampler_alphas),
-                    "Mean weights": torch.mean(sampler_weights),
+                    "Depth net loss": depth_net_loss.item(),
+                    "Depth net PSNR": psnr.item(),
                 },
                 step=self.global_step,
             )
@@ -483,26 +469,26 @@ class Trainer:
     def sanity_check(self, render_kwargs_train, sampling_optimizer):
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-        sampling_network = render_kwargs_train["sampling_network"]
-        sampling_network.train()
+        depth_network = render_kwargs_train["depth_network"]
+        depth_network.train()
         rays_o = torch.tensor([[0.0, 0.0, 0.0]], device=device)
         rays_d = torch.tensor([[1.0, 0.0, 0.0]], device=device)
 
         mock_tensor = torch.tensor([[[4.234]]], device=device)
 
         for i in range(500):
-            pts, z_vals = sampling_network(rays_o, rays_d)
+            pts, z_vals = depth_network(rays_o, rays_d)
             print(f"Z vals: {z_vals}")
             print(f"Target: {mock_tensor}")
 
             sampling_optimizer.zero_grad()
 
-            sampler_loss = F.mse_loss(z_vals, mock_tensor)
-            print(f"Loss: {sampler_loss.item()}")
+            depth_net_loss = F.mse_loss(z_vals, mock_tensor)
+            print(f"Loss: {depth_net_loss.item()}")
 
-            sampler_loss.backward()
+            depth_net_loss.backward()
 
-            is_grad = utils.check_grad(sampling_network)
+            is_grad = utils.check_grad(depth_network)
             print(f"Check Grad: {is_grad}")
             if not is_grad:
                 raise Exception("Gradient check failed!")
@@ -519,7 +505,7 @@ class Trainer:
         target_s,
     ):
         """Runs rendering and backpropagates."""
-        sampler_rgb, sampler_disp, extras = nerf_utils.render(
+        depth_net_rgb, depth_net_disp, extras = nerf_utils.render(
             self.H,
             self.W,
             self.K,
@@ -530,30 +516,27 @@ class Trainer:
             **render_kwargs_train,
         )
         sampling_optimizer.zero_grad()
-
-        img_loss = nerf_utils.run_nerf_helpers.img2mse(sampler_rgb, target_s)
+        # optimizer.zero_grad()
+        img_loss = nerf_utils.run_nerf_helpers.img2mse(depth_net_rgb, target_s)
         loss = img_loss
 
         psnr = nerf_utils.run_nerf_helpers.mse2psnr(img_loss)
 
         psnr0 = None
+
         if "rgb0" in extras:
             img_loss0 = nerf_utils.run_nerf_helpers.img2mse(extras["rgb0"], target_s)
             loss = loss + img_loss0
             psnr0 = nerf_utils.run_nerf_helpers.mse2psnr(img_loss0)
-        sampler_loss = extras["sampler_loss"]
-        sampler_loss.backward()
-        # is_grad = utils.check_grad(render_kwargs_train["sampling_network"])
+        depth_net_loss = extras["depth_net_loss"]
+        depth_net_loss.backward(retain_graph=True)
+        loss.backward()
+        # is_grad = utils.check_grad(render_kwargs_train["depth_network"])
         # if not is_grad:
         #     raise Exception("Grad is zero!")
         sampling_optimizer.step()
-        logs = {
-            "sampler_density": extras["sampler_density"],
-            "sampler_alphas": extras["sampler_alphas"],
-            "sampler_weights": extras["sampler_weights"],
-            "fine_weights": extras["fine_weights"],
-        }
-        return logs, loss, sampler_loss, psnr, psnr0
+        # optimizer.step()
+        return loss, depth_net_loss, psnr, psnr0
 
     def update_learning_rate(self, optimizer):
         decay_rate = 0.1
@@ -733,14 +716,14 @@ class Trainer:
         optimizer, sampling_optimizer, render_kwargs_train, render_kwargs_test = (
             self.create_nerf_model()
         )
-        if self.train_sampler_only:
+        if self.train_depth_net_only:
             if render_kwargs_train["network_fn"] is not None:
                 utils.freeze_model(render_kwargs_train["network_fn"])
             if render_kwargs_train["network_fine"] is not None:
                 utils.freeze_model(render_kwargs_train["network_fine"])
 
         if self.render_only:
-            self.render(
+            avg_test_psnr = self.render(
                 self.render_test,
                 self.plot_object,
                 images,
@@ -749,7 +732,7 @@ class Trainer:
                 hwf,
                 render_kwargs_test,
             )
-            return self.render_only
+            return avg_test_psnr
 
         images, poses, rays_rgb, i_batch = (
             self.prepare_raybatch_tensor_if_batching_random_rays(poses, images, i_train)
@@ -769,7 +752,7 @@ class Trainer:
             #     render_kwargs_train=render_kwargs_train,
             #     sampling_optimizer=sampling_optimizer,
             # )
-            logs, loss, sampler_loss, psnr, psnr0 = self.core_optimization_loop(
+            loss, depth_net_loss, psnr, psnr0 = self.core_optimization_loop(
                 optimizer,
                 sampling_optimizer,
                 render_kwargs_train,
@@ -788,13 +771,12 @@ class Trainer:
                 i_train=i_train,
                 images=images,
                 loss=loss,
-                sampler_loss=sampler_loss,
+                depth_net_loss=depth_net_loss,
                 psnr=psnr,
                 render_kwargs_train=render_kwargs_train,
                 render_kwargs_test=render_kwargs_test,
                 optimizer=optimizer,
                 sampling_optimizer=sampling_optimizer,
-                logs=logs,
             )
 
             self.global_step += 1

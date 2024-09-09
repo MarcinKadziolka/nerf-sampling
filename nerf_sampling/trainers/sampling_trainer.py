@@ -10,17 +10,15 @@ from nerf_sampling.nerf_pytorch import nerf_utils, utils
 from nerf_sampling.nerf_pytorch.nerf_utils import create_nerf
 from nerf_sampling.nerf_pytorch.run_nerf_helpers import NeRF
 from nerf_sampling.nerf_pytorch.trainers import Blender
-from nerf_sampling.samplers.baseline_sampler import BaselineSampler
+from nerf_sampling.depth_nets.depth_net import DepthNet
 
 
-class SamplingTrainer(Blender.BlenderTrainer):
+class DepthNetTrainer(Blender.BlenderTrainer):
     """Trainer for blender data."""
 
     def __init__(
         self,
-        sampler_path: Optional[str] = None,
-        N_sampler_samples: int = 128,
-        distance: float = 0.1,
+        depth_net_path: Optional[str] = None,
         n_layers: int = 6,
         layer_width: int = 256,
         sphere_radius: float = 2.0,
@@ -39,10 +37,8 @@ class SamplingTrainer(Blender.BlenderTrainer):
             **kwargs: other arguments passed to BlenderTrainer or Trainer.
         """
         self.n_layers = n_layers
-        self.N_sampler_samples = N_sampler_samples
-        self.distance = distance
         self.layer_width = layer_width
-        self.sampler_path = sampler_path
+        self.depth_net_path = depth_net_path
         self.sphere_radius = sphere_radius
         print(f"{self.n_layers=}")
         print(f"{self.layer_width=}")
@@ -50,7 +46,7 @@ class SamplingTrainer(Blender.BlenderTrainer):
         # Fine network is not used in this approach, we aim to train sampling network which points are valuable
 
     def create_nerf_model(self):
-        """Custom create_nerf_model function that adds sampler to the model."""
+        """Custom create_nerf_model function that adds depth_net to the model."""
         render_kwargs_train, render_kwargs_test, _start, grad_vars, optimizer = (
             create_nerf(self, NeRF)
         )
@@ -62,28 +58,26 @@ class SamplingTrainer(Blender.BlenderTrainer):
         render_kwargs_train.update(bds_dict)
         render_kwargs_test.update(bds_dict)
 
-        # Inject sampler
+        # Inject depth_net
         hidden_sizes = [self.layer_width for _ in range(self.n_layers)]
         cat_hidden_sizes = [self.layer_width for _ in range(self.n_layers)]
-        sampling_network = BaselineSampler(
-            n_samples=self.N_sampler_samples,
-            distance=self.distance,
+        depth_network = DepthNet(
             hidden_sizes=hidden_sizes,
             cat_hidden_sizes=cat_hidden_sizes,
             sphere_radius=self.sphere_radius,
         )
 
-        sampling_params = list(sampling_network.parameters())
+        sampling_params = list(depth_network.parameters())
 
         sampling_optimizer = torch.optim.Adam(
-            params=sampling_params, lr=self.sampler_lr
+            params=sampling_params, lr=self.depth_net_lr
         )
 
         # Load checkpoints
         basedir = self.basedir
         expname = self.expname
-        if self.sampler_path is not None and self.sampler_path != "None":
-            ckpts = [self.sampler_path]
+        if self.depth_net_path is not None and self.depth_net_path != "None":
+            ckpts = [self.depth_net_path]
         else:
             ckpts = [
                 os.path.join(basedir, expname, f)
@@ -98,7 +92,7 @@ class SamplingTrainer(Blender.BlenderTrainer):
             ckpt = torch.load(ckpt_path)
             start = ckpt["global_step"]
             # Load model
-            utils.load_sampling_network(sampling_network, sampling_optimizer, ckpt)
+            utils.load_depth_network(depth_network, sampling_optimizer, ckpt)
 
         if start is not None:
             self.global_step = start  # start
@@ -107,9 +101,9 @@ class SamplingTrainer(Blender.BlenderTrainer):
             self.global_step = 0
             self.start = 0
 
-        # Add sampler to model dicts
-        render_kwargs_train["sampling_network"] = sampling_network
-        render_kwargs_test["sampling_network"] = sampling_network
+        # Add depth_net to model dicts
+        render_kwargs_train["depth_network"] = depth_network
+        render_kwargs_test["depth_network"] = depth_network
 
         render_kwargs_train["model_mode"] = "train"
         render_kwargs_test["model_mode"] = "test"
@@ -141,13 +135,13 @@ class SamplingTrainer(Blender.BlenderTrainer):
         self,
         rays_o,
         rays_d,
-        sampling_network,
+        depth_network,
     ):
         """Custom method for sampling `N_samples` points from coarse network.
 
         Uses sampling network to get points on the ray
         """
-        pts, z_vals = sampling_network.forward(rays_o, rays_d)
+        pts, z_vals = depth_network.forward(rays_o, rays_d)
         return pts, z_vals
 
     def raw2outputs(
@@ -205,6 +199,8 @@ class SamplingTrainer(Blender.BlenderTrainer):
             )[:, :-1]
         )  # [N_rays, N_samples]
         rgb_map = torch.sum(weights[..., None] * rgb, -2)  # [N_rays, 3]
+        if weights.shape[-1] == 0:
+            rgb_map = torch.sum(rgb, -2)  # [N_rays, 3]
 
         depth_map = torch.sum(weights * z_vals, -1)
         disp_map = 1.0 / torch.max(
@@ -213,8 +209,8 @@ class SamplingTrainer(Blender.BlenderTrainer):
         )
         acc_map = torch.sum(weights, -1)
 
-        if white_bkgd:
-            rgb_map = rgb_map + (1.0 - acc_map[..., None])
+        # if white_bkgd:
+        #     rgb_map = rgb_map + (1.0 - acc_map[..., None])
 
         return (
             rgb_map,

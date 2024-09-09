@@ -1,5 +1,5 @@
-from .sampling_trainer import SamplingTrainer
+from .sampling_trainer import DepthNetTrainer
 
 __all__ = [
-    "SamplingTrainer",
+    "DepthNetTrainer",
 ]

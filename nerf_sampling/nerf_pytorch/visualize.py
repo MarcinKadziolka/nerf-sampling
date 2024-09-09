@@ -1,4 +1,4 @@
-"""Provides functions for visualization of outputs of NeRF model and sampler."""
+"""Provides functions for visualization of outputs of NeRF model and depth_net."""
 
 from typing_extensions import Union
 import torch

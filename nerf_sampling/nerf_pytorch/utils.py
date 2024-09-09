@@ -62,7 +62,7 @@ def save_state(
     network_fn: NeRF,
     network_fine: Optional[NeRF],
     optimizer,
-    sampling_network,
+    depth_network,
     sampling_optimizer,
     path: str,
 ) -> None:
@@ -73,7 +73,7 @@ def save_state(
       network_fn: Usually coarse network, unless network_fine is None, then it's the main NeRF model.
       network_fine: Network evaluating N_c + N_f samples (section 5.3: Implementation details). Optional.
       optimizer: Optimizer for NeRF model.
-      sampling_network: Model responsibile for sampling.
+      depth_network: Model responsibile for sampling.
       sampling_optimizer: Optimizer of sampling network.
       path: Path to save directory including filename. Example: /your/dir/data.tar
     """
@@ -82,7 +82,7 @@ def save_state(
         "network_fn_state_dict": network_fn.state_dict(),
         "optimizer_state_dict": optimizer.state_dict(),
         "sampling_optimizer_state_dict": sampling_optimizer.state_dict(),
-        "sampling_network": sampling_network.state_dict(),
+        "depth_network": depth_network.state_dict(),
     }
     if network_fine is not None:
         data["network_fine_state_dict"] = network_fine.state_dict()
@@ -109,18 +109,18 @@ def load_nerf(network_fn: NeRF, network_fine: Optional[NeRF], optimizer, ckpt):
     print("Successfully loaded network_fine")
 
 
-def load_sampling_network(sampling_network, sampling_optimizer, ckpt):
+def load_depth_network(depth_network, sampling_optimizer, ckpt):
     """Loades states of sampling model and optim from checkpoint.
 
     Args:
-      sampling_network: Model responsibile for sampling.
+      depth_network: Model responsibile for sampling.
       sampling_optimizer: Optimizer for sampling model.
       ckpt: Loaded data dict. ckpt = torch.load(path)
     """
     sampling_optimizer.load_state_dict(ckpt["sampling_optimizer_state_dict"])
     print("Successfully loaded sampling_optimizer")
-    sampling_network.load_state_dict(ckpt["sampling_network"])
-    print("Successfully loaded sampling_network")
+    depth_network.load_state_dict(ckpt["depth_network"])
+    print("Successfully loaded depth_network")
 
 
 def override_config(config, update):
@@ -218,11 +218,24 @@ def find_intersection_points_with_sphere(
     return t, intersection_points  # [n_lines, 2 points, 3D]
 
 
-def sample_points_around_mean(rays_o, rays_d, mean):
-    std = 0.1
-    num_samples = 32
-    z_vals, _ = (mean + std * torch.randn(mean.shape[0], num_samples)).sort(dim=-1)
-    # normalized_rays_d = F.normalize(rays_d)
+def sample_points_around_mean(
+    rays_o, rays_d, mean, n_samples=32, mode="gaussian", std=0.1
+):
+    if mode == "gaussian":
+        num_samples = 32
+        z_vals, _ = (mean + std * torch.randn(mean.shape[0], num_samples)).sort(dim=-1)
+        # normalized_rays_d = F.normalize(rays_d)
+    elif mode == "uniform":
+        grid = torch.linspace(-std, std, steps=n_samples)
+
+        # Expand the grid to match the shape of outputs
+        expanded_grid = grid.view(1, -1).expand(mean.size(0), -1)
+
+        # Add the grid to the outputs to center the samples around outputs
+        z_vals = mean + expanded_grid
+
+        # Clip the values between 0 and 1
+        z_vals = torch.clip(z_vals, 2, 6)
     return (
         rays_o[..., None, :] + rays_d[..., None, :] * z_vals[..., :, None],
         z_vals,

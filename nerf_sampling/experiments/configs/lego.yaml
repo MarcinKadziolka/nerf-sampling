@@ -2,7 +2,7 @@ sampler_lego_params: &sampler_lego_params # & adds anchor (reference) with a giv
   N_rand: 1024
   white_bkgd: True
   device: 'cuda'
-  i_weights: 100000
+  i_weights: 50000
   i_testset: 100000
   i_video: 100000
   i_print: 1000
@@ -13,16 +13,14 @@ sampler_lego_params: &sampler_lego_params # & adds anchor (reference) with a giv
   N_samples: 64
   no_batching: True
   half_res: True
-  precrop_iters: 500
+  precrop_iters: 0
   precrop_frac: 0.5
 
   # set this parameters explicitly in the code
-  sampler_lr: None
+  depth_net_lr: None
   n_layers: None
   layer_width: None
-  train_sampler_only: None
-  distance: None
-  N_sampler_samples: None
+  train_depth_net_only: None
   sphere_radius: None
 
 sampler_dataset_lego_setup: &sampler_dataset_lego_setup
@@ -30,7 +28,7 @@ sampler_dataset_lego_setup: &sampler_dataset_lego_setup
   dataset_type: "blender"
 
 
-lego_sampler_module:
-  module: "nerf_sampling.trainers.SamplingTrainer"
+lego_depth_net_module:
+  module: "nerf_sampling.trainers.DepthNetTrainer"
   kwargs:
     <<: [*sampler_lego_params, *sampler_dataset_lego_setup] # extract reference

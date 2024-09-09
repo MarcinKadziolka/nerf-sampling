@@ -1,4 +1,4 @@
-from nerf_sampling.samplers.baseline_sampler import BaselineSampler
+from nerf_sampling.depth_nets.depth_net import DepthNet
 import matplotlib.pyplot as plt
 import torch
 import torch.nn.functional as F
@@ -10,21 +10,17 @@ import click
 @click.option("--plot", default=False, is_flag=True, help="Plot every 10 iters.")
 @click.option("--no_final_plot", default=True, is_flag=True, help="Don't plot results.")
 def train(**kwargs):
-    """Mock train function to test sampler network."""
-    plot = kwargs["plot"]
-    final_plot = kwargs["no_final_plot"]
-
+    """Mock train function to test depth_net network."""
     target_z_vals = torch.tensor([2.0, 3.0, 4.0, 5.0, 6.0])
-    n_samples = 1
-    sampling_network = BaselineSampler(n_main_samples=n_samples)
+    depth_network = DepthNet(sphere_radius=10)
     rays_o = torch.zeros(len(target_z_vals), 3, dtype=torch.float)
     for i, ray in enumerate(rays_o):
         ray[2] += i
     rays_d = torch.tensor([[1, 0, 0]], dtype=torch.float).repeat(len(target_z_vals), 1)
-    optim = torch.optim.Adam(sampling_network.parameters())
+    optim = torch.optim.Adam(depth_network.parameters())
 
     for i in range(100):
-        pts, z_vals = sampling_network(rays_o, rays_d)
+        z_vals = depth_network(rays_o, rays_d)
         expanded_target_z_vals = target_z_vals.unsqueeze(1).expand(-1, z_vals.shape[1])
         loss = F.mse_loss(expanded_target_z_vals, z_vals)
 
@@ -33,18 +29,11 @@ def train(**kwargs):
         optim.step()
         if i % 10 == 0:
             print(
-                f"Step {i}, Loss: {loss.item()}, mean pts = {torch.mean(pts, dim=1)}, target = {target_z_vals}"
+                f"Step {i}, Loss: {loss.item()}, z_vals = {z_vals}, target = {target_z_vals}"
             )
-            if plot:
-                for pt in pts:
-                    visualize.visualize_rays_pts(rays_o, rays_d, pts)
-
-    if final_plot:
-        pts, _ = sampling_network(rays_o, rays_d)
-        visualize.visualize_rays_pts(
-            rays_o, rays_d, pts.cpu().detach(), title=f"{target_z_vals=}"
-        )
-        plt.show()
+    print("PRED | TARGET")
+    for pred, target in zip(z_vals, target_z_vals):
+        print(f"{pred.item():.2f}, {target.item()}")
 
 
 if __name__ == "__main__":

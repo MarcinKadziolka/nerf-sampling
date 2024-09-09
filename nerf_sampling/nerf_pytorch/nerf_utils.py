@@ -17,6 +17,7 @@ from tqdm import tqdm
 from nerf_sampling.nerf_pytorch import run_nerf_helpers, utils, visualize
 from nerf_sampling.nerf_pytorch.loss_functions import gaussian_log_likelihood
 from nerf_sampling.nerf_pytorch.utils import sample_points_around_mean
+from nerf_sampling.depth_nets.depth_net import DepthNet
 
 np.random.seed(0)
 DEBUG = False
@@ -56,18 +57,18 @@ def batchify(fn, chunk):
 def batchify_rays(rays_flat, chunk=1024 * 32, **kwargs):
     """Render rays in smaller minibatches to avoid OOM."""
     all_returned = {}
-    total_sampler_loss = 0
+    total_depth_net_loss = 0
     for i in range(0, rays_flat.shape[0], chunk):
         torch.cuda.empty_cache()
-        returned, sampler_loss = render_rays(rays_flat[i : i + chunk], **kwargs)
-        total_sampler_loss += sampler_loss
+        returned, depth_net_loss = render_rays(rays_flat[i : i + chunk], **kwargs)
+        total_depth_net_loss += depth_net_loss
         for key in returned:
             if key not in all_returned:
                 all_returned[key] = []
             all_returned[key].append(returned[key])
 
     all_returned = {key: torch.cat(all_returned[key], 0) for key in all_returned}
-    return all_returned, sampler_loss
+    return all_returned, depth_net_loss
 
 
 def render(
@@ -142,19 +143,19 @@ def render(
         rays = torch.cat([rays, viewdirs], -1)
 
     # Render and reshape
-    all_returned, sampler_loss = batchify_rays(rays, chunk, **kwargs)
+    all_returned, depth_net_loss = batchify_rays(rays, chunk, **kwargs)
     for key in all_returned:
         k_sh = list(sh[:-1]) + list(all_returned[key].shape[1:])
         all_returned[key] = torch.reshape(all_returned[key], k_sh)
 
-    key_extract = ["sampler_rgb_map", "sampler_disp_map"]
+    key_extract = ["depth_net_rgb_map", "depth_net_disp_map"]
     ret_list = [all_returned[key] for key in key_extract]
     ret_dict = {
         key: all_returned[key] for key in all_returned if key not in key_extract
     }
     ret_dict["rays_o"] = rays_o
     ret_dict["rays_d"] = rays_d
-    ret_dict["sampler_loss"] = sampler_loss
+    ret_dict["depth_net_loss"] = depth_net_loss
     return ret_list + [ret_dict]
 
 
@@ -194,17 +195,17 @@ def render_path(
     for i, c2w in enumerate(tqdm(render_poses)):
         print(i, time.time() - t)
         t = time.time()
-        sampler_rgb, sampler_disp, sampler_extras = render(
+        depth_net_rgb, depth_net_disp, depth_net_extras = render(
             H, W, K, chunk=chunk, c2w=c2w[:3, :4], **render_kwargs
         )
-        rgbs.append(sampler_rgb.cpu().numpy())
-        disps.append(sampler_disp.cpu().numpy())
+        rgbs.append(depth_net_rgb.cpu().numpy())
+        disps.append(depth_net_disp.cpu().numpy())
         if i == 0:
-            print(sampler_rgb.shape, sampler_disp.shape)
+            print(depth_net_rgb.shape, depth_net_disp.shape)
 
         if gt_imgs is not None and render_factor == 0:
             psnr = -10.0 * np.log10(
-                np.mean(np.square(sampler_rgb.cpu().numpy() - gt_imgs[i]))
+                np.mean(np.square(depth_net_rgb.cpu().numpy() - gt_imgs[i]))
             )
             psnr_info = f"{i:03d}.png, PSNR: {psnr}"
             total_psnr += psnr
@@ -226,8 +227,8 @@ def render_path(
                         )
 
             if plot_object:
-                pts = sampler_extras["sampler_pts"]  # [H, W, N_samples, 3]
-                density = sampler_extras["sampler_density"]
+                pts = depth_net_extras["depth_net_pts"]  # [H, W, N_samples, 3]
+                density = depth_net_extras["depth_net_density"]
                 indices = utils.get_dense_indices(
                     density, min_density=torch.mean(density)
                 )
@@ -235,35 +236,26 @@ def render_path(
                 densities.append(density[indices])
                 all_pts.append(dense_points)
         if wandb_log:
-            density = torch.flatten(
-                sampler_extras["sampler_density"], end_dim=1
-            )  # [H*W, N_samples]
-            rand_indices = random.sample(range(len(density)), k=400)
-            densities.append(torch.flatten(density)[rand_indices])
-            alphas.append(torch.flatten(sampler_extras["sampler_alphas"])[rand_indices])
-            weights.append(
-                torch.flatten(sampler_extras["sampler_weights"])[rand_indices]
-            )
             pts = torch.flatten(
-                sampler_extras["sampler_pts"], end_dim=1
+                depth_net_extras["depth_net_pts"], end_dim=1
             )  # [H*W, N_samples, 3]
             max_pts = torch.flatten(
-                sampler_extras["max_pts"], end_dim=1
+                depth_net_extras["max_pts"], end_dim=1
             )  # [H*W, N_samples, 3]
-            rays_o = sampler_extras["rays_o"]  # [H*W, 3]
-            rays_d = sampler_extras["rays_d"]  # [H*W, 3]
+            rays_o = depth_net_extras["rays_o"]  # [H*W, 3]
+            rays_d = depth_net_extras["rays_d"]  # [H*W, 3]
             indices = random.sample(range(len(rays_o)), k=5)
             rays_fig, rays_ax = visualize.visualize_rays_pts(
                 rays_o=rays_o[indices].cpu(),
                 rays_d=rays_d[indices].cpu(),
                 pts=pts[indices],
-                c=[[(0.0, 0.0, 0.0)]],
-                title="{:03d}.png".format(i),
+                c=[[(0.0, 0.0, 1.0)]],
+                title="{:03d}.png, y_pred: blue, y: black".format(i),
             )
             visualize._plot_points(
                 rays_ax,
                 max_pts[indices],
-                c=[[(1.0, 0.0, 0.0)]],
+                c=[[(0.0, 0.0, 0.0)]],
             )
             wandb.log(
                 {
@@ -271,29 +263,6 @@ def render_path(
                 }
             )
             plt.close(rays_fig)
-    if wandb_log:
-        densities = torch.cat(densities)
-        hist_fig, _ = visualize.plot_histogram(
-            densities=densities,
-            title=f"Density histogram of random samples from testset",
-        )
-        weights = torch.cat(weights)
-        weights_fig, _ = visualize.plot_histogram(
-            densities=weights,
-            title=f"Weights histogram of random samples from testset",
-        )
-        alphas = torch.cat(alphas)
-        alphas_fig, _ = visualize.plot_histogram(
-            densities=alphas,
-            title=f"Alphas histogram of random samples from testset",
-        )
-        wandb.log(
-            {
-                f"Density histogram {step}": wandb.Image(hist_fig),
-                f"Weights histogram {step}": wandb.Image(weights_fig),
-                f"Alphas histogram {step}": wandb.Image(alphas_fig),
-            }
-        )
     if plot_object and savedir is not None:
         all_pts = torch.cat(all_pts)  # [n, 3]
         densities = torch.cat(densities)  # [n, 1]
@@ -307,7 +276,7 @@ def render_path(
     rgbs = np.stack(rgbs, 0)
     disps = np.stack(disps, 0)
 
-    return rgbs, disps
+    return rgbs, disps, total_psnr / n_render_poses
 
 
 def create_nerf(args, model):
@@ -586,80 +555,53 @@ def render_rays(
             kwargs=kwargs,
         )
     )
-    top_k = int(fine_weights.shape[1] * 0.1)
     top_k = 1
     top_k_values, top_k_indices = torch.topk(fine_weights, top_k, dim=1)
     top_k_indices = top_k_indices.sort(dim=1).values
-    max_z_vals = torch.mean(
-        torch.gather(fine_z_vals, 1, top_k_indices), dim=-1, keepdim=True
+    max_z_vals = torch.gather(fine_z_vals, 1, top_k_indices)
+    max_pts = rays_o[..., None, :] + rays_d[..., None, :] * max_z_vals[..., :, None]
+    depth_net_z_vals = kwargs["depth_network"](rays_o, rays_d)
+    depth_net_pts = (
+        rays_o[..., None, :] + rays_d[..., None, :] * depth_net_z_vals[..., :, None]
     )
-    batch_indices = torch.arange(fine_density.shape[0]).unsqueeze(1)
-    max_pts = fine_pts[batch_indices, top_k_indices[:, :top_k]]
-    (sampler_pts, sampler_z_vals), sampler_mean = kwargs["sampling_network"].forward(
-        rays_o, rays_d
-    )
-    # sampler_pts, sampler_z_vals = sample_points_around_mean(rays_o, rays_d, max_z_vals)
-    sampler_pts, sampler_z_vals = max_pts, max_z_vals
     if network_fine is not None:
-        sampler_raw = network_query_fn(sampler_pts, viewdirs, network_fine)
+        depth_net_raw = network_query_fn(depth_net_pts, viewdirs, network_fine)
     else:
-        sampler_raw = network_query_fn(sampler_pts, viewdirs, network_fn)
-
-    # indices = random.sample(range(len(rays_o)), k=3)
-    # rays_fig, rays_ax = visualize.visualize_rays_pts(
-    #     rays_o=rays_o[indices].cpu(),
-    #     rays_d=rays_d[indices].cpu(),
-    #     pts=max_pts[indices].cpu(),
-    #     c=[[(0.0, 0.0, 0.0)]],
-    # )
-    # visualize._plot_points(rays_ax, max_pts[indices].cpu(), s=100)
-    # plt.show()
-    # plt.close()
+        depth_net_raw = network_query_fn(depth_net_pts, viewdirs, network_fn)
     (
-        sampler_rgb_map,
-        sampler_disp_map,
-        sampler_acc_map,
-        sampler_depth_map,
-        sampler_density,
-        sampler_alphas,
-        sampler_weights,
+        depth_net_rgb_map,
+        depth_net_disp_map,
+        depth_net_acc_map,
+        depth_net_depth_map,
+        depth_net_density,
+        depth_net_alphas,
+        depth_net_weights,
     ) = trainer.raw2outputs(
-        raw=sampler_raw,
-        z_vals=sampler_z_vals,
+        raw=depth_net_raw,
+        z_vals=depth_net_z_vals,
         rays_d=rays_d,
         raw_noise=raw_noise_std,
         white_bkdg=white_bkgd,
         pytest=pytest,
     )
-    if trainer.global_step % trainer.i_testset == 0:
-        trainer.save_rays_data(rays_o, sampler_pts, sampler_alphas)
 
-    sampler_loss = torch.tensor([-1])
-    if not trainer.render_test:
-        sampler_loss = F.mse_loss(
-            sampler_mean, torch.mean(max_z_vals, dim=1, keepdim=True)
-        )
+    depth_net_loss = F.mse_loss(depth_net_z_vals, max_z_vals)
 
     ret = {
-        "sampler_rgb_map": sampler_rgb_map,
-        "sampler_disp_map": sampler_disp_map,
-        "sampler_density": sampler_density.cpu(),
-        "sampler_alphas": sampler_alphas.cpu(),
-        "sampler_weights": sampler_weights.cpu(),
-        "fine_weights": fine_weights.cpu(),
-        "sampler_pts": sampler_pts.cpu(),
+        "depth_net_rgb_map": depth_net_rgb_map,
+        "depth_net_disp_map": depth_net_disp_map,
+        "depth_net_pts": depth_net_pts.cpu(),
         "max_pts": max_pts.cpu(),
-        "fine_density": fine_density.cpu(),
     }
 
     if retraw:
-        ret["raw"] = sampler_raw.cpu()
+        ret["raw"] = depth_net_raw.cpu()
 
     for key in ret:
         if (torch.isnan(ret[key]).any() or torch.isinf(ret[key]).any()) and DEBUG:
             print(f"! [Numerical Error] {key} contains nan or inf.")
 
-    return ret, sampler_loss
+    return ret, depth_net_loss
 
 
 def config_parser():
