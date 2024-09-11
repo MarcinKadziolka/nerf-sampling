@@ -156,7 +156,10 @@ def _plot_rays(
 
 
 def plot_points(
-    ray_pts: torch.Tensor, s: int = 20, c: Optional[Union[torch.Tensor, Tuple]] = None
+    ray_pts: torch.Tensor,
+    s: int = 20,
+    c: Optional[Union[torch.Tensor, Tuple]] = None,
+    title="Points plot",
 ):
     """Plot points per rays.
 
@@ -167,6 +170,7 @@ def plot_points(
     """
     fig, ax = _initialize_3d_plot()
     _plot_points(ax, ray_pts, s=s, c=c)
+    plt.title(title)
     return fig, ax
 
 
