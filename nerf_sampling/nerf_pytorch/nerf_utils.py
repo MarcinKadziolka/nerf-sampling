@@ -58,6 +58,7 @@ def batchify_rays(rays_flat, chunk=1024 * 32, **kwargs):
     """Render rays in smaller minibatches to avoid OOM."""
     all_returned = {}
     total_depth_net_loss = 0
+    n_chunks = rays_flat.shape[0] / chunk
     for i in range(0, rays_flat.shape[0], chunk):
         torch.cuda.empty_cache()
         returned, depth_net_loss = render_rays(rays_flat[i : i + chunk], **kwargs)
@@ -68,7 +69,7 @@ def batchify_rays(rays_flat, chunk=1024 * 32, **kwargs):
             all_returned[key].append(returned[key])
 
     all_returned = {key: torch.cat(all_returned[key], 0) for key in all_returned}
-    return all_returned, depth_net_loss
+    return all_returned, total_depth_net_loss / n_chunks
 
 
 def render(
@@ -191,6 +192,7 @@ def render_path(
     weights = []
     psnr_info = None
     total_psnr = 0
+    total_mse = 0
     n_render_poses = render_poses.shape[0]
     for i, c2w in enumerate(tqdm(render_poses)):
         print(i, time.time() - t)
@@ -207,8 +209,10 @@ def render_path(
             psnr = -10.0 * np.log10(
                 np.mean(np.square(depth_net_rgb.cpu().numpy() - gt_imgs[i]))
             )
-            psnr_info = f"{i:03d}.png, PSNR: {psnr}"
+            mse = depth_net_extras["depth_net_loss"]
+            psnr_info = f"{i:03d}.png, PSNR: {psnr}, MSE: {mse}"
             total_psnr += psnr
+            total_mse += mse
             print(psnr_info)
 
         if savedir is not None:
@@ -223,7 +227,7 @@ def render_path(
                 if i == n_render_poses - 1:
                     with open(f, "a") as file:
                         file.write(
-                            f"Avg psnr of {n_render_poses} images: {total_psnr/n_render_poses}\n"
+                            f"Avg of {n_render_poses} images\n:PSNR: {total_psnr/n_render_poses}\nMSE: {total_mse/n_render_poses}"
                         )
 
             if plot_object:
@@ -585,13 +589,14 @@ def render_rays(
         pytest=pytest,
     )
 
-    depth_net_loss = F.mse_loss(depth_net_z_vals, max_z_vals)
+    depth_net_loss = torch.tensor([-1])
+    # depth_net_loss = F.mse_loss(depth_net_z_vals, max_z_vals)
 
     ret = {
         "depth_net_rgb_map": depth_net_rgb_map,
         "depth_net_disp_map": depth_net_disp_map,
         "depth_net_pts": depth_net_pts.cpu(),
-        "max_pts": max_pts.cpu(),
+        # "max_pts": max_pts.cpu(),
     }
 
     if retraw:
