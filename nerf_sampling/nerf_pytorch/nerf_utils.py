@@ -778,7 +778,7 @@ def render_rays_test(
     rays_o, rays_d = ray_batch[:, 0:3], ray_batch[:, 3:6]  # [N_rays, 3] each
     viewdirs = ray_batch[:, -3:] if ray_batch.shape[-1] > 8 else None
     ret = {}
-    if trainer.compare_nerf or trainer.use_nerf_max_pts:
+    if trainer.compare_nerf or trainer.use_nerf_max_pts or trainer.use_full_nerf:
         (
             fine_density,
             fine_z_vals,
@@ -819,6 +819,11 @@ def render_rays_test(
         depth_net_disp_map = torch.zeros_like(max_rgb_map)
         depth_net_pts = max_pts
         depth_net_z_vals = max_z_vals
+    elif trainer.use_full_nerf:
+        depth_net_rgb_map = fine_rgb_map
+        depth_net_disp_map = fine_disp_map
+        depth_net_pts = fine_pts
+        depth_net_z_vals = fine_z_vals
     else:
         depth_net_z_vals = kwargs["depth_network"](rays_o, rays_d)
         depth_net_pts, depth_net_z_vals = sample_points_around_mean(

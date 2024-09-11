@@ -23,11 +23,18 @@ from nerf_sampling.definitions import ROOT_DIR
     show_default=True,
 )
 @click.option(
-    "-d",
-    "--dataset",
+    "-dp",
+    "--dataset_path",
     help="Path to dataset folder.",
     type=str,
     default=f"{ROOT_DIR}/dataset/drums",
+    show_default=True,
+)
+@click.option(
+    "-d",
+    "--dataset",
+    help="Name of the dataset to render.",
+    type=str,
     show_default=True,
 )
 @click.option(
@@ -95,6 +102,14 @@ from nerf_sampling.definitions import ROOT_DIR
     show_default=True,
 )
 @click.option(
+    "-nf",
+    "--nerf_full",
+    is_flag=True,
+    default=False,
+    help="Use full nerf to render",
+    show_default=True,
+)
+@click.option(
     "-ip",
     "--i_print",
     default=1000,
@@ -106,14 +121,51 @@ def main(**click_kwargs):
     with open(click_kwargs["config"], "r") as fin:
         model = click_kwargs["model"]
         config = yaml.safe_load(fin)[model]
+
     config["kwargs"]["single_image"] = click_kwargs["single_image"]
     config["kwargs"]["single_ray"] = click_kwargs["single_ray"]
     config["kwargs"]["plot_object"] = click_kwargs["plot_object"]
     config["kwargs"]["i_print"] = click_kwargs["i_print"]
     config["kwargs"]["compare_nerf"] = click_kwargs["compare_nerf"]
     config["kwargs"]["use_nerf_max_pts"] = click_kwargs["nerf_max"]
+    config["kwargs"]["use_full_nerf"] = click_kwargs["nerf_full"]
     config["kwargs"]["render_only"] = True
     config["kwargs"]["render_test"] = True
+
+    print(f"wandb: {click_kwargs['wandb']}")
+    wandb.init(
+        project="nerf-sampling",
+        config=config["kwargs"],
+        mode=click_kwargs["wandb"],
+        tags=[
+            "train_depth_net_only",
+            "bigger_network",
+            "pretrained_model",
+            "depth_z_vals_prediction",
+            "single_point",
+            "sphere_intersection",
+        ],
+    )
+
+    basedir = wandb.run.dir
+    print(f"{basedir=}")
+    datadir = click_kwargs["dataset_path"]
+    ft_path = None
+    depth_net_path = None
+    if (dataset_name := click_kwargs["dataset"]) is not None:
+        datadir = f"{ROOT_DIR}/dataset/{dataset_name}"
+        ft_path = f"{ROOT_DIR}/dataset/{dataset_name}/pretrained_model/200000.tar"
+        depth_net_path = f"{ROOT_DIR}/pretrained_depth_nets/{dataset_name}/files/sampler_experiment/100000.tar"
+
+    config["kwargs"]["datadir"] = datadir
+    config["kwargs"]["basedir"] = basedir
+
+    config["kwargs"]["ft_path"] = ft_path
+    config["kwargs"]["depth_net_path"] = depth_net_path
+
+    config["kwargs"]["n_depth_samples"] = 128
+    config["kwargs"]["distance"] = 1
+    config["kwargs"]["sampling_mode"] = "depth_only"
 
     override = {
         "depth_net_lr": 1e-4,
@@ -130,36 +182,6 @@ def main(**click_kwargs):
     set_global_device(config["kwargs"]["device"])
     EPOCHS = 100_000_000
 
-    print(f"wandb: {click_kwargs['wandb']}")
-    wandb.init(
-        project="nerf-sampling",
-        config=config["kwargs"],
-        mode=click_kwargs["wandb"],
-        tags=[
-            "train_depth_net_only",
-            "bigger_network",
-            "pretrained_model",
-            "depth_z_vals_prediction",
-            "single_point",
-            "sphere_intersection",
-        ],
-    )
-    basedir = wandb.run.dir
-    print(f"{basedir=}")
-    datadir = click_kwargs["dataset"]
-    config["kwargs"]["datadir"] = datadir
-    config["kwargs"]["basedir"] = basedir
-    ft_path = f"{ROOT_DIR}/dataset/drums/pretrained_model/200000.tar"
-    depth_net_path = (
-        f"{ROOT_DIR}/pretrained_depth_nets/drums/files/sampler_experiment/100000.tar"
-    )
-
-    config["kwargs"]["ft_path"] = ft_path
-    config["kwargs"]["depth_net_path"] = depth_net_path
-
-    config["kwargs"]["n_depth_samples"] = 128
-    config["kwargs"]["distance"] = 1
-    config["kwargs"]["sampling_mode"] = "depth_only"
     trainer = load_obj_from_config(cfg=config)
     psnr = trainer.train(N_iters=EPOCHS + 1)
 

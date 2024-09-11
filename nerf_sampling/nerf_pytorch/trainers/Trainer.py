@@ -63,6 +63,7 @@ class Trainer:
         plot_object=False,
         compare_nerf=False,
         use_nerf_max_pts=False,
+        use_full_nerf=False,
     ):
         self.start = None
         self.dataset_type = dataset_type
@@ -121,6 +122,7 @@ class Trainer:
 
         self.compare_nerf = compare_nerf
         self.use_nerf_max_pts = use_nerf_max_pts
+        self.use_full_nerf = use_full_nerf
         print(f"{self}")
         print(f"{self.N_samples=}")
         print(f"{self.N_importance=}")
