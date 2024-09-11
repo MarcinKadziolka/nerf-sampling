@@ -57,19 +57,16 @@ def batchify(fn, chunk):
 def batchify_rays(rays_flat, chunk=1024 * 32, **kwargs):
     """Render rays in smaller minibatches to avoid OOM."""
     all_returned = {}
-    total_depth_net_loss = 0
-    n_chunks = rays_flat.shape[0] / chunk
     for i in range(0, rays_flat.shape[0], chunk):
         torch.cuda.empty_cache()
-        returned, depth_net_loss = render_rays(rays_flat[i : i + chunk], **kwargs)
-        total_depth_net_loss += depth_net_loss
+        returned = render_rays(rays_flat[i : i + chunk], **kwargs)
         for key in returned:
             if key not in all_returned:
                 all_returned[key] = []
             all_returned[key].append(returned[key])
 
     all_returned = {key: torch.cat(all_returned[key], 0) for key in all_returned}
-    return all_returned, total_depth_net_loss / n_chunks
+    return all_returned
 
 
 def render(
@@ -144,7 +141,7 @@ def render(
         rays = torch.cat([rays, viewdirs], -1)
 
     # Render and reshape
-    all_returned, depth_net_loss = batchify_rays(rays, chunk, **kwargs)
+    all_returned = batchify_rays(rays, chunk, **kwargs)
     for key in all_returned:
         k_sh = list(sh[:-1]) + list(all_returned[key].shape[1:])
         all_returned[key] = torch.reshape(all_returned[key], k_sh)
@@ -156,7 +153,6 @@ def render(
     }
     ret_dict["rays_o"] = rays_o
     ret_dict["rays_d"] = rays_d
-    ret_dict["depth_net_loss"] = depth_net_loss
     return ret_list + [ret_dict]
 
 
@@ -209,10 +205,15 @@ def render_path(
             psnr = -10.0 * np.log10(
                 np.mean(np.square(depth_net_rgb.cpu().numpy() - gt_imgs[i]))
             )
-            mse = depth_net_extras["depth_net_loss"]
-            psnr_info = f"{i:03d}.png, PSNR: {psnr}, MSE: {mse}"
+            psnr_info = f"{i:03d}.png, PSNR: {psnr}"
+            mse = None
+            if depth_net_extras["max_z_vals"] is not None:
+                mse = F.mse_loss(
+                    depth_net_extras["max_z_vals"], depth_net_extras["depth_net_z_vals"]
+                )
+                total_mse += mse
+                psnr_info += f", MSE: {mse}"
             total_psnr += psnr
-            total_mse += mse
             print(psnr_info)
 
         if savedir is not None:
@@ -225,10 +226,11 @@ def render_path(
                 with open(f, "a") as file:
                     file.write(f"{psnr_info}\n")
                 if i == n_render_poses - 1:
+                    to_write = f"Avg of {n_render_poses} images\n:PSNR: {total_psnr/n_render_poses}\n"
+                    if total_mse > 0:
+                        to_write += f"MSE: {total_mse/n_render_poses}"
                     with open(f, "a") as file:
-                        file.write(
-                            f"Avg of {n_render_poses} images\n:PSNR: {total_psnr/n_render_poses}\nMSE: {total_mse/n_render_poses}"
-                        )
+                        file.write(to_write)
 
             if plot_object:
                 pts = depth_net_extras["depth_net_pts"]  # [H, W, N_samples, 3]
@@ -559,10 +561,8 @@ def render_rays(
             kwargs=kwargs,
         )
     )
-    top_k = 1
-    top_k_values, top_k_indices = torch.topk(fine_weights, top_k, dim=1)
-    top_k_indices = top_k_indices.sort(dim=1).values
-    max_z_vals = torch.gather(fine_z_vals, 1, top_k_indices)
+    top_indices = fine_weights.argmax(dim=1, keepdim=True)
+    max_z_vals = torch.gather(fine_z_vals, 1, top_indices)
     max_pts = rays_o[..., None, :] + rays_d[..., None, :] * max_z_vals[..., :, None]
     depth_net_z_vals = kwargs["depth_network"](rays_o, rays_d)
     depth_net_pts = (
@@ -589,14 +589,13 @@ def render_rays(
         pytest=pytest,
     )
 
-    depth_net_loss = torch.tensor([-1])
-    # depth_net_loss = F.mse_loss(depth_net_z_vals, max_z_vals)
-
     ret = {
         "depth_net_rgb_map": depth_net_rgb_map,
         "depth_net_disp_map": depth_net_disp_map,
+        "depth_net_z_vals": depth_net_z_vals,
+        "max_z_vals": max_z_vals,
         "depth_net_pts": depth_net_pts.cpu(),
-        # "max_pts": max_pts.cpu(),
+        "max_pts": max_pts.cpu(),
     }
 
     if retraw:
@@ -606,7 +605,7 @@ def render_rays(
         if (torch.isnan(ret[key]).any() or torch.isinf(ret[key]).any()) and DEBUG:
             print(f"! [Numerical Error] {key} contains nan or inf.")
 
-    return ret, depth_net_loss
+    return ret
 
 
 def config_parser():

@@ -497,7 +497,6 @@ class Trainer:
 
     def core_optimization_loop(
         self,
-        optimizer,
         sampling_optimizer,
         render_kwargs_train,
         batch_rays,
@@ -516,7 +515,6 @@ class Trainer:
             **render_kwargs_train,
         )
         sampling_optimizer.zero_grad()
-        # optimizer.zero_grad()
         img_loss = nerf_utils.run_nerf_helpers.img2mse(depth_net_rgb, target_s)
         loss = img_loss
 
@@ -528,14 +526,13 @@ class Trainer:
             img_loss0 = nerf_utils.run_nerf_helpers.img2mse(extras["rgb0"], target_s)
             loss = loss + img_loss0
             psnr0 = nerf_utils.run_nerf_helpers.mse2psnr(img_loss0)
-        depth_net_loss = extras["depth_net_loss"]
+        depth_net_loss = F.mse_loss(extras["depth_net_z_vals"], extras["max_z_vals"])
         depth_net_loss.backward(retain_graph=True)
         loss.backward()
         # is_grad = utils.check_grad(render_kwargs_train["depth_network"])
         # if not is_grad:
         #     raise Exception("Grad is zero!")
         sampling_optimizer.step()
-        # optimizer.step()
         return loss, depth_net_loss, psnr, psnr0
 
     def update_learning_rate(self, optimizer):
@@ -753,7 +750,6 @@ class Trainer:
             #     sampling_optimizer=sampling_optimizer,
             # )
             loss, depth_net_loss, psnr, psnr0 = self.core_optimization_loop(
-                optimizer,
                 sampling_optimizer,
                 render_kwargs_train,
                 batch_rays,
