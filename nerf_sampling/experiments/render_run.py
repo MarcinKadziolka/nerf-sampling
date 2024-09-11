@@ -92,10 +92,10 @@ def main(**click_kwargs):
         config = yaml.safe_load(fin)[model]
     config["kwargs"]["single_image"] = click_kwargs["single_image"]
     config["kwargs"]["single_ray"] = click_kwargs["single_ray"]
-    config["kwargs"]["render_only"] = click_kwargs["render_test"]
-    config["kwargs"]["render_test"] = click_kwargs["render_test"]
     config["kwargs"]["plot_object"] = click_kwargs["plot_object"]
     config["kwargs"]["i_print"] = click_kwargs["i_print"]
+    config["kwargs"]["render_only"] = True
+    config["kwargs"]["render_test"] = True
 
     override = {
         "depth_net_lr": 1e-4,
@@ -132,6 +132,12 @@ def main(**click_kwargs):
     config["kwargs"]["datadir"] = datadir
     config["kwargs"]["basedir"] = basedir
     ft_path = f"{ROOT_DIR}/dataset/lego/pretrained_model/200000.tar"
+    # below path for both depth and fine trained
+    # depth_net_path = "/home/mubuntu/Desktop/nerf-sampling/nerf_sampling/wandb/run-20240907_120041-sfygctky/files/lego_sampler_experiment/200000.tar"
+    # below path for only depth trained
+    # depth_net_path = "/home/mubuntu/Desktop/nerf-sampling/nerf_sampling/wandb/run-20240904_163625-zu8182wd/files/lego_sampler_experiment/400000.tar"
+    # below path for only depth trained big net
+    # depth_net_path = "/home/mubuntu/Desktop/nerf-sampling/nerf_sampling/wandb/run-20240907_180512-fp0vslxm/files/lego_sampler_experiment/350000.tar"
     depth_net_path = None
 
     # ft_path = depth_net_path
