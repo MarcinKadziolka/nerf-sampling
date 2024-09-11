@@ -27,7 +27,7 @@ from nerf_sampling.definitions import ROOT_DIR
     "--dataset",
     help="Path to dataset folder.",
     type=str,
-    default=f"{ROOT_DIR}/dataset/lego",
+    default=f"{ROOT_DIR}/dataset/drums",
     show_default=True,
 )
 @click.option(
@@ -79,6 +79,14 @@ from nerf_sampling.definitions import ROOT_DIR
     show_default=True,
 )
 @click.option(
+    "-cn",
+    "--compare_nerf",
+    is_flag=True,
+    default=False,
+    help="Compare depth network predictions to the original NeRF most important samples.",
+    show_default=True,
+)
+@click.option(
     "-ip",
     "--i_print",
     default=1000,
@@ -94,6 +102,7 @@ def main(**click_kwargs):
     config["kwargs"]["single_ray"] = click_kwargs["single_ray"]
     config["kwargs"]["plot_object"] = click_kwargs["plot_object"]
     config["kwargs"]["i_print"] = click_kwargs["i_print"]
+    config["kwargs"]["compare_nerf"] = click_kwargs["compare_nerf"]
     config["kwargs"]["render_only"] = True
     config["kwargs"]["render_test"] = True
 
@@ -131,15 +140,17 @@ def main(**click_kwargs):
     datadir = click_kwargs["dataset"]
     config["kwargs"]["datadir"] = datadir
     config["kwargs"]["basedir"] = basedir
-    ft_path = f"{ROOT_DIR}/dataset/lego/pretrained_model/200000.tar"
-    depth_net_path = None
+    ft_path = f"{ROOT_DIR}/dataset/drums/pretrained_model/200000.tar"
+    depth_net_path = (
+        f"{ROOT_DIR}/pretrained_depth_nets/drums/files/sampler_experiment/100000.tar"
+    )
 
     config["kwargs"]["ft_path"] = ft_path
     config["kwargs"]["depth_net_path"] = depth_net_path
 
     config["kwargs"]["n_depth_samples"] = 128
-    config["kwargs"]["sampling_mode"] = "uniform"
     config["kwargs"]["distance"] = 1
+    config["kwargs"]["sampling_mode"] = "depth_only"
     trainer = load_obj_from_config(cfg=config)
     psnr = trainer.train(N_iters=EPOCHS + 1)
 

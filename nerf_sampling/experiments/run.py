@@ -27,7 +27,7 @@ from nerf_sampling.definitions import ROOT_DIR
     "--dataset",
     help="Path to dataset folder.",
     type=str,
-    default=f"{ROOT_DIR}/dataset/lego",
+    default=f"{ROOT_DIR}/dataset/drums",
     show_default=True,
 )
 @click.option(
@@ -63,14 +63,6 @@ from nerf_sampling.definitions import ROOT_DIR
     show_default=True,
 )
 @click.option(
-    "-po",
-    "--plot_object",
-    is_flag=True,
-    default=False,
-    help="Save plot of object during rendering test. This option only applies when --render_test is enabled.",
-    show_default=True,
-)
-@click.option(
     "-ip",
     "--i_print",
     default=1000,
@@ -84,15 +76,14 @@ def main(**click_kwargs):
         config = yaml.safe_load(fin)[model]
     config["kwargs"]["single_image"] = click_kwargs["single_image"]
     config["kwargs"]["single_ray"] = click_kwargs["single_ray"]
-    config["kwargs"]["plot_object"] = click_kwargs["plot_object"]
     config["kwargs"]["i_print"] = click_kwargs["i_print"]
-
     override = {
         "depth_net_lr": 1e-4,
         "n_layers": 10,
         "layer_width": 256,
         "train_depth_net_only": True,
         "sphere_radius": 2,
+        "i_testset": 100,
     }
 
     override_config(config=config["kwargs"], update=override)
@@ -100,7 +91,7 @@ def main(**click_kwargs):
     torch.manual_seed(42)  # 0
 
     set_global_device(config["kwargs"]["device"])
-    EPOCHS = 100_000_000
+    EPOCHS = 100_000
 
     print(f"wandb: {click_kwargs['wandb']}")
     wandb.init(
@@ -114,6 +105,8 @@ def main(**click_kwargs):
             "depth_z_vals_prediction",
             "single_point",
             "sphere_intersection",
+            "drums",
+            "DELETE",
         ],
     )
     basedir = wandb.run.dir
@@ -121,12 +114,15 @@ def main(**click_kwargs):
     datadir = click_kwargs["dataset"]
     config["kwargs"]["datadir"] = datadir
     config["kwargs"]["basedir"] = basedir
-    ft_path = f"{ROOT_DIR}/dataset/lego/pretrained_model/200000.tar"
+    ft_path = f"{ROOT_DIR}/dataset/drums/pretrained_model/200000.tar"
     depth_net_path = None
 
     # ft_path = depth_net_path
     config["kwargs"]["ft_path"] = ft_path
     config["kwargs"]["depth_net_path"] = depth_net_path
+
+    # for wandb purposes
+    config["kwargs"]["sampling_mode"] = "depth_only"
 
     trainer = load_obj_from_config(cfg=config)
     psnr = trainer.train(N_iters=EPOCHS + 1)

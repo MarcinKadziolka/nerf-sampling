@@ -61,6 +61,7 @@ class Trainer:
         single_image=False,
         single_ray=False,
         plot_object=False,
+        compare_nerf=False,
     ):
         self.start = None
         self.dataset_type = dataset_type
@@ -116,6 +117,8 @@ class Trainer:
 
         self.single_image = single_image
         self.single_ray = single_ray
+
+        self.compare_nerf = compare_nerf
         print(f"{self}")
         print(f"{self.N_samples=}")
         print(f"{self.N_importance=}")
@@ -200,7 +203,7 @@ class Trainer:
             os.makedirs(testsavedir, exist_ok=True)
             print("test poses shape", render_poses.shape)
 
-            rgbs, _, avg_test_psnr = nerf_utils.render_path_test(
+            rgbs, _, avg_test_psnr = nerf_utils.render_path(
                 render_poses,
                 hwf,
                 self.K,
@@ -295,6 +298,7 @@ class Trainer:
                     render_kwargs_test,
                     step=self.global_step,
                     wandb_log=True,
+                    plot_object=render_kwargs_train["trainer"].plot_object,
                     gt_imgs=target_s,
                     savedir=testsavedir,
                 )
