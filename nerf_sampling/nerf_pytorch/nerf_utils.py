@@ -290,6 +290,7 @@ def render_path(
     weights = []
     psnr_info = None
     total_psnr = 0
+    total_mse = 0
     n_render_poses = render_poses.shape[0]
     for i, c2w in enumerate(tqdm(render_poses)):
         print(i, time.time() - t)
