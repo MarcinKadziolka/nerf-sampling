@@ -199,8 +199,6 @@ class DepthNetTrainer(Blender.BlenderTrainer):
             )[:, :-1]
         )  # [N_rays, N_samples]
         rgb_map = torch.sum(weights[..., None] * rgb, -2)  # [N_rays, 3]
-        if weights.shape[-1] == 0:
-            rgb_map = torch.sum(rgb, -2)  # [N_rays, 3]
 
         depth_map = torch.sum(weights * z_vals, -1)
         disp_map = 1.0 / torch.max(
@@ -209,8 +207,11 @@ class DepthNetTrainer(Blender.BlenderTrainer):
         )
         acc_map = torch.sum(weights, -1)
 
-        # if white_bkgd:
-        #     rgb_map = rgb_map + (1.0 - acc_map[..., None])
+        if white_bkgd:
+            rgb_map = rgb_map + (1.0 - acc_map[..., None])
+
+        if weights.shape[-1] == 0:
+            rgb_map = torch.sum(rgb, -2)  # [N_rays, 3]
 
         return (
             rgb_map,

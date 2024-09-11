@@ -200,7 +200,7 @@ class Trainer:
             os.makedirs(testsavedir, exist_ok=True)
             print("test poses shape", render_poses.shape)
 
-            rgbs, _, avg_test_psnr = nerf_utils.render_path(
+            rgbs, _, avg_test_psnr = nerf_utils.render_path_test(
                 render_poses,
                 hwf,
                 self.K,
