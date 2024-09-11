@@ -221,10 +221,9 @@ def find_intersection_points_with_sphere(
 def sample_points_around_mean(
     rays_o, rays_d, mean, n_samples=32, mode="gaussian", std=0.1
 ):
+    rays_d = F.normalize(rays_d)
     if mode == "gaussian":
-        num_samples = 32
-        z_vals, _ = (mean + std * torch.randn(mean.shape[0], num_samples)).sort(dim=-1)
-        # normalized_rays_d = F.normalize(rays_d)
+        z_vals, _ = (mean + std * torch.randn(mean.shape[0], n_samples)).sort(dim=-1)
     elif mode == "uniform":
         grid = torch.linspace(-std, std, steps=n_samples)
 
