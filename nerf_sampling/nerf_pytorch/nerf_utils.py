@@ -882,8 +882,13 @@ def render_rays_test(
     viewdirs = ray_batch[:, -3:] if ray_batch.shape[-1] > 8 else None
 
     depth_net_z_vals = kwargs["depth_network"](rays_o, rays_d)
-    depth_net_pts = (
-        rays_o[..., None, :] + rays_d[..., None, :] * depth_net_z_vals[..., :, None]
+    depth_net_pts, depth_net_z_vals = sample_points_around_mean(
+        rays_o=rays_o,
+        rays_d=rays_d,
+        mean=depth_net_z_vals,
+        n_samples=trainer.n_depth_samples,
+        mode=trainer.sampling_mode,
+        std=trainer.distance,
     )
     if network_fine is not None:
         depth_net_raw = network_query_fn(depth_net_pts, viewdirs, network_fine)

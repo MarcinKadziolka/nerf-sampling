@@ -134,16 +134,17 @@ def main(**click_kwargs):
     ft_path = f"{ROOT_DIR}/dataset/lego/pretrained_model/200000.tar"
     # below path for both depth and fine trained
     # depth_net_path = "/home/mubuntu/Desktop/nerf-sampling/nerf_sampling/wandb/run-20240907_120041-sfygctky/files/lego_sampler_experiment/200000.tar"
-    # below path for only depth trained
-    # depth_net_path = "/home/mubuntu/Desktop/nerf-sampling/nerf_sampling/wandb/run-20240904_163625-zu8182wd/files/lego_sampler_experiment/400000.tar"
     # below path for only depth trained big net
-    # depth_net_path = "/home/mubuntu/Desktop/nerf-sampling/nerf_sampling/wandb/run-20240907_180512-fp0vslxm/files/lego_sampler_experiment/350000.tar"
-    depth_net_path = None
+    depth_net_path = "/home/mubuntu/Desktop/nerf-sampling/nerf_sampling/wandb/run-20240907_180512-fp0vslxm/files/lego_sampler_experiment/350000.tar"
+    # depth_net_path = None
 
     # ft_path = depth_net_path
     config["kwargs"]["ft_path"] = ft_path
     config["kwargs"]["depth_net_path"] = depth_net_path
 
+    config["kwargs"]["n_depth_samples"] = 128
+    config["kwargs"]["sampling_mode"] = "uniform"
+    config["kwargs"]["distance"] = 1
     trainer = load_obj_from_config(cfg=config)
     psnr = trainer.train(N_iters=EPOCHS + 1)
 

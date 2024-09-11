@@ -18,6 +18,9 @@ class DepthNetTrainer(Blender.BlenderTrainer):
 
     def __init__(
         self,
+        distance=None,
+        sampling_mode=None,
+        n_depth_samples=None,
         depth_net_path: Optional[str] = None,
         n_layers: int = 6,
         layer_width: int = 256,
@@ -40,6 +43,9 @@ class DepthNetTrainer(Blender.BlenderTrainer):
         self.layer_width = layer_width
         self.depth_net_path = depth_net_path
         self.sphere_radius = sphere_radius
+        self.distance = distance
+        self.n_depth_samples = n_depth_samples
+        self.sampling_mode = sampling_mode
         print(f"{self.n_layers=}")
         print(f"{self.layer_width=}")
         super().__init__(**kwargs)

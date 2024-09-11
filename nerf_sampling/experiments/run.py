@@ -63,14 +63,6 @@ from nerf_sampling.definitions import ROOT_DIR
     show_default=True,
 )
 @click.option(
-    "-rt",
-    "--render_test",
-    is_flag=True,
-    default=False,
-    help="Perform render test",
-    show_default=True,
-)
-@click.option(
     "-po",
     "--plot_object",
     is_flag=True,
@@ -92,8 +84,6 @@ def main(**click_kwargs):
         config = yaml.safe_load(fin)[model]
     config["kwargs"]["single_image"] = click_kwargs["single_image"]
     config["kwargs"]["single_ray"] = click_kwargs["single_ray"]
-    config["kwargs"]["render_only"] = click_kwargs["render_test"]
-    config["kwargs"]["render_test"] = click_kwargs["render_test"]
     config["kwargs"]["plot_object"] = click_kwargs["plot_object"]
     config["kwargs"]["i_print"] = click_kwargs["i_print"]
 
