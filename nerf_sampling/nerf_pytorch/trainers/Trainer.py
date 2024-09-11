@@ -62,6 +62,7 @@ class Trainer:
         single_ray=False,
         plot_object=False,
         compare_nerf=False,
+        use_nerf_max_pts=False,
     ):
         self.start = None
         self.dataset_type = dataset_type
@@ -119,6 +120,7 @@ class Trainer:
         self.single_ray = single_ray
 
         self.compare_nerf = compare_nerf
+        self.use_nerf_max_pts = use_nerf_max_pts
         print(f"{self}")
         print(f"{self.N_samples=}")
         print(f"{self.N_importance=}")

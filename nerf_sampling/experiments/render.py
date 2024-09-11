@@ -87,6 +87,14 @@ from nerf_sampling.definitions import ROOT_DIR
     show_default=True,
 )
 @click.option(
+    "-nm",
+    "--nerf_max",
+    is_flag=True,
+    default=False,
+    help="Use nerf max points to render",
+    show_default=True,
+)
+@click.option(
     "-ip",
     "--i_print",
     default=1000,
@@ -103,6 +111,7 @@ def main(**click_kwargs):
     config["kwargs"]["plot_object"] = click_kwargs["plot_object"]
     config["kwargs"]["i_print"] = click_kwargs["i_print"]
     config["kwargs"]["compare_nerf"] = click_kwargs["compare_nerf"]
+    config["kwargs"]["use_nerf_max_pts"] = click_kwargs["nerf_max"]
     config["kwargs"]["render_only"] = True
     config["kwargs"]["render_test"] = True
 

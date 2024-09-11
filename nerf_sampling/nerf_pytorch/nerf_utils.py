@@ -599,7 +599,16 @@ def sample_as_in_NeRF(
         raw_noise_std=raw_noise_std,
         white_bkgd=white_bkgd,
     )
-    return fine_density, fine_z_vals, fine_pts, fine_rgb_map, fine_weights, fine_alphas
+    return (
+        fine_density,
+        fine_z_vals,
+        fine_pts,
+        fine_rgb_map,
+        fine_weights,
+        fine_alphas,
+        fine_disp_map,
+        fine_raw,
+    )
 
 
 def render_rays(
@@ -769,67 +778,81 @@ def render_rays_test(
     rays_o, rays_d = ray_batch[:, 0:3], ray_batch[:, 3:6]  # [N_rays, 3] each
     viewdirs = ray_batch[:, -3:] if ray_batch.shape[-1] > 8 else None
     ret = {}
-    if trainer.compare_nerf:
-        fine_density, fine_z_vals, fine_pts, fine_rgb_map, fine_weights, fine_alphas = (
-            sample_as_in_NeRF(
-                ray_batch=ray_batch,
-                N_samples=N_samples,
-                network_fn=network_fn,
-                network_fine=network_fine,
-                network_query_fn=network_query_fn,
-                trainer=trainer,
-                perturb=perturb,
-                raw_noise_std=raw_noise_std,
-                lindisp=lindisp,
-                white_bkgd=white_bkgd,
-                pytest=pytest,
-                kwargs=kwargs,
-            )
+    if trainer.compare_nerf or trainer.use_nerf_max_pts:
+        (
+            fine_density,
+            fine_z_vals,
+            fine_pts,
+            fine_rgb_map,
+            fine_weights,
+            fine_alphas,
+            fine_disp_map,
+            fine_raw,
+        ) = sample_as_in_NeRF(
+            ray_batch=ray_batch,
+            N_samples=N_samples,
+            network_fn=network_fn,
+            network_fine=network_fine,
+            network_query_fn=network_query_fn,
+            trainer=trainer,
+            perturb=perturb,
+            raw_noise_std=raw_noise_std,
+            lindisp=lindisp,
+            white_bkgd=white_bkgd,
+            pytest=pytest,
+            kwargs=kwargs,
         )
+
         top_indices = fine_weights.argmax(dim=1, keepdim=True)
         max_z_vals = torch.gather(fine_z_vals, 1, top_indices)
         max_weights = torch.gather(fine_weights, 1, top_indices)
+        rgb = torch.sigmoid(fine_raw[..., :3])  # [N_rays, N_samples, 3]
+        top_indices_expanded = top_indices.unsqueeze(-1).expand(-1, 1, 3)
+        max_rgb_map = torch.gather(rgb, 1, top_indices_expanded).squeeze()
         max_pts = rays_o[..., None, :] + rays_d[..., None, :] * max_z_vals[..., :, None]
         ret["max_z_vals"] = max_z_vals
         ret["max_pts"] = max_pts.cpu()
         ret["max_weights"] = max_weights.cpu()
 
-    depth_net_z_vals = kwargs["depth_network"](rays_o, rays_d)
-    depth_net_pts, depth_net_z_vals = sample_points_around_mean(
-        rays_o=rays_o,
-        rays_d=rays_d,
-        mean=depth_net_z_vals,
-        n_samples=trainer.n_depth_samples,
-        mode=trainer.sampling_mode,
-        std=trainer.distance,
-    )
-    if network_fine is not None:
-        depth_net_raw = network_query_fn(depth_net_pts, viewdirs, network_fine)
+    if trainer.use_nerf_max_pts:
+        depth_net_rgb_map = max_rgb_map
+        depth_net_disp_map = torch.zeros_like(max_rgb_map)
+        depth_net_pts = max_pts
+        depth_net_z_vals = max_z_vals
     else:
-        depth_net_raw = network_query_fn(depth_net_pts, viewdirs, network_fn)
-    (
-        depth_net_rgb_map,
-        depth_net_disp_map,
-        depth_net_acc_map,
-        depth_net_depth_map,
-        depth_net_density,
-        depth_net_alphas,
-        depth_net_weights,
-    ) = trainer.raw2outputs(
-        raw=depth_net_raw,
-        z_vals=depth_net_z_vals,
-        rays_d=rays_d,
-        raw_noise=raw_noise_std,
-        white_bkdg=white_bkgd,
-        pytest=pytest,
-    )
+        depth_net_z_vals = kwargs["depth_network"](rays_o, rays_d)
+        depth_net_pts, depth_net_z_vals = sample_points_around_mean(
+            rays_o=rays_o,
+            rays_d=rays_d,
+            mean=depth_net_z_vals,
+            n_samples=trainer.n_depth_samples,
+            mode=trainer.sampling_mode,
+            std=trainer.distance,
+        )
+        if network_fine is not None:
+            depth_net_raw = network_query_fn(depth_net_pts, viewdirs, network_fine)
+        else:
+            depth_net_raw = network_query_fn(depth_net_pts, viewdirs, network_fn)
+        (
+            depth_net_rgb_map,
+            depth_net_disp_map,
+            depth_net_acc_map,
+            depth_net_depth_map,
+            depth_net_density,
+            depth_net_alphas,
+            depth_net_weights,
+        ) = trainer.raw2outputs(
+            raw=depth_net_raw,
+            z_vals=depth_net_z_vals,
+            rays_d=rays_d,
+            raw_noise=raw_noise_std,
+            white_bkdg=white_bkgd,
+            pytest=pytest,
+        )
     ret["depth_net_rgb_map"] = depth_net_rgb_map
     ret["depth_net_disp_map"] = depth_net_disp_map
     ret["depth_net_z_vals"] = depth_net_z_vals
     ret["depth_net_pts"] = depth_net_pts.cpu()
-
-    if retraw:
-        ret["raw"] = depth_net_raw.cpu()
 
     for key in ret:
         if (torch.isnan(ret[key]).any() or torch.isinf(ret[key]).any()) and DEBUG:
