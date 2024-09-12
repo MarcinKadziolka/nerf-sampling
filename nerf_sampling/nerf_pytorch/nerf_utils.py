@@ -649,21 +649,28 @@ def render_rays(
     rays_o, rays_d = ray_batch[:, 0:3], ray_batch[:, 3:6]  # [N_rays, 3] each
     viewdirs = ray_batch[:, -3:] if ray_batch.shape[-1] > 8 else None
 
-    fine_density, fine_z_vals, fine_pts, fine_rgb_map, fine_weights, fine_alphas = (
-        sample_as_in_NeRF(
-            ray_batch=ray_batch,
-            N_samples=N_samples,
-            network_fn=network_fn,
-            network_fine=network_fine,
-            network_query_fn=network_query_fn,
-            trainer=trainer,
-            perturb=perturb,
-            raw_noise_std=raw_noise_std,
-            lindisp=lindisp,
-            white_bkgd=white_bkgd,
-            pytest=pytest,
-            kwargs=kwargs,
-        )
+    (
+        fine_density,
+        fine_z_vals,
+        fine_pts,
+        fine_rgb_map,
+        fine_weights,
+        fine_alphas,
+        fine_disp_map,
+        fine_raw,
+    ) = sample_as_in_NeRF(
+        ray_batch=ray_batch,
+        N_samples=N_samples,
+        network_fn=network_fn,
+        network_fine=network_fine,
+        network_query_fn=network_query_fn,
+        trainer=trainer,
+        perturb=perturb,
+        raw_noise_std=raw_noise_std,
+        lindisp=lindisp,
+        white_bkgd=white_bkgd,
+        pytest=pytest,
+        kwargs=kwargs,
     )
     top_indices = fine_weights.argmax(dim=1, keepdim=True)
     max_z_vals = torch.gather(fine_z_vals, 1, top_indices)
