@@ -23,11 +23,17 @@ from nerf_sampling.definitions import ROOT_DIR
     show_default=True,
 )
 @click.option(
-    "-d",
-    "--dataset",
+    "-dp",
+    "--dataset_path",
     help="Path to dataset folder.",
     type=str,
-    default=f"{ROOT_DIR}/dataset/drums",
+    show_default=True,
+)
+@click.option(
+    "-d",
+    "--dataset",
+    help="Name of the dataset to train on.",
+    type=str,
     show_default=True,
 )
 @click.option(
@@ -77,13 +83,27 @@ def main(**click_kwargs):
     config["kwargs"]["single_image"] = click_kwargs["single_image"]
     config["kwargs"]["single_ray"] = click_kwargs["single_ray"]
     config["kwargs"]["i_print"] = click_kwargs["i_print"]
+
+    datadir = click_kwargs["dataset_path"]
+    ft_path = None
+    depth_net_path = None
+    if (dataset_name := click_kwargs["dataset"]) is not None:
+        datadir = f"{ROOT_DIR}/dataset/{dataset_name}"
+        ft_path = f"{ROOT_DIR}/dataset/{dataset_name}/pretrained_model/200000.tar"
+        # depth_net_path = f"{ROOT_DIR}/pretrained_depth_nets/{dataset_name}/files/sampler_experiment/100000.tar"
+        print(f"{dataset_name=}")
+    if datadir is None:
+        print(
+            "Please specify the name of the dataset or provide the path to the folder"
+        )
+        return
+
     override = {
         "depth_net_lr": 1e-4,
         "n_layers": 10,
         "layer_width": 256,
         "train_depth_net_only": True,
         "sphere_radius": 2,
-        "i_testset": 100,
     }
 
     override_config(config=config["kwargs"], update=override)
@@ -98,6 +118,7 @@ def main(**click_kwargs):
         project="nerf-sampling",
         config=config["kwargs"],
         mode=click_kwargs["wandb"],
+        dir="./logs",
         tags=[
             "train_depth_net_only",
             "bigger_network",
@@ -105,21 +126,23 @@ def main(**click_kwargs):
             "depth_z_vals_prediction",
             "single_point",
             "sphere_intersection",
-            "drums",
+            f"{dataset_name}",
             "DELETE",
         ],
     )
-    basedir = wandb.run.dir
-    print(f"{basedir=}")
-    datadir = click_kwargs["dataset"]
-    config["kwargs"]["datadir"] = datadir
-    config["kwargs"]["basedir"] = basedir
-    ft_path = f"{ROOT_DIR}/dataset/drums/pretrained_model/200000.tar"
-    depth_net_path = None
+    if click_kwargs["wandb"] == "disabled":
+        wandb.run.dir = "./logs"
+        basedir = wandb.run.dir
+    else:
+        basedir = wandb.run.dir
 
+    print(f"{basedir=}")
     # ft_path = depth_net_path
     config["kwargs"]["ft_path"] = ft_path
     config["kwargs"]["depth_net_path"] = depth_net_path
+    config["kwargs"]["expname"] = f"{dataset_name}_depth_net"
+    config["kwargs"]["datadir"] = datadir
+    config["kwargs"]["basedir"] = basedir
 
     # for wandb purposes
     config["kwargs"]["sampling_mode"] = "depth_only"

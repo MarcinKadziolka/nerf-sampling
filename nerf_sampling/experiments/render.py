@@ -145,6 +145,7 @@ def main(**click_kwargs):
         ],
     )
 
+    wandb.run.dir = "./logs"
     basedir = wandb.run.dir
     print(f"{basedir=}")
     datadir = click_kwargs["dataset_path"]
@@ -166,6 +167,7 @@ def main(**click_kwargs):
 
     config["kwargs"]["ft_path"] = ft_path
     config["kwargs"]["depth_net_path"] = depth_net_path
+    config["kwargs"]["expname"] = f"{dataset_name}_render"
 
     config["kwargs"]["n_depth_samples"] = 128
     config["kwargs"]["distance"] = 1
