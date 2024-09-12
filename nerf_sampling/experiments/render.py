@@ -27,7 +27,6 @@ from nerf_sampling.definitions import ROOT_DIR
     "--dataset_path",
     help="Path to dataset folder.",
     type=str,
-    default=f"{ROOT_DIR}/dataset/drums",
     show_default=True,
 )
 @click.option(
@@ -156,6 +155,12 @@ def main(**click_kwargs):
         datadir = f"{ROOT_DIR}/dataset/{dataset_name}"
         ft_path = f"{ROOT_DIR}/dataset/{dataset_name}/pretrained_model/200000.tar"
         depth_net_path = f"{ROOT_DIR}/pretrained_depth_nets/{dataset_name}/files/sampler_experiment/100000.tar"
+        print(f"{dataset_name=}")
+    if datadir is None:
+        print(
+            "Please specify the name of the dataset or provide the path to the folder"
+        )
+        return
 
     config["kwargs"]["datadir"] = datadir
     config["kwargs"]["basedir"] = basedir
