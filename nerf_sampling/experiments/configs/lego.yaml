@@ -2,8 +2,8 @@ sampler_params: &sampler_params # & adds anchor (reference) with a given name
   N_rand: 1024
   white_bkgd: True
   device: 'cuda'
-  i_weights: 20000
-  i_testset: 20000
+  i_weights: 100000
+  i_testset: 100000
   i_video: 100000
   i_print: 500
   lrate_decay: 500

@@ -23,11 +23,17 @@ from nerf_sampling.definitions import ROOT_DIR
     show_default=True,
 )
 @click.option(
-    "-d",
-    "--dataset",
+    "-dp",
+    "--dataset_path",
     help="Path to dataset folder.",
     type=str,
-    default=f"{ROOT_DIR}/dataset/drums",
+    show_default=True,
+)
+@click.option(
+    "-d",
+    "--dataset",
+    help="Name of the dataset to render.",
+    type=str,
     show_default=True,
 )
 @click.option(
@@ -77,13 +83,30 @@ def main(**click_kwargs):
     config["kwargs"]["single_image"] = click_kwargs["single_image"]
     config["kwargs"]["single_ray"] = click_kwargs["single_ray"]
     config["kwargs"]["i_print"] = click_kwargs["i_print"]
+    ft_path = None
+    depth_net_path = None
+
+    datadir = click_kwargs["dataset_path"]
+    if (dataset_name := click_kwargs["dataset"]) is not None:
+        datadir = f"{ROOT_DIR}/dataset/{dataset_name}"
+        # datadir = f"/shared/sets/datasets/nerf_synthetic/{dataset_name}"
+        ft_path = f"{ROOT_DIR}/dataset/{dataset_name}/pretrained_model/200000.tar"
+        # ft_path = f"~/nerf-pytorch/logs/blender_paper_{dataset_name}/200000.tar"
+        print(f"{dataset_name=}")
+    if datadir is None:
+        print(
+            "Please specify the name of the dataset or provide the path to the folder"
+        )
+        return
+
+    config["kwargs"]["datadir"] = datadir
+
     override = {
         "depth_net_lr": 1e-4,
         "n_layers": 10,
         "layer_width": 256,
         "train_depth_net_only": True,
         "sphere_radius": 2,
-        "i_testset": 100,
     }
 
     override_config(config=config["kwargs"], update=override)
@@ -91,13 +114,14 @@ def main(**click_kwargs):
     torch.manual_seed(42)  # 0
 
     set_global_device(config["kwargs"]["device"])
-    EPOCHS = 100_000
+    EPOCHS = 200_000
 
     print(f"wandb: {click_kwargs['wandb']}")
     wandb.init(
         project="nerf-sampling",
         config=config["kwargs"],
         mode=click_kwargs["wandb"],
+        dir="./logs",
         tags=[
             "train_depth_net_only",
             "bigger_network",
@@ -105,19 +129,15 @@ def main(**click_kwargs):
             "depth_z_vals_prediction",
             "single_point",
             "sphere_intersection",
-            "drums",
-            "DELETE",
+            f"{click_kwargs['dataset']}",
         ],
     )
+    wandb.run.dir = "./logs"
     basedir = wandb.run.dir
+    config["kwargs"]["expname"] = f"{dataset_name}_depth_net"
     print(f"{basedir=}")
-    datadir = click_kwargs["dataset"]
-    config["kwargs"]["datadir"] = datadir
-    config["kwargs"]["basedir"] = basedir
-    ft_path = f"{ROOT_DIR}/dataset/drums/pretrained_model/200000.tar"
-    depth_net_path = None
 
-    # ft_path = depth_net_path
+    config["kwargs"]["basedir"] = basedir
     config["kwargs"]["ft_path"] = ft_path
     config["kwargs"]["depth_net_path"] = depth_net_path
 
