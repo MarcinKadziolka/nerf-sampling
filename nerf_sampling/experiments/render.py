@@ -1,4 +1,4 @@
-"""Script for running SphereNeRF."""
+"""Script for rendering depth net results."""
 
 import click
 import torch
