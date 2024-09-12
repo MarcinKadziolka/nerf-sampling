@@ -60,7 +60,7 @@ class Trainer:
         trial: Optional[optuna.trial.Trial] = None,
         single_image=False,
         single_ray=False,
-        plot_object=False,
+        save_scene_data=False,
         compare_nerf=False,
         use_nerf_max_pts=False,
         use_full_nerf=False,
@@ -111,7 +111,7 @@ class Trainer:
         self.W = None
         self.H = None
         self.c2w = None
-        self.plot_object = plot_object
+        self.save_scene_data = save_scene_data
 
         self.depth_net_lr = depth_net_lr
         self.train_depth_net_only = train_depth_net_only
@@ -181,7 +181,7 @@ class Trainer:
     def render(
         self,
         render_test,
-        plot_object,
+        save_scene_data,
         images,
         i_test,
         render_poses,
@@ -214,7 +214,7 @@ class Trainer:
                 self.chunk,
                 render_kwargs_test,
                 step=self.global_step,
-                plot_object=plot_object,
+                save_scene_data=save_scene_data,
                 gt_imgs=images,
                 savedir=testsavedir,
                 render_factor=self.render_factor,
@@ -302,7 +302,7 @@ class Trainer:
                     render_kwargs_test,
                     step=self.global_step,
                     wandb_log=True,
-                    plot_object=render_kwargs_train["trainer"].plot_object,
+                    save_scene_data=render_kwargs_train["trainer"].save_scene_data,
                     gt_imgs=target_s,
                     savedir=testsavedir,
                 )
@@ -730,7 +730,7 @@ class Trainer:
         if self.render_only:
             avg_test_psnr = self.render(
                 self.render_test,
-                self.plot_object,
+                self.save_scene_data,
                 images,
                 i_test,
                 render_poses,

@@ -77,11 +77,10 @@ from nerf_sampling.definitions import ROOT_DIR
     show_default=True,
 )
 @click.option(
-    "-po",
-    "--plot_object",
+    "-ssd",
+    "--save_scene_data",
     is_flag=True,
     default=False,
-    help="Save plot of object during rendering test. This option only applies when --render_test is enabled.",
     show_default=True,
 )
 @click.option(
@@ -123,7 +122,7 @@ def main(**click_kwargs):
 
     config["kwargs"]["single_image"] = click_kwargs["single_image"]
     config["kwargs"]["single_ray"] = click_kwargs["single_ray"]
-    config["kwargs"]["plot_object"] = click_kwargs["plot_object"]
+    config["kwargs"]["save_scene_data"] = click_kwargs["save_scene_data"]
     config["kwargs"]["i_print"] = click_kwargs["i_print"]
     config["kwargs"]["compare_nerf"] = click_kwargs["compare_nerf"]
     config["kwargs"]["use_nerf_max_pts"] = click_kwargs["nerf_max"]

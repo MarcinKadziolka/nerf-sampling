@@ -263,7 +263,7 @@ def render_path(
     render_kwargs,
     step,
     wandb_log=False,
-    plot_object=False,
+    save_scene_data=False,
     gt_imgs=None,
     savedir=None,
     render_factor=0,
@@ -334,29 +334,15 @@ def render_path(
                     with open(f, "a") as file:
                         file.write(to_write)
 
-            if plot_object:
-                pts = depth_net_extras["depth_net_pts"]
-                # max_weights = depth_net_extras["max_weights"]
-                # indices = utils.get_dense_indices(
-                #     densities=max_weights,
-                #     min_density=torch.tensor([0.03], device=torch.device("cpu")),
-                # )
+            if save_scene_data:
+                pts = depth_net_extras["depth_net_pts"]  # [H, W, N_samples, 3]
                 all_pts.append(pts)
         if wandb_log:
             log_wandb(depth_net_extras, i, step)
 
-    if plot_object and savedir is not None:
-        all_pts = torch.cat(all_pts)  # [n, 3]
-        for k in [1e4, 2e4, 3e4, 4e4, 9e4]:
-            points_to_plot = utils.get_random_points(all_pts, k=int(k))  # [k, 3]
-            fig, _ = visualize.plot_points(
-                points_to_plot.unsqueeze(0),
-                s=10,
-                title=f"{k} most points on the drums testset",
-            )
-            pickle.dump(
-                fig, open(os.path.join(savedir, f"excavator{k}.fig.pickle"), "wb")
-            )
+    if save_scene_data and savedir is not None:
+        all_pts = torch.cat(all_pts)
+        torch.save(all_pts, "all_pts.pt")
 
     rgbs = np.stack(rgbs, 0)
     disps = np.stack(disps, 0)
