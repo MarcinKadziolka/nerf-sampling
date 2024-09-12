@@ -341,8 +341,10 @@ def render_path(
             log_wandb(depth_net_extras, i, step)
 
     if save_scene_data and savedir is not None:
+        f = os.path.join(savedir, "scene_data/")
+        os.makedirs(f, exist_ok=True)
         all_pts = torch.cat(all_pts)
-        torch.save(all_pts, "all_pts.pt")
+        torch.save(all_pts, os.path.join(f, "all_pts.pt"))
 
     rgbs = np.stack(rgbs, 0)
     disps = np.stack(disps, 0)
