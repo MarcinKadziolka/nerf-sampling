@@ -84,8 +84,8 @@ from nerf_sampling.definitions import ROOT_DIR
     show_default=True,
 )
 @click.option(
-    "-cn",
-    "--compare_nerf",
+    "-nc",
+    "--nerf_compare",
     is_flag=True,
     default=False,
     help="Compare depth network predictions to the original NeRF most important samples.",
@@ -124,9 +124,12 @@ def main(**click_kwargs):
     config["kwargs"]["single_ray"] = click_kwargs["single_ray"]
     config["kwargs"]["save_scene_data"] = click_kwargs["save_scene_data"]
     config["kwargs"]["i_print"] = click_kwargs["i_print"]
-    config["kwargs"]["compare_nerf"] = click_kwargs["compare_nerf"]
-    config["kwargs"]["use_nerf_max_pts"] = click_kwargs["nerf_max"]
-    config["kwargs"]["use_full_nerf"] = click_kwargs["nerf_full"]
+    nerf_compare = click_kwargs["nerf_compare"]
+    nerf_max = click_kwargs["nerf_max"]
+    nerf_full = click_kwargs["nerf_full"]
+    config["kwargs"]["compare_nerf"] = nerf_compare
+    config["kwargs"]["use_nerf_max_pts"] = nerf_max
+    config["kwargs"]["use_full_nerf"] = nerf_full
     config["kwargs"]["render_only"] = True
     config["kwargs"]["render_test"] = True
 
@@ -167,11 +170,28 @@ def main(**click_kwargs):
 
     config["kwargs"]["ft_path"] = ft_path
     config["kwargs"]["depth_net_path"] = depth_net_path
-    config["kwargs"]["expname"] = f"{dataset_name}_render"
 
-    config["kwargs"]["n_depth_samples"] = 128
-    config["kwargs"]["distance"] = 1
-    config["kwargs"]["sampling_mode"] = "depth_only"
+    n_samples = None
+    distance = None
+    sampling_mode = "depth_only"  # uniform, gaussian, depth_only
+
+    n_samples_list = [2, 32, 64, 128]
+    distances = [0.1, 0.3, 0.5, 1]
+
+    if nerf_compare:
+        config["kwargs"]["expname"] = f"{dataset_name}_depth_net_render_mse"
+    elif nerf_max:
+        config["kwargs"]["expname"] = f"{dataset_name}_nerf_max_render"
+    elif nerf_full:
+        config["kwargs"]["expname"] = f"{dataset_name}_nerf_full_render"
+    else:
+        config["kwargs"][
+            "expname"
+        ] = f"{dataset_name}_depth_net_render_n_samples_{n_samples}_distance_{distance}_sampling_mode_{sampling_mode}"
+
+    config["kwargs"]["n_depth_samples"] = n_samples
+    config["kwargs"]["distance"] = distance
+    config["kwargs"]["sampling_mode"] = sampling_mode
 
     override = {
         "depth_net_lr": 1e-4,

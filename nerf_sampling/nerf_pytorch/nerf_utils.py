@@ -282,6 +282,7 @@ def render_path(
 
     t = time.time()
     all_pts = []
+    all_weights = []
     psnr_info = None
     total_psnr = 0
     total_mse = 0
@@ -336,15 +337,19 @@ def render_path(
 
             if save_scene_data:
                 pts = depth_net_extras["depth_net_pts"]  # [H, W, N_samples, 3]
-                all_pts.append(pts)
+                weights = depth_net_extras["depth_net_weights"]  # [H, W, N_samples]
+
+                all_pts.append(torch.flatten(pts, end_dim=2))  # [H*W*N_samples, 3]
+                all_weights.append(torch.flatten(weights, end_dim=2))  # [H*W*N_samples]
         if wandb_log:
             log_wandb(depth_net_extras, i, step)
 
     if save_scene_data and savedir is not None:
         f = os.path.join(savedir, "scene_data/")
-        os.makedirs(f, exist_ok=True)
         all_pts = torch.cat(all_pts)
-        torch.save(all_pts, os.path.join(f, "all_pts.pt"))
+        all_weights = torch.cat(all_weights)
+        scene_data = {"all_pts": all_pts, "all_weights": all_weights}
+        torch.save(scene_data, os.path.join(savedir, "scene_data.pt"))
 
     rgbs = np.stack(rgbs, 0)
     disps = np.stack(disps, 0)
@@ -805,18 +810,20 @@ def render_rays_test(
         top_indices_expanded = top_indices.unsqueeze(-1).expand(-1, 1, 3)
         max_rgb_map = torch.gather(rgb, 1, top_indices_expanded).squeeze()
         max_pts = rays_o[..., None, :] + rays_d[..., None, :] * max_z_vals[..., :, None]
-        ret["max_z_vals"] = max_z_vals
+        ret["max_z_vals"] = max_z_vals.cpu()
         ret["max_pts"] = max_pts.cpu()
         ret["max_weights"] = max_weights.cpu()
 
     if trainer.use_nerf_max_pts:
         depth_net_rgb_map = max_rgb_map
         depth_net_disp_map = torch.zeros_like(max_rgb_map)
+        depth_net_weights = max_weights
         depth_net_pts = max_pts
         depth_net_z_vals = max_z_vals
     elif trainer.use_full_nerf:
         depth_net_rgb_map = fine_rgb_map
         depth_net_disp_map = fine_disp_map
+        depth_net_weights = fine_weights
         depth_net_pts = fine_pts
         depth_net_z_vals = fine_z_vals
     else:
@@ -850,8 +857,9 @@ def render_rays_test(
             pytest=pytest,
         )
     ret["depth_net_rgb_map"] = depth_net_rgb_map
-    ret["depth_net_disp_map"] = depth_net_disp_map
-    ret["depth_net_z_vals"] = depth_net_z_vals
+    ret["depth_net_weights"] = depth_net_weights.cpu()
+    ret["depth_net_disp_map"] = depth_net_disp_map.cpu()
+    ret["depth_net_z_vals"] = depth_net_z_vals.cpu()
     ret["depth_net_pts"] = depth_net_pts.cpu()
 
     for key in ret:

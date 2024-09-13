@@ -33,7 +33,7 @@ def unfreeze_model(model):
         param.requires_grad = True
 
 
-def get_dense_indices(densities: torch.Tensor, min_density: torch.Tensor):
+def get_min_indices(densities: torch.Tensor, min_density: torch.Tensor):
     """Obtains indices of points that have density >= min_density.
 
     Args:

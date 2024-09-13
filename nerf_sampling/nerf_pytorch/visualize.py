@@ -63,8 +63,10 @@ def visualize_rays_pts(
 
 def _initialize_3d_plot() -> tuple[matplotlib.figure.Figure, matplotlib.axes.Axes]:
     """Initialize 3d plot and set axis labels."""
-    fig = plt.figure()
-    ax = fig.add_subplot(111, projection="3d")
+    fig, ax = plt.subplots(
+        subplot_kw={"projection": "3d"},
+        gridspec_kw=dict(top=1.07, bottom=0.02, left=0, right=1),
+    )
 
     ax.xaxis._axinfo["label"]["space_factor"] = 2.0
     ax.yaxis._axinfo["label"]["space_factor"] = 2.0
@@ -73,9 +75,10 @@ def _initialize_3d_plot() -> tuple[matplotlib.figure.Figure, matplotlib.axes.Axe
     ax.set_ylabel("Y")
     ax.set_zlabel("Z")
     ax.view_init(elev=30, azim=45)
-    ax.set_xlim([-3, 3])
-    ax.set_ylim([-3, 3])
-    ax.set_zlim([-3, 3])
+    lim = 3
+    ax.set_xlim([-lim, lim])
+    ax.set_ylim([-lim, lim])
+    ax.set_zlim([-lim, lim])
     return fig, ax
 
 
