@@ -225,15 +225,17 @@ def sample_points_around_mean(
     if mode == "depth_only":
         z_vals = mean
     elif mode == "gaussian":
-        z_vals, _ = (mean + std * torch.randn(mean.shape[0], n_samples)).sort(dim=-1)
+        z_vals, _ = torch.cat(
+            [mean + std * torch.randn(mean.shape[0], n_samples - 1), mean], dim=-1
+        ).sort(dim=-1)
     elif mode == "uniform":
-        grid = torch.linspace(-std, std, steps=n_samples)
+        grid = torch.linspace(-std, std, steps=n_samples - 1)
 
         # Expand the grid to match the shape of outputs
         expanded_grid = grid.view(1, -1).expand(mean.size(0), -1)
 
         # Add the grid to the outputs to center the samples around outputs
-        z_vals = mean + expanded_grid
+        z_vals, _ = torch.cat([mean + expanded_grid, mean], dim=-1).sort(dim=-1)
 
         # Clip the values between 0 and 1
         z_vals = torch.clip(z_vals, 2, 6)
