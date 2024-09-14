@@ -5,18 +5,21 @@ import torch
 from nerf_sampling.definitions import ROOT_DIR
 import os
 
-dir_path = f"{ROOT_DIR}/logs/lego_render/renderonly_test_099999"
+dataset_name = "chair"
+# dir_path = f"{ROOT_DIR}/logs/{dataset_name}/{dataset_name}_depth_net_render_n_samples_2_distance_0.01_sampling_mode_uniform/renderonly_test_199999"
+dir_path = f"{ROOT_DIR}/logs/{dataset_name}/{dataset_name}_nerf_max_render/renderonly_test_199999"
 scene_data_path = os.path.join(dir_path, "scene_data.pt")
 scene_data = torch.load(scene_data_path)
 
 all_pts = scene_data["all_pts"].cpu()
 all_weights = scene_data["all_weights"].cpu()
 k = 5e4
-min_indices = utils.get_min_indices(all_weights, torch.tensor([1]))
+min_indices = utils.get_min_indices(all_weights, torch.tensor([0.0]))
+points_to_plot = all_pts
 points_to_plot = all_pts[min_indices]
 points_to_plot = utils.get_random_points(points_to_plot, k=int(k))  # [k, 3]
 fig, _ = visualize.plot_points(points_to_plot.unsqueeze(0), s=10)
 plt.show()
 
-fig_name = "3d_points.png"
-fig.savefig(os.path.join(dir_path, fig_name), dpi=600, bbox_inches="tight")
+# fig_name = f"3d_points_{k}.png"
+# fig.savefig(os.path.join(dir_path, fig_name), dpi=600, bbox_inches="tight")

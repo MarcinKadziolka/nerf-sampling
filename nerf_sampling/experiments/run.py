@@ -89,7 +89,7 @@ def main(**click_kwargs):
     depth_net_path = None
     if (dataset_name := click_kwargs["dataset"]) is not None:
         datadir = f"{ROOT_DIR}/dataset/{dataset_name}"
-        ft_path = f"{ROOT_DIR}/dataset/{dataset_name}/pretrained_model/200000.tar"
+        ft_path = f"{ROOT_DIR}/pretrained/nerf/{dataset_name}/200000.tar"
         # depth_net_path = f"{ROOT_DIR}/pretrained_depth_nets/{dataset_name}/files/sampler_experiment/100000.tar"
         print(f"{dataset_name=}")
     if datadir is None:

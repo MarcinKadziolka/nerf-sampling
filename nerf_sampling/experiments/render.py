@@ -163,8 +163,8 @@ def main(**click_kwargs):
     depth_net_path = None
     if (dataset_name := click_kwargs["dataset"]) is not None:
         datadir = f"{ROOT_DIR}/dataset/{dataset_name}"
-        ft_path = f"{ROOT_DIR}/dataset/{dataset_name}/pretrained_model/200000.tar"
-        depth_net_path = f"{ROOT_DIR}/pretrained_depth_nets/{dataset_name}/files/sampler_experiment/100000.tar"
+        ft_path = f"{ROOT_DIR}/pretrained/nerf/{dataset_name}/200000.tar"
+        depth_net_path = f"{ROOT_DIR}/pretrained/depth_net/{dataset_name}/files/sampler_experiment/200000.tar"
         print(f"{dataset_name=}")
     if datadir is None:
         print(
@@ -198,8 +198,10 @@ def main(**click_kwargs):
 
     # manual values
     n_samples = 2
-    distance = 0.1
-    sampling_mode = "gaussian"  # uniform, gaussian, depth_only
+    distance = 0.01
+    # n_samples = None
+    # distance = None
+    sampling_mode = "uniform"  # uniform, gaussian, depth_only
 
     if nerf_compare:
         config["kwargs"]["expname"] = f"{dataset_name}_depth_net_render_mse"
