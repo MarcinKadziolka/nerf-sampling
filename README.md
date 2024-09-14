@@ -3,6 +3,7 @@
 
 
 ## Dataset and model structure
+NeRF synthetic dataset can be found ![here](https://www.kaggle.com/datasets/nguyenhung1903/nerf-synthetic-dataset?resource=download) (accessed: 15.09.2024)
 
 **Provide datasets folders in the following way:**
 
