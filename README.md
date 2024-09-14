@@ -4,7 +4,7 @@
 
 ## Dataset and model structure
 
-###### Provide datasets folders in the following way:
+**Provide datasets folders in the following way:**
 
 nerf-sampling/
 
@@ -18,7 +18,7 @@ nerf-sampling/
 
                         lego/
 
-###### Store pretrained NeRF models and DepthNets as follows:
+**Store pretrained NeRF models and DepthNets as follows:**
 
 nerf-sampling/
 
@@ -64,17 +64,17 @@ Now training and rendering can begin.
 
 All following commands must be run from `nerf-sampling/nerf_sampling` directory
 
-###### To train new DepthNet run the following command:
+**To train new DepthNet run the following command:**
 
 `python3 experiments/run.py -d dataset_name`
 
 where dataset_name is the name of the folder put in the correct file structure.
 
-###### To render and test DepthNet run:
+**To render and test DepthNet run:**
 
 `python3 experiments/render.py -d dataset_name`
 
-###### To plot the point clouds:
+**To plot the point clouds:**
 
 `python3 experiments/plot.py`
 
@@ -82,7 +82,7 @@ The paths to the saved data of the scene have to be provided manually inside the
 
 
 
-###### Additional information
+**Additional information**
 
  Read all the possibilities of training, rendering and options by running:
 
