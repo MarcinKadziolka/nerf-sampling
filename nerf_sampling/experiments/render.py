@@ -118,6 +118,14 @@ from nerf_sampling.nerf_pytorch.utils import (
     show_default=True,
 )
 @click.option(
+    "-tmp",
+    "--temporary",
+    is_flag=True,
+    default=False,
+    help="Use temporary folder for experiment.",
+    show_default=True,
+)
+@click.option(
     "-ip",
     "--i_print",
     default=1000,
@@ -213,6 +221,9 @@ def main(**click_kwargs):
         config["kwargs"][
             "expname"
         ] = f"{dataset_name}_depth_net_render_n_samples_{n_samples}_distance_{distance}_sampling_mode_{sampling_mode}"
+
+    if click_kwargs["temporary"]:
+        config["kwargs"]["expname"] = "tmp"
 
     config["kwargs"]["n_depth_samples"] = n_samples
     config["kwargs"]["distance"] = distance
