@@ -294,7 +294,7 @@ def render_path(
     for i, c2w in enumerate(tqdm(render_poses)):
         print(i, time.time() - t)
         t = time.time()
-        depth_net_rgb, depth_net_disp, depth_net_extras = render_test(
+        depth_net_rgb, depth_net_disp, depth_net_extras = render_test(  # [H, W, 3]
             H, W, K, chunk=chunk, c2w=c2w[:3, :4], **render_kwargs
         )
         rgbs.append(depth_net_rgb.cpu().numpy())
@@ -348,7 +348,10 @@ def render_path(
         f = os.path.join(savedir, "scene_data/")
         all_pts = torch.cat(all_pts)
         all_weights = torch.cat(all_weights)
-        scene_data = {"all_pts": all_pts, "all_weights": all_weights}
+        scene_data = {
+            "all_pts": all_pts,
+            "all_weights": all_weights,
+        }
         torch.save(scene_data, os.path.join(savedir, "scene_data.pt"))
 
     rgbs = np.stack(rgbs, 0)
@@ -515,20 +518,24 @@ def sample_as_in_NeRF(
         in space.
       network_query_fn: function used for passing queries to network_fn.
       N_samples: int. Number of different times to sample along each ray.
-      retraw: bool. If True, include model's raw, unprocessed predictions.
+      trainer:
       lindisp: bool. If True, sample linearly in inverse depth rather than in depth.
       perturb: float, 0 or 1. If non-zero, each ray is sampled at stratified
         random points in time.
-      N_importance: int. Number of additional times to sample along each ray.
-        These samples are only passed to network_fine.
       network_fine: "fine" network with same spec as network_fn.
       white_bkgd: bool. If True, assume a white background.
       raw_noise_std: ...
       verbose: bool. If True, print more debugging info.
 
     Returns:
-      fine_density: torch.Tensor. Density values for all points (coarse + fine)
-      fine_z_vals: torch.Tensor. Z values for all points (coarse + fine)
+      fine_density: [N_rays, N_samples] Density values for all points (coarse + fine)
+      fine_z_vals: [N_rays, N_samples] Z values for all points (coarse + fine)
+      fine_pts: [N_rays, N_samples, 3]
+      fine_rgb_map: [N_rays, 3]
+      fine_weights: [N_rays, N_samples]
+      fine_alphas: [N_rays, N_samples]
+      fine_disp_map: [N_rays]
+      fine_raw: [N_rays, N_samples, 4]
     """
     N_rays = ray_batch.shape[0]
     rays_o, rays_d = ray_batch[:, 0:3], ray_batch[:, 3:6]  # [N_rays, 3] each
