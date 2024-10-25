@@ -17,7 +17,8 @@ k = 5e4
 min_indices = utils.get_min_indices(all_weights, torch.tensor([0.0]))
 points_to_plot = all_pts
 points_to_plot = all_pts[min_indices]
-points_to_plot = utils.get_random_points(points_to_plot, k=int(k))  # [k, 3]
+random_indices = utils.get_random_indices(points_to_plot, k=int(k))  # [k, 3]
+points_to_plot = points_to_plot[random_indices]
 fig, _ = visualize.plot_points(points_to_plot.unsqueeze(0), s=10)
 plt.show()
 
