@@ -1,4 +1,4 @@
-# Code for Neural Rendering master thesis.
+# Accelerating sampling in NeRF
 
 
 
