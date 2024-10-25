@@ -43,18 +43,17 @@ def get_min_indices(densities: torch.Tensor, min_density: torch.Tensor):
     return densities >= min_density
 
 
-def get_random_points(pts: torch.Tensor, k: int):
-    """Extract k random points from provided.
+def get_random_indices(N_samples: torch.Tensor, k: int):
+    """Selects k random indices from a range of 0 to N_samples - 1.
 
     Args:
-      pts: [N_samples, 3].
+      N_samples: Total number of population.
       k: How many random points to select.
 
     Returns:
-      pts: [k, 3].
+      List[int]: A list containing k randomly selected indices.
     """
-    indices = random.sample(range(len(pts)), k=k)
-    return pts[indices]
+    return random.sample(range(N_samples), k=k)
 
 
 def save_state(
