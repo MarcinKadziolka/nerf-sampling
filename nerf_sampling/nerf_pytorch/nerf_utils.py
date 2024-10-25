@@ -582,6 +582,7 @@ def sample_as_in_NeRF(
         fine_density,
         fine_alphas,
         fine_weights,
+        fine_depth_map,
     ) = trainer.sample_fine_points(
         z_vals=coarse_z_vals,
         weights=coarse_weights,
@@ -608,6 +609,7 @@ def sample_as_in_NeRF(
         fine_alphas,
         fine_disp_map,
         fine_raw,
+        fine_depth_map,
     )
 
 
@@ -672,6 +674,7 @@ def render_rays(
         fine_alphas,
         fine_disp_map,
         fine_raw,
+        fine_depth_map,
     ) = sample_as_in_NeRF(
         ray_batch=ray_batch,
         N_samples=N_samples,
@@ -731,6 +734,38 @@ def render_rays(
             print(f"! [Numerical Error] {key} contains nan or inf.")
 
     return ret
+
+
+def get_maximum_values(
+    fine_weights: torch.Tensor,
+    fine_z_vals: torch.Tensor,
+    fine_raw: torch.Tensor,
+    rays_o: torch.Tensor,
+    rays_d: torch.Tensor,
+):
+    """Select the maximum weight, and according z_val and point per ray.
+
+    Args:
+      fine_weights: [N_rays, N_samples]
+      fine_z_vals: [N_rays, N_samples]
+      fine_raw: [N_rays, N_samples, 4]
+      rays_o: [N_rays, 3]
+      rays_d: [N_rays, 3]
+
+    Returns:
+      max_weights: [N_rays, 1]
+      max_z_vals: [N_rays, 1]
+      max_pts: [N_rays, 1, 3]
+    """
+    top_indices = fine_weights.argmax(dim=1, keepdim=True)
+    max_z_vals = torch.gather(fine_z_vals, 1, top_indices)
+    max_weights = torch.gather(fine_weights, 1, top_indices)
+    rgb = torch.sigmoid(fine_raw[..., :3])  # [N_rays, N_samples, 3]
+    top_indices_expanded = top_indices.unsqueeze(-1).expand(-1, 1, 3)
+    max_rgb_map = torch.gather(rgb, 1, top_indices_expanded).squeeze()
+    max_pts = rays_o[..., None, :] + rays_d[..., None, :] * max_z_vals[..., :, None]
+
+    return max_weights, max_z_vals, max_pts, max_rgb_map
 
 
 def render_rays_test(
@@ -795,6 +830,7 @@ def render_rays_test(
             fine_alphas,
             fine_disp_map,
             fine_raw,
+            fine_depth_map,
         ) = sample_as_in_NeRF(
             ray_batch=ray_batch,
             N_samples=N_samples,
@@ -809,14 +845,13 @@ def render_rays_test(
             pytest=pytest,
             kwargs=kwargs,
         )
-
-        top_indices = fine_weights.argmax(dim=1, keepdim=True)
-        max_z_vals = torch.gather(fine_z_vals, 1, top_indices)
-        max_weights = torch.gather(fine_weights, 1, top_indices)
-        rgb = torch.sigmoid(fine_raw[..., :3])  # [N_rays, N_samples, 3]
-        top_indices_expanded = top_indices.unsqueeze(-1).expand(-1, 1, 3)
-        max_rgb_map = torch.gather(rgb, 1, top_indices_expanded).squeeze()
-        max_pts = rays_o[..., None, :] + rays_d[..., None, :] * max_z_vals[..., :, None]
+        max_weights, max_z_vals, max_pts, max_rgb_map = get_maximum_values(
+            fine_weights=fine_weights,
+            fine_z_vals=fine_z_vals,
+            fine_raw=fine_raw,
+            rays_o=rays_o,
+            rays_d=rays_d,
+        )
         ret["max_z_vals"] = max_z_vals.cpu()
         ret["max_pts"] = max_pts.cpu()
         ret["max_weights"] = max_weights.cpu()

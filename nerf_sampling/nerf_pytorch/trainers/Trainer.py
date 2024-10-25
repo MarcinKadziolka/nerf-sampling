@@ -707,6 +707,7 @@ class Trainer:
             density,
             alphas,
             weights,
+            depth_map,
         )
 
     def train(self, N_iters=200000 + 1):
