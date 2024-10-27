@@ -17,7 +17,7 @@ from tqdm import tqdm
 
 from nerf_sampling.nerf_pytorch import run_nerf_helpers, utils, visualize
 from nerf_sampling.nerf_pytorch.loss_functions import gaussian_log_likelihood
-from nerf_sampling.nerf_pytorch.utils import sample_points_around_mean
+from nerf_sampling.nerf_pytorch.utils import RenderingMode, sample_points_around_mean
 from nerf_sampling.depth_nets.depth_net import DepthNet
 
 np.random.seed(0)
@@ -308,7 +308,7 @@ def render_path(
             )
             psnr_info = f"{i:03d}.png, PSNR: {psnr}"
             mse = None
-            if render_kwargs["trainer"].compare_nerf:
+            if render_kwargs["trainer"].rendering_mode == RenderingMode.COMPARE:
                 if depth_net_extras["max_z_vals"] is not None:
                     mse = F.mse_loss(
                         depth_net_extras["max_z_vals"],
@@ -322,6 +322,10 @@ def render_path(
         if savedir is not None:
             rgb8 = run_nerf_helpers.to8b(rgbs[-1])
             filename = os.path.join(savedir, "{:03d}.png".format(i))
+            imageio.imwrite(filename, rgb8)
+
+            rgb8 = run_nerf_helpers.to8b(disps[-1])
+            filename = os.path.join(savedir, "{:03d}_disp.png".format(i))
             imageio.imwrite(filename, rgb8)
 
             if psnr_info is not None:
@@ -820,7 +824,7 @@ def render_rays_test(
     rays_o, rays_d = ray_batch[:, 0:3], ray_batch[:, 3:6]  # [N_rays, 3] each
     viewdirs = ray_batch[:, -3:] if ray_batch.shape[-1] > 8 else None
     ret = {}
-    if trainer.compare_nerf or trainer.use_nerf_max_pts or trainer.use_full_nerf:
+    if trainer.rendering_mode != RenderingMode.DEPTH:
         (
             fine_density,
             fine_z_vals,
@@ -856,13 +860,38 @@ def render_rays_test(
         ret["max_pts"] = max_pts.cpu()
         ret["max_weights"] = max_weights.cpu()
 
-    if trainer.use_nerf_max_pts:
+    if trainer.rendering_mode == RenderingMode.NDEPTH:
+        # TODO: sample depth map and check PSNR
+        depth_net_z_vals = fine_depth_map.unsqueeze(1)
+        depth_net_pts = rays_o[..., None, :] + rays_d[
+            ..., None, :
+        ] * depth_net_z_vals.unsqueeze(-1)
+
+        depth_net_raw = network_query_fn(depth_net_pts, viewdirs, network_fine)
+
+        (
+            depth_net_rgb_map,
+            depth_net_disp_map,
+            depth_net_acc_map,
+            depth_net_depth_map,
+            depth_net_density,
+            depth_net_alphas,
+            depth_net_weights,
+        ) = trainer.raw2outputs(
+            raw=depth_net_raw,
+            z_vals=depth_net_z_vals,
+            rays_d=rays_d,
+            raw_noise=raw_noise_std,
+            white_bkdg=white_bkgd,
+            pytest=pytest,
+        )
+    elif trainer.rendering_mode == RenderingMode.MAX:
         depth_net_rgb_map = max_rgb_map
         depth_net_disp_map = torch.zeros_like(max_rgb_map)
         depth_net_weights = max_weights
         depth_net_pts = max_pts
         depth_net_z_vals = max_z_vals
-    elif trainer.use_full_nerf:
+    elif trainer.rendering_mode == RenderingMode.FULL:
         depth_net_rgb_map = fine_rgb_map
         depth_net_disp_map = fine_disp_map
         depth_net_weights = fine_weights

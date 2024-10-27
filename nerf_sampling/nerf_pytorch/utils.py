@@ -7,6 +7,15 @@ import torch
 from torch.nn import functional as F
 
 from nerf_sampling.nerf_pytorch.run_nerf_helpers import NeRF
+from enum import Enum, auto
+
+
+class RenderingMode(Enum):
+    COMPARE = auto()
+    MAX = auto()
+    FULL = auto()
+    DEPTH = auto()
+    NDEPTH = auto()
 
 
 def load_obj_from_config(cfg: dict):

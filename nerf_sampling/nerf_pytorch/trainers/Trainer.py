@@ -61,9 +61,7 @@ class Trainer:
         single_image=False,
         single_ray=False,
         save_scene_data=False,
-        compare_nerf=False,
-        use_nerf_max_pts=False,
-        use_full_nerf=False,
+        rendering_mode=utils.RenderingMode.DEPTH,
     ):
         self.start = None
         self.dataset_type = dataset_type
@@ -120,9 +118,8 @@ class Trainer:
         self.single_image = single_image
         self.single_ray = single_ray
 
-        self.compare_nerf = compare_nerf
-        self.use_nerf_max_pts = use_nerf_max_pts
-        self.use_full_nerf = use_full_nerf
+        self.rendering_mode = rendering_mode
+
         print(f"{self}")
         print(f"{self.N_samples=}")
         print(f"{self.N_importance=}")

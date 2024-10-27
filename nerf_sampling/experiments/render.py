@@ -9,6 +9,7 @@ import yaml
 
 from nerf_sampling.definitions import ROOT_DIR
 from nerf_sampling.nerf_pytorch.utils import (
+    RenderingMode,
     load_obj_from_config,
     override_config,
     set_global_device,
@@ -71,14 +72,6 @@ from nerf_sampling.nerf_pytorch.utils import (
     show_default=True,
 )
 @click.option(
-    "-rt",
-    "--render_test",
-    is_flag=True,
-    default=False,
-    help="Perform render test",
-    show_default=True,
-)
-@click.option(
     "-ssd",
     "--save_scene_data",
     is_flag=True,
@@ -86,27 +79,20 @@ from nerf_sampling.nerf_pytorch.utils import (
     show_default=True,
 )
 @click.option(
-    "-nc",
-    "--nerf_compare",
-    is_flag=True,
-    default=False,
-    help="Compare depth network predictions to the original NeRF most important samples.",
-    show_default=True,
-)
-@click.option(
-    "-nm",
-    "--nerf_max",
-    is_flag=True,
-    default=False,
-    help="Use nerf max points to render",
-    show_default=True,
-)
-@click.option(
-    "-nf",
-    "--nerf_full",
-    is_flag=True,
-    default=False,
-    help="Use full nerf to render",
+    "-rd",
+    "rendering_mode",
+    type=click.Choice(
+        ["depth", "ndepth", "compare", "max", "full"], case_sensitive=False
+    ),
+    help="""
+    \b
+    depth: Use novel depth network for point prediciton.
+    ndepth: Use NeRF depth map for sampling.
+    compare: Get MSE between depth and max nerf.
+    max: Use most important NeRF point for rendering.
+    full: Use all NeRF points for rendering.
+    """,
+    default="depth",
     show_default=True,
 )
 @click.option(
@@ -142,12 +128,10 @@ def main(**click_kwargs):
     config["kwargs"]["single_ray"] = click_kwargs["single_ray"]
     config["kwargs"]["save_scene_data"] = click_kwargs["save_scene_data"]
     config["kwargs"]["i_print"] = click_kwargs["i_print"]
-    nerf_compare = click_kwargs["nerf_compare"]
-    nerf_max = click_kwargs["nerf_max"]
-    nerf_full = click_kwargs["nerf_full"]
-    config["kwargs"]["compare_nerf"] = nerf_compare
-    config["kwargs"]["use_nerf_max_pts"] = nerf_max
-    config["kwargs"]["use_full_nerf"] = nerf_full
+
+    rendering_mode = click_kwargs["rendering_mode"]
+    config["kwargs"]["rendering_mode"] = RenderingMode[rendering_mode.upper()]
+
     config["kwargs"]["render_only"] = True
     config["kwargs"]["render_test"] = True
 
@@ -211,17 +195,14 @@ def main(**click_kwargs):
     # distance = None
     sampling_mode = "uniform"  # uniform, gaussian, depth_only
 
-    if nerf_compare:
-        config["kwargs"]["expname"] = f"{dataset_name}_depth_net_render_mse"
-    elif nerf_max:
-        config["kwargs"]["expname"] = f"{dataset_name}_nerf_max_render"
-    elif nerf_full:
-        config["kwargs"]["expname"] = f"{dataset_name}_nerf_full_render"
-    else:
+    if rendering_mode == "depth":
         config["kwargs"][
             "expname"
         ] = f"{dataset_name}_depth_net_render_n_samples_{n_samples}_distance_{distance}_sampling_mode_{sampling_mode}"
-
+    else:
+        config["kwargs"][
+            "expname"
+        ] = f"{dataset_name}_{click_kwargs['rendering_mode']}_render"
     if click_kwargs["temporary"]:
         config["kwargs"]["expname"] = "tmp"
 
