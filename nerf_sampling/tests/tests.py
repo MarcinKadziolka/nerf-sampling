@@ -8,7 +8,10 @@ from nerf_sampling.nerf_pytorch.run_nerf_helpers import NeRF
 from nerf_sampling.depth_nets import depth_net
 from nerf_sampling.nerf_pytorch.utils import (
     find_intersection_points_with_sphere,
+    sample_gaussian,
+    sample_uniform,
     solve_quadratic_equation,
+    z_vals_to_points,
 )
 
 
@@ -329,3 +332,46 @@ def test_origin_on_sphere_moving_inward():
         [[1.0, 0.0, 0.0], [-1.0, 0.0, 0.0]]
     )  # Should intersect at the opposite point
     assert nan_equal(intersection_points[0], expected)
+
+
+def test_z_vals_to_points():
+    rays_o = torch.tensor([[0.0, 0, 0], [1.0, 0, 0]])
+    rays_d = torch.tensor([[1.0, 0, 0], [0.0, 1.0, 1]])
+    z_vals = torch.tensor([[1.0, 2.0, 3.0, 4.0], [1.0, 1.5, 3, 4]])
+    expected_points = torch.tensor(
+        [
+            [[1.0, 0, 0], [2.0, 0, 0], [3.0, 0, 0], [4.0, 0, 0]],
+            [[1.0, 1, 1], [1.0, 1.5, 1.5], [1.0, 3, 3], [1.0, 4, 4]],
+        ]
+    )
+    points = z_vals_to_points(rays_o=rays_o, rays_d=rays_d, z_vals=z_vals)
+    assert points.shape == (2, 4, 3)
+    assert torch.equal(expected_points, points)
+
+
+def test_sample_gaussian():
+    n_rays = 5
+    n_samples = 10
+    mean = torch.zeros(n_rays, 1, dtype=torch.float32)  # mean of zero
+    std = torch.tensor(1.0)  # standard deviation of 1
+    assert mean.shape == (n_rays, 1)
+    samples = sample_gaussian(n_samples, mean, std)
+
+    assert samples.shape == (
+        n_rays,
+        n_samples,
+    ), f"Expected shape {(n_rays, n_samples)}, but got {samples.shape}"
+
+    assert any(
+        torch.allclose(samples[:, i], mean[:, 0]) for i in range(n_samples)
+    ), "Mean value not found in the samples."
+
+    # Check that values are within reasonable bounds for a Gaussian with std=1
+    max_allowed = mean + 4 * std
+    min_allowed = mean - 4 * std
+    assert torch.all(
+        samples <= max_allowed
+    ), "Samples have values too high for expected Gaussian distribution."
+    assert torch.all(
+        samples >= min_allowed
+    ), "Samples have values too low for expected Gaussian distribution."

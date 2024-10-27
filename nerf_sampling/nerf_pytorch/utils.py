@@ -227,28 +227,58 @@ def find_intersection_points_with_sphere(
     return t, intersection_points  # [n_lines, 2 points, 3D]
 
 
-def sample_points_around_mean(
-    rays_o, rays_d, mean, n_samples=32, mode="gaussian", std=0.1
-):
-    # rays_d = F.normalize(rays_d)
-    if mode == "depth_only":
-        z_vals = mean
-    elif mode == "gaussian":
-        z_vals, _ = torch.cat(
-            [mean + std * torch.randn(mean.shape[0], n_samples - 1), mean], dim=-1
-        ).sort(dim=-1)
-    elif mode == "uniform":
-        grid = torch.linspace(-std, std, steps=n_samples - 1)
+def z_vals_to_points(rays_o: torch.Tensor, rays_d: torch.Tensor, z_vals: torch.Tensor):
+    """Convert distances from the origin to the 3D coordinates of the points.
 
-        # Expand the grid to match the shape of outputs
-        expanded_grid = grid.view(1, -1).expand(mean.size(0), -1)
+    Args:
+      rays_o: Origins of the rays [N_rays, 3]
+      rays_d: Directions of the rays [N_rays, 3]
+      z_vals: Distances of points from origin [N_rays, N_samples]
 
-        # Add the grid to the outputs to center the samples around outputs
-        z_vals, _ = torch.cat([mean + expanded_grid, mean], dim=-1).sort(dim=-1)
+    Returns:
+      3D coordinates of points for the given ray [N_rays, N_samples, 3]
+    """
+    return rays_o[..., None, :] + rays_d[..., None, :] * z_vals[..., :, None]
 
-        # Clip the values between 0 and 1
-        z_vals = torch.clip(z_vals, 2, 6)
-    return (
-        rays_o[..., None, :] + rays_d[..., None, :] * z_vals[..., :, None],
-        z_vals,
+
+def sample_gaussian(n_samples: int, mean: torch.Tensor, std: torch.Tensor):
+    """Sample around mean (included in the output) with gaussian distribution.
+
+    Args:
+      n_samples: Total number of samples. Because mean is included as a sample
+        the number of new samples is N_samples - 1
+      mean: [N_rays, 1]. Mean of the gaussian distribution. It will be included as a sample.
+      std: Standard deviation of the gaussian distribution
+
+    Returns:
+      [N_rays, N_samples] Samples from gaussian distribution with given mean and std.
+        Mean is one of the samples.
+    """
+    z_vals = torch.cat(
+        [mean + std * torch.randn(mean.shape[0], n_samples - 1), mean], dim=-1
     )
+    return z_vals
+
+
+def sample_uniform(n_samples, mean, distance):
+    """Sample uniformly [-distance, distance] around mean (included in the output).
+
+    Args:
+      n_samples: Total number of samples. Because mean is included as a sample
+        the number of new samples is N_samples - 1
+      mean: [N_rays, 1]. Center of the uniform distribution. It will be included as a sample.
+      distance: Distance both ways around center to sample.
+
+    Returns:
+      [N_rays, N_samples] Samples from uniform distribution with given center and distance.
+        Center is one of the samples.
+    """
+    grid = torch.linspace(-distance, distance, steps=n_samples)
+
+    # Expand the grid to match the shape of outputs
+    expanded_grid = grid.view(1, -1).expand(mean.size(0), -1)
+
+    # Add the grid to the outputs to center the samples around outputs
+    z_vals = torch.cat([mean + expanded_grid, mean], dim=-1)
+
+    return z_vals
