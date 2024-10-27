@@ -56,22 +56,6 @@ from nerf_sampling.nerf_pytorch.utils import (
     show_default=True,
 )
 @click.option(
-    "-si",
-    "--single_image",
-    is_flag=True,
-    default=False,
-    help="Train sampling network on single image.",
-    show_default=True,
-)
-@click.option(
-    "-sr",
-    "--single_ray",
-    is_flag=True,
-    default=False,
-    help="Train sampling network on single ray.",
-    show_default=True,
-)
-@click.option(
     "-ssd",
     "--save_scene_data",
     is_flag=True,
@@ -80,7 +64,7 @@ from nerf_sampling.nerf_pytorch.utils import (
 )
 @click.option(
     "-rd",
-    "rendering_mode",
+    "--rendering_mode",
     type=click.Choice(
         ["depth", "ndepth", "compare", "max", "full"], case_sensitive=False
     ),
@@ -124,8 +108,6 @@ def main(**click_kwargs):
         model = click_kwargs["model"]
         config = yaml.safe_load(fin)[model]
 
-    config["kwargs"]["single_image"] = click_kwargs["single_image"]
-    config["kwargs"]["single_ray"] = click_kwargs["single_ray"]
     config["kwargs"]["save_scene_data"] = click_kwargs["save_scene_data"]
     config["kwargs"]["i_print"] = click_kwargs["i_print"]
 
