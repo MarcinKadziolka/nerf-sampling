@@ -174,7 +174,17 @@ class DepthNetTrainer(Blender.BlenderTrainer):
             weights: [num_rays, num_samples]. Weights assigned to each sampled color.
             depth_map: [num_rays]. Estimated distance to object.
         """
-        dists = z_vals[..., 1:] - z_vals[..., :-1]
+        # Calculate distances between samples
+        # [s0, s1, s2, s3]
+        # z_vals[..., 1:] = [s1, s2, s3] skip the first sample
+        # z_vals[..., :-1] = [s0, s1, s2] skip the last sample
+        # dists = [s1-s0, s2-s1, s3-s2]
+        dists = z_vals[..., 1:] - z_vals[..., :-1]  # [N_rays, N_samples-1]
+
+        # dists[..., :1] = [N_rays, 1]
+        # torch.tensor([1e10]).expand(^) = [N_rays, 1]
+        # concatenate 1e10 at the end of distances
+        # dists = [s1-s0, s2-s1, s3-s2, 1e10]
         dists = torch.cat(
             [dists, torch.tensor([1e10]).expand(dists[..., :1].shape)], -1
         )  # [N_rays, N_samples]
@@ -206,6 +216,7 @@ class DepthNetTrainer(Blender.BlenderTrainer):
         )  # [N_rays, N_samples]
         rgb_map = torch.sum(weights[..., None] * rgb, -2)  # [N_rays, 3]
 
+        # TODO: chech the points from depth map, why single point from depth map is worse than max
         depth_map = torch.sum(weights * z_vals, -1)
         disp_map = 1.0 / torch.max(
             1e-10 * torch.ones_like(depth_map),
