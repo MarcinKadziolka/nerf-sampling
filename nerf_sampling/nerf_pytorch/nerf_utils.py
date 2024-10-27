@@ -891,6 +891,8 @@ def render_rays_test(
         depth_net_weights = max_weights
         depth_net_pts = max_pts
         depth_net_z_vals = max_z_vals
+    elif trainer.rendering_mode == RenderingMode.SMAX:
+        pass
     elif trainer.rendering_mode == RenderingMode.FULL:
         depth_net_rgb_map = fine_rgb_map
         depth_net_disp_map = fine_disp_map

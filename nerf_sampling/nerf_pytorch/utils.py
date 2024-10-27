@@ -16,6 +16,7 @@ class RenderingMode(Enum):
     FULL = auto()
     DEPTH = auto()
     NDEPTH = auto()
+    SMAX = auto()
 
 
 def load_obj_from_config(cfg: dict):

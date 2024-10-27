@@ -66,14 +66,15 @@ from nerf_sampling.nerf_pytorch.utils import (
     "-rd",
     "--rendering_mode",
     type=click.Choice(
-        ["depth", "ndepth", "compare", "max", "full"], case_sensitive=False
+        ["depth", "ndepth", "compare", "max", "smax", "full"], case_sensitive=False
     ),
     help="""
     \b
     depth: Use novel depth network for point prediciton.
-    ndepth: Use NeRF depth map for sampling.
+    ndepth: Use NeRF depth map for single point.
     compare: Get MSE between depth and max nerf.
     max: Use most important NeRF point for rendering.
+    smax: Sample around most important NeRF point for rendering.
     full: Use all NeRF points for rendering.
     """,
     default="depth",
